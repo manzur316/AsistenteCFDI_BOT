@@ -80,23 +80,34 @@ La memoria, historial, drafts y logs viven en PostgreSQL local (`cfdi_bot`). Ver
 
 ## Clientes, Montos e Impuestos
 
-La Fase 4.5 agrega soporte local para:
+Las fases 4.5 y 4.6 agregan soporte local para:
 
 - Clientes y alias en PostgreSQL.
 - Montos detectados desde mensajes.
 - Modo IVA `MAS_IVA`, `IVA_INCLUIDO` o pendiente.
 - Reglas conservadoras RESICO para borradores.
 - Line items de borrador en `cfdi_draft_line_items`.
+- Flujo conversacional tipo wizard para crear borradores desde Telegram.
 
 El seed `sql/003_seed_clients.example.sql` contiene solo un cliente ficticio (`CLI-DEMO-RIVERA`). No subas clientes reales al repositorio.
 
 Comandos disponibles en Telegram:
 
+- `/factura`
 - `/clientes`
 - `/cliente TEXTO`
-- `/nuevocliente NOMBRE`
-- `/setcliente DRAFT_ID CLIENT_ID`
+- `/nuevocliente`
 - `/editarcliente CLIENT_ID CAMPO VALOR`
+- `/validarcliente CLIENT_ID`
+
+Flujo recomendado:
+
+1. Enviar `/factura`.
+2. Completar `Cliente`, `Trabajo`, `Tipo`, `Monto` e `IVA`, o mandar algo rapido como `Privada Rivera, revise camaras por 800 + IVA`.
+3. Revisar el preview `BORRADOR CFDI`.
+4. Responder `confirmar`, `editar` o `cancelar`.
+
+El workflow no crea el draft `PENDIENTE` final hasta recibir `confirmar`. Si el cliente no existe, ofrece crear cliente basico, continuar sin cliente o cancelar. El alta manual con `/nuevocliente` usa plantilla escrita y deja `validated_by_human=false` hasta ejecutar `/validarcliente CLIENT_ID`.
 
 ## Limites fiscales
 

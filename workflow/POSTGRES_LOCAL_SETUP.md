@@ -45,6 +45,12 @@ psql -h localhost -p 5432 -U cfdi_bot_user -d cfdi_bot -f "C:/Users/Juandi Gamer
 
 Ese archivo solo contiene `CLI-DEMO-RIVERA`. No guardes clientes reales en SQL versionado.
 
+## Wizard de Factura
+
+La Fase 4.6 no agrega migracion nueva. El flujo `/factura` usa `chat_states`, `cfdi_clients`, `cfdi_drafts` y `cfdi_draft_line_items`.
+
+El draft final se guarda como `PENDIENTE` solo despues de que Telegram muestre el preview `BORRADOR CFDI` y el usuario responda `confirmar`.
+
 ## Credencial en n8n
 
 Crea una credencial PostgreSQL en n8n:

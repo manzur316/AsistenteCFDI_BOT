@@ -136,10 +136,10 @@ checks.push({ name: "seed_demo_not_validated", pass: seed.includes("validated_by
 checks.push({ name: "seed_demo_aliases", pass: seed.includes("privada rivera") && seed.includes("rivera"), value: "aliases" });
 
 if (workflow) {
-  for (const command of ["/clientes", "/cliente", "/nuevocliente", "/setcliente", "/editarcliente"]) {
+  for (const command of ["/clientes", "/cliente", "/nuevocliente", "/setcliente", "/editarcliente", "/validarcliente", "/factura"]) {
     checks.push({ name: `command:${command}`, pass: handleCode.includes(command), value: command });
   }
-  for (const fn of ["extractClientQuery", "resolveClientByAlias", "extractAmount", "detectTaxMode", "detectOperationOverride", "calculateAmounts"]) {
+  for (const fn of ["extractClientQuery", "resolveClientByAlias", "extractAmount", "detectTaxMode", "detectOperationType", "detectOperationOverride", "calculateAmounts", "buildDraftPreview"]) {
     checks.push({ name: `parser_fn:${fn}`, pass: handleCode.includes(`function ${fn}`), value: fn });
   }
   checks.push({ name: "context_loads_clients", pass: buildContextCode.includes("cfdi_clients") && buildContextCode.includes("cfdi_client_aliases"), value: "clients" });
@@ -162,8 +162,15 @@ try {
     context: {
       draft_id: "DRAFT-TEST-TAX",
       amount: 800,
-      client: demoClient(),
+      client: demoClient({ validated_by_human: true }),
       operation_type: "SERVICIO",
+      pending_invoice_context: {
+        work_text: "revise camaras hikvision",
+        amount: 800,
+        client: demoClient({ validated_by_human: true }),
+        operation_type: "SERVICIO",
+        original_text: "cliente privada rivera, revise camaras hikvision, servicio y quiero cobrar 800 pesos",
+      },
       line: { concept_id: "SVC-CCTV-001", concepto_factura: "SERVICIO CCTV", operation_type: "SERVICIO" },
     },
   };
@@ -179,18 +186,18 @@ try {
 if (behavior.needsMode) {
   checks.push({ name: "parser_detects_demo_client", pass: behavior.needsMode.client?.client_id === "CLI-DEMO-RIVERA", value: behavior.needsMode.client?.client_id || "none" });
   checks.push({ name: "parser_detects_amount", pass: behavior.needsMode.amount === 800, value: behavior.needsMode.amount });
-  checks.push({ name: "parser_detects_unknown_tax_mode", pass: behavior.needsMode.tax_mode === "UNKNOWN" && String(behavior.needsMode.telegram_message).includes("responde 1"), value: behavior.needsMode.tax_mode });
+  checks.push({ name: "parser_detects_unknown_tax_mode", pass: behavior.needsMode.tax_mode === "UNKNOWN" && String(behavior.needsMode.telegram_message).includes("1 = +IVA"), value: behavior.needsMode.tax_mode });
   checks.push({ name: "unknown_tax_mode_saves_state", pass: String(behavior.needsMode.persistence_sql).includes("NEEDS_TAX_MODE"), value: "chat_state" });
 }
 
 if (behavior.modeReply) {
-  checks.push({ name: "mode_reply_applies_mas_iva", pass: behavior.modeReply.action === "TAX_MODE_UPDATED" && behavior.modeReply.tax_mode === "MAS_IVA", value: `${behavior.modeReply.action}/${behavior.modeReply.tax_mode}` });
+  checks.push({ name: "mode_reply_applies_mas_iva", pass: behavior.modeReply.action === "NEEDS_CONFIRM_DRAFT" && behavior.modeReply.tax_mode === "MAS_IVA", value: `${behavior.modeReply.action}/${behavior.modeReply.tax_mode}` });
   checks.push({ name: "pm_service_isr_125", pass: String(behavior.modeReply.telegram_message).includes("ISR retenido: 10.00") && behavior.modeReply.tax_summary?.tax_rule_id === "RESICO-PM-NO-LUCRO-SERVICIO-CONSERVADOR", value: behavior.modeReply.tax_summary?.tax_rule_id || "none" });
   checks.push({ name: "pm_service_iva_retention", pass: String(behavior.modeReply.telegram_message).includes("IVA retenido: 85.33"), value: "IVA retencion" });
 }
 
 if (behavior.productIncluded) {
-  checks.push({ name: "product_power_supply_concept", pass: behavior.productIncluded.action === "SUGERIR" && behavior.productIncluded.concept?.id === "PROD-CCTV-007", value: `${behavior.productIncluded.action}/${behavior.productIncluded.concept?.id}` });
+  checks.push({ name: "product_power_supply_concept", pass: behavior.productIncluded.action === "NEEDS_CONFIRM_DRAFT" && behavior.productIncluded.concept?.id === "PROD-CCTV-007", value: `${behavior.productIncluded.action}/${behavior.productIncluded.concept?.id}` });
   checks.push({ name: "product_iva_included", pass: behavior.productIncluded.tax_mode === "IVA_INCLUIDO" && behavior.productIncluded.amount === 350, value: `${behavior.productIncluded.tax_mode}/${behavior.productIncluded.amount}` });
   checks.push({ name: "product_review_required", pass: behavior.productIncluded.tax_review_required === true && String(behavior.productIncluded.telegram_message).includes("BORRADOR SUJETO A REVISION HUMANA"), value: "review=true" });
 }
@@ -200,11 +207,11 @@ if (behavior.pfService) {
 }
 
 if (behavior.noClient) {
-  checks.push({ name: "no_client_no_retentions", pass: behavior.noClient.client === null && String(behavior.noClient.telegram_message).includes("Retenciones: no calculadas (sin_cliente)"), value: "sin_cliente" });
+  checks.push({ name: "no_client_no_retentions", pass: behavior.noClient.client === null && behavior.noClient.tax_summary?.tax_rule_reason === "sin_cliente", value: behavior.noClient.tax_summary?.tax_rule_reason || "none" });
 }
 
 if (behavior.unvalidated) {
-  checks.push({ name: "unvalidated_client_forces_review", pass: behavior.unvalidated.tax_review_required === true && behavior.unvalidated.tax_summary?.client_validated_by_human === false, value: "review=true" });
+  checks.push({ name: "unvalidated_client_forces_review", pass: behavior.unvalidated.tax_review_required === true && behavior.unvalidated.tax_summary?.tax_rule_reason === "cliente_no_validado", value: behavior.unvalidated.tax_summary?.tax_rule_reason || "none" });
 }
 
 const changedFiles = git(["diff", "--name-only"]);
