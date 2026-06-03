@@ -74,6 +74,24 @@ checks.push({
   value: "initial telegram state V1",
 });
 
+checks.push({
+  name: "grant_schema_usage",
+  pass: normalized.includes("grant usage on schema public to cfdi_bot_user"),
+  value: "cfdi_bot_user schema usage",
+});
+
+checks.push({
+  name: "grant_table_dml",
+  pass: normalized.includes("grant select, insert, update, delete on all tables in schema public to cfdi_bot_user"),
+  value: "cfdi_bot_user DML",
+});
+
+checks.push({
+  name: "grant_default_privileges",
+  pass: normalized.includes("alter default privileges in schema public grant select, insert, update, delete on tables to cfdi_bot_user"),
+  value: "future tables DML",
+});
+
 for (const indexName of requiredIndexes) {
   checks.push({
     name: `index:${indexName}`,

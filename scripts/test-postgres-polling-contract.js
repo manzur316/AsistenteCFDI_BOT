@@ -6,6 +6,7 @@ const workflowPath = path.join(root, "workflow", "cfdi_telegram_postgres_polling
 const expectedPlaceholder = "REEMPLAZAR_TELEGRAM_BOT_TOKEN_EN_N8N";
 const expectedWorkflowVersion = "CFDI_POSTGRES_POLLING_V1";
 const expectedCatalogPath = "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/data/concepts.normalized.json";
+const fakeLeakToken = ["123456789", "ABCDEF_abcdef-1234567890"].join(":");
 
 const forbiddenTexts = [
   "process.",
@@ -76,6 +77,17 @@ function makeUpdate(updateId, text, chatId = "chat-postgres-test") {
   };
 }
 
+function makeNonTextUpdate(updateId, chatId = "chat-postgres-test") {
+  return {
+    update_id: updateId,
+    message: {
+      message_id: updateId + 1000,
+      chat: { id: chatId },
+      sticker: { file_id: "TEST_STICKER" },
+    },
+  };
+}
+
 function contextInput(text, extra = {}) {
   return {
     update_id: extra.update_id || 501,
@@ -83,7 +95,6 @@ function contextInput(text, extra = {}) {
     message_id: String((extra.update_id || 501) + 1000),
     text,
     catalog_path: expectedCatalogPath,
-    telegram_bot_token: "TEST_TELEGRAM_TOKEN",
     workflow_version: expectedWorkflowVersion,
     chat_state: extra.chat_state ?? null,
     recent_drafts: extra.recent_drafts || [],
@@ -141,10 +152,15 @@ if (workflow) {
   checks.push({ name: "uses_getUpdates", pass: raw.includes("getUpdates"), value: "Telegram getUpdates" });
   checks.push({ name: "uses_sendMessage", pass: raw.includes("sendMessage"), value: "Telegram sendMessage" });
   checks.push({ name: "sendMessage_continue_on_fail", pass: sendNode.continueOnFail === true, value: sendNode.continueOnFail === true ? "true" : "false" });
+  checks.push({ name: "sendMessage_token_from_set_config", pass: sendNode.parameters.url.includes('$node["Set Config"].json.telegramBotToken'), value: "Set Config only" });
   checks.push({ name: "uses_bot_state_offset", pass: raw.includes("bot_state") && raw.includes("lastTelegramUpdateId") && raw.includes("nextOffset"), value: "bot_state.lastTelegramUpdateId" });
   checks.push({ name: "insert_updates_on_conflict", pass: raw.includes("ON CONFLICT (update_id) DO NOTHING") && raw.includes("RETURNING update_id"), value: "telegram_updates dedupe" });
   checks.push({ name: "stores_raw_update_payload", pass: raw.includes("raw_payload") && raw.includes("sqlJson(update)"), value: "telegram_updates.raw_payload" });
   checks.push({ name: "stores_draft_action_and_message", pass: raw.includes("action, ready_to_copy") && raw.includes("telegram_message") && raw.includes("createDraftStatement"), value: "cfdi_drafts action/message" });
+  checks.push({ name: "does_not_return_telegram_bot_token_sql_field", pass: !raw.includes("AS telegram_bot_token") && !raw.includes("input.telegram_bot_token"), value: "no SQL token field" });
+  checks.push({ name: "offset_commit_for_seen_updates", pass: raw.includes("maxSeenUpdateId") && raw.includes("skip_send") && raw.includes("IGNORED_UPDATE"), value: "maxSeenUpdateId" });
+  checks.push({ name: "send_logs_payload_sanitized", pass: logCode.includes("stripSensitive") && logCode.includes("safeSource") && logCode.includes("safeCurrent"), value: "send_logs payload" });
+  checks.push({ name: "bot_events_payload_no_sql_token_field", pass: !handleCode.includes("telegram_bot_token") && !handleCode.includes("const telegramBotToken"), value: "bot_events payload" });
   checks.push({ name: "updates_bot_state_after_send", pass: raw.includes("Postgres Persist Send Log And State") && raw.includes("INSERT INTO bot_state") && raw.includes("GREATEST"), value: "send log state commit" });
   checks.push({ name: "logs_send_result", pass: raw.includes("INSERT INTO send_logs") && raw.includes("send_failed"), value: "send_logs" });
   checks.push({ name: "self_contained_scoring", pass: handleCode.includes("function classifyMessage") && handleCode.includes("function buildN8nResponse") && handleCode.length > 30000, value: `${handleCode.length} chars` });
@@ -175,14 +191,16 @@ try {
   behavior.empty = executeCode(extractCode, { ok: true, result: [] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
   behavior.old = executeCode(extractCode, { ok: true, result: [makeUpdate(500, "revis\u00e9 c\u00e1maras")] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
   behavior.normalExtract = executeCode(extractCode, { ok: true, result: [makeUpdate(501, "revis\u00e9 c\u00e1maras hikvision sin imagen")] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
+  behavior.nonTextOnlyExtract = executeCode(extractCode, { ok: true, result: [makeNonTextUpdate(510)] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
+  behavior.nonTextBuild = executeCode(buildContextCode, { skip_send: true, max_seen_update_id: 510 });
   behavior.loadSql = executeCode(buildContextCode, {
     update_id: 501,
     chat_id: "chat-postgres-test",
     message_id: "1501",
     text: "revis\u00e9 c\u00e1maras hikvision sin imagen",
     catalog_path: expectedCatalogPath,
-    telegram_bot_token: "TEST_TELEGRAM_TOKEN",
     workflow_version: expectedWorkflowVersion,
+    max_seen_update_id: 501,
   })[0].json;
   behavior.normal = executeCode(handleCode, contextInput("revis\u00e9 c\u00e1maras hikvision sin imagen", { update_id: 501 }))[0].json;
   behavior.generic = executeCode(handleCode, contextInput("servicio t\u00e9cnico general", { update_id: 502 }))[0].json;
@@ -207,7 +225,13 @@ try {
   }))[0].json;
   const passthrough = extractBase64Select(behavior.normal.persistence_sql);
   behavior.restored = executeCode(restoreCode, { passthrough_b64: passthrough })[0].json;
-  behavior.sendFail = executeCode(logCode, { error: { message: "The connection to the server was closed unexpectedly" } }, {
+  behavior.sendFail = executeCode(logCode, {
+    error: {
+      message: "The connection to the server was closed unexpectedly for https://api.telegram.org/bot" + fakeLeakToken + "/sendMessage",
+      telegramBotToken: fakeLeakToken,
+    },
+    telegramBotToken: fakeLeakToken,
+  }, {
     itemsGetter: (nodeName) => nodeName === "Restore Response After Persistence" ? [{ json: behavior.restored }] : [],
   })[0].json;
 } catch (error) {
@@ -215,13 +239,24 @@ try {
 }
 
 if (behavior.normal) {
+  const normalValidItem = Array.isArray(behavior.normalExtract) ? behavior.normalExtract.find((item) => item.json && item.json.skip_send !== true) : null;
+  const normalOffsetItem = Array.isArray(behavior.normalExtract) ? behavior.normalExtract.find((item) => item.json && item.json.skip_send === true) : null;
+  const nonTextOffsetItem = Array.isArray(behavior.nonTextOnlyExtract) ? behavior.nonTextOnlyExtract.find((item) => item.json && item.json.skip_send === true) : null;
   checks.push({ name: "empty_getUpdates_zero_send", pass: Array.isArray(behavior.empty) && behavior.empty.length === 0, value: `items=${behavior.empty.length}` });
   checks.push({ name: "old_update_zero_send", pass: Array.isArray(behavior.old) && behavior.old.length === 0, value: `items=${behavior.old.length}` });
-  checks.push({ name: "normal_extract_builds_insert_sql", pass: behavior.normalExtract.length === 1 && String(behavior.normalExtract[0].json.insert_update_sql).includes("ON CONFLICT (update_id) DO NOTHING"), value: `items=${behavior.normalExtract.length}` });
-  checks.push({ name: "normal_extract_stores_raw_payload", pass: behavior.normalExtract.length === 1 && String(behavior.normalExtract[0].json.insert_update_sql).includes("raw_payload") && String(behavior.normalExtract[0].json.insert_update_sql).includes("::jsonb"), value: "raw_payload jsonb" });
+  checks.push({ name: "normal_extract_builds_insert_sql", pass: behavior.normalExtract.length === 2 && normalValidItem && String(normalValidItem.json.insert_update_sql).includes("ON CONFLICT (update_id) DO NOTHING"), value: `items=${behavior.normalExtract.length}` });
+  checks.push({ name: "normal_extract_stores_raw_payload", pass: Boolean(normalValidItem) && String(normalValidItem.json.insert_update_sql).includes("raw_payload") && String(normalValidItem.json.insert_update_sql).includes("::jsonb"), value: "raw_payload jsonb" });
+  checks.push({ name: "normal_extract_has_offset_commit_item", pass: Boolean(normalOffsetItem) && String(normalOffsetItem.json.insert_update_sql).includes("INSERT INTO bot_state") && normalOffsetItem.json.max_seen_update_id === 501, value: normalOffsetItem ? `max=${normalOffsetItem.json.max_seen_update_id}` : "missing" });
+  checks.push({ name: "insert_sql_excludes_token_placeholder", pass: Boolean(normalValidItem) && !String(normalValidItem.json.insert_update_sql).includes(expectedPlaceholder) && !String(normalValidItem.json.insert_update_sql).includes("TEST_TELEGRAM_TOKEN"), value: "insert_update_sql" });
+  checks.push({ name: "non_text_update_offset_only", pass: behavior.nonTextOnlyExtract.length === 1 && Boolean(nonTextOffsetItem) && nonTextOffsetItem.json.max_seen_update_id === 510, value: `items=${behavior.nonTextOnlyExtract.length}` });
+  checks.push({ name: "non_text_update_logs_ignored_event", pass: Boolean(nonTextOffsetItem) && String(nonTextOffsetItem.json.insert_update_sql).includes("IGNORED_UPDATE") && String(nonTextOffsetItem.json.insert_update_sql).includes("missing_text"), value: "IGNORED_UPDATE" });
+  checks.push({ name: "non_text_update_zero_send_after_build", pass: Array.isArray(behavior.nonTextBuild) && behavior.nonTextBuild.length === 0, value: `items=${behavior.nonTextBuild.length}` });
   checks.push({ name: "load_context_sql", pass: String(behavior.loadSql.load_context_sql).includes("chat_states") && String(behavior.loadSql.load_context_sql).includes("cfdi_drafts"), value: "context query" });
+  checks.push({ name: "load_context_sql_excludes_token", pass: !String(behavior.loadSql.load_context_sql).includes("telegram_bot_token") && !String(behavior.loadSql.load_context_sql).includes("TEST_TELEGRAM_TOKEN"), value: "context query" });
   checks.push({ name: "normal_goes_to_scoring", pass: behavior.normal.action === "SUGERIR" && behavior.normal.ready_to_copy === true && behavior.normal.concept?.familia === "CCTV", value: `${behavior.normal.action}/${conceptId(behavior.normal)}` });
+  checks.push({ name: "normal_output_excludes_token", pass: !JSON.stringify(behavior.normal).includes("TEST_TELEGRAM_TOKEN") && !JSON.stringify(behavior.normal).includes("telegram_bot_token"), value: "Handle output" });
   checks.push({ name: "sugerir_creates_draft_sql", pass: String(behavior.normal.persistence_sql).includes("INSERT INTO cfdi_drafts") && String(behavior.normal.persistence_sql).includes("PENDIENTE"), value: "cfdi_drafts" });
+  checks.push({ name: "bot_events_sql_excludes_token", pass: !String(behavior.normal.persistence_sql).includes("TEST_TELEGRAM_TOKEN") && !String(behavior.normal.persistence_sql).includes("telegram_bot_token"), value: "bot_events payload SQL" });
   checks.push({ name: "sugerir_persists_action_and_telegram_message", pass: String(behavior.normal.persistence_sql).includes("action, ready_to_copy") && String(behavior.normal.persistence_sql).includes("telegram_message"), value: "draft contract" });
   checks.push({ name: "generic_saves_chat_state", pass: behavior.generic.action === "PEDIR_ACLARACION" && String(behavior.generic.persistence_sql).includes("INSERT INTO chat_states"), value: behavior.generic.action });
   checks.push({ name: "clarified_uses_chat_state", pass: behavior.clarified.action === "SUGERIR" && behavior.clarified.json_debug?.used_chat_state === true, value: `${behavior.clarified.action}/${behavior.clarified.json_debug?.used_chat_state}` });
@@ -231,6 +266,7 @@ if (behavior.normal) {
   checks.push({ name: "debug_shows_real_state", pass: behavior.debug.action === "COMMAND_DEBUG" && String(behavior.debug.telegram_message).includes("lastTelegramUpdateId: 999") && String(behavior.debug.telegram_message).includes("chatState: existe"), value: behavior.debug.action });
   checks.push({ name: "restore_passthrough", pass: behavior.restored.action === "SUGERIR" && behavior.restored.update_id === 501, value: `${behavior.restored.action}/${behavior.restored.update_id}` });
   checks.push({ name: "send_failure_logged_no_retry_contract", pass: behavior.sendFail.send_failed === true && String(behavior.sendFail.send_log_sql).includes("INSERT INTO send_logs") && String(behavior.sendFail.send_log_sql).includes("INSERT INTO bot_state") && String(behavior.sendFail.send_log_sql).includes("501"), value: `send_failed=${behavior.sendFail.send_failed}` });
+  checks.push({ name: "send_logs_payload_excludes_token", pass: !String(behavior.sendFail.send_log_sql).includes(fakeLeakToken) && !String(behavior.sendFail.send_log_sql).includes("telegramBotToken") && !String(behavior.sendFail.send_log_sql).includes("TEST_TELEGRAM_TOKEN"), value: "send_logs payload" });
 }
 
 const passCount = checks.filter((check) => check.pass).length;

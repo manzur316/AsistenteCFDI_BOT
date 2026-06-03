@@ -10,10 +10,28 @@ En PowerShell, con `psql` disponible:
 psql -h localhost -p 5432 -U postgres -c "CREATE USER cfdi_bot_user WITH PASSWORD 'CAMBIAR_PASSWORD_LOCAL';"
 psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE cfdi_bot OWNER cfdi_bot_user;"
 psql -h localhost -p 5432 -U postgres -d cfdi_bot -c "GRANT ALL PRIVILEGES ON DATABASE cfdi_bot TO cfdi_bot_user;"
-psql -h localhost -p 5432 -U postgres -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/001_init_cfdi_bot.sql"
 ```
 
 `CAMBIAR_PASSWORD_LOCAL` es placeholder. No guardes la contrasena real en GitHub, `.env`, workflows, README, logs ni runtime.
+
+## Inicializar Tablas
+
+Opcion recomendada: ejecutar el init SQL conectado como `cfdi_bot_user`, para que n8n use tablas creadas por el mismo usuario con el que se conecta:
+
+```powershell
+psql -h localhost -p 5432 -U cfdi_bot_user -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/001_init_cfdi_bot.sql"
+```
+
+Opcion alternativa: si ejecutas el init SQL como `postgres`, confirma despues los permisos para `cfdi_bot_user`:
+
+```powershell
+psql -h localhost -p 5432 -U postgres -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/001_init_cfdi_bot.sql"
+psql -h localhost -p 5432 -U postgres -d cfdi_bot -c "GRANT USAGE ON SCHEMA public TO cfdi_bot_user;"
+psql -h localhost -p 5432 -U postgres -d cfdi_bot -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cfdi_bot_user;"
+psql -h localhost -p 5432 -U postgres -d cfdi_bot -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO cfdi_bot_user;"
+```
+
+El archivo `sql/001_init_cfdi_bot.sql` tambien incluye estos `GRANT` al final como respaldo cuando `cfdi_bot_user` ya existe.
 
 ## Credencial en n8n
 

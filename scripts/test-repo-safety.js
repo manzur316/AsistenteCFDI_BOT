@@ -168,6 +168,22 @@ for (const required of [".env", "runtime/*.jsonl", "runtime/*.json", "logs/", "d
 const workflowPath = "workflow/cfdi_telegram_postgres_polling.n8n.json";
 if (exists(workflowPath)) {
   const workflow = readText(workflowPath);
+  let parsedWorkflow = null;
+  try {
+    parsedWorkflow = JSON.parse(workflow);
+  } catch (_error) {
+    parsedWorkflow = null;
+  }
+  const getNodeCode = (name) => {
+    const node = parsedWorkflow && Array.isArray(parsedWorkflow.nodes)
+      ? parsedWorkflow.nodes.find((item) => item.name === name)
+      : null;
+    return node?.parameters?.jsCode || "";
+  };
+  const extractCode = getNodeCode("Extract Telegram Updates");
+  const handleCode = getNodeCode("Handle Commands And Scoring");
+  const logCode = getNodeCode("Log Send Result SQL");
+
   checks.push({
     name: "workflow_uses_token_placeholder",
     pass: workflow.includes("REEMPLAZAR_TELEGRAM_BOT_TOKEN_EN_N8N"),
@@ -182,6 +198,26 @@ if (exists(workflowPath)) {
     name: "workflow_no_local_js_require",
     pass: !/require\(\s*["'][.]{1,2}\//.test(workflow) && !workflow.includes("scripts/scoring.js"),
     value: "self-contained",
+  });
+  checks.push({
+    name: "workflow_no_sql_returned_telegram_token",
+    pass: !workflow.includes("AS telegram_bot_token") && !workflow.includes("input.telegram_bot_token"),
+    value: "no telegram_bot_token SQL field",
+  });
+  checks.push({
+    name: "workflow_offset_advances_non_text_updates",
+    pass: extractCode.includes("maxSeenUpdateId") && extractCode.includes("skip_send") && extractCode.includes("IGNORED_UPDATE"),
+    value: "maxSeenUpdateId/skip_send",
+  });
+  checks.push({
+    name: "workflow_send_logs_sanitize_payload",
+    pass: logCode.includes("stripSensitive") && logCode.includes("safeSource") && logCode.includes("safeCurrent") && !logCode.includes("{ source, send_result: current }"),
+    value: "send_logs payload",
+  });
+  checks.push({
+    name: "workflow_bot_events_do_not_reference_token_field",
+    pass: !handleCode.includes("const telegramBotToken") && !handleCode.includes("telegram_bot_token"),
+    value: "bot_events payload",
   });
 }
 
