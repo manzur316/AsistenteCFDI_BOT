@@ -20,5 +20,6 @@ backups/
 *.rar
 clients/
 constancias/
+sql/*clients*.local.sql
 *.pdf
 data/base_cfdi_resico_n8n_emberhub_2026.xlsx

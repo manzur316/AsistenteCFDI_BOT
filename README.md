@@ -75,6 +75,28 @@ La memoria, historial, drafts y logs viven en PostgreSQL local (`cfdi_bot`). Ver
 - `workflow/POSTGRES_LOCAL_SETUP.md`
 - `workflow/POSTGRES_POLLING_RUNBOOK.md`
 - `sql/001_init_cfdi_bot.sql`
+- `sql/003_clients_amounts_tax.sql`
+- `sql/003_seed_clients.example.sql`
+
+## Clientes, Montos e Impuestos
+
+La Fase 4.5 agrega soporte local para:
+
+- Clientes y alias en PostgreSQL.
+- Montos detectados desde mensajes.
+- Modo IVA `MAS_IVA`, `IVA_INCLUIDO` o pendiente.
+- Reglas conservadoras RESICO para borradores.
+- Line items de borrador en `cfdi_draft_line_items`.
+
+El seed `sql/003_seed_clients.example.sql` contiene solo un cliente ficticio (`CLI-DEMO-RIVERA`). No subas clientes reales al repositorio.
+
+Comandos disponibles en Telegram:
+
+- `/clientes`
+- `/cliente TEXTO`
+- `/nuevocliente NOMBRE`
+- `/setcliente DRAFT_ID CLIENT_ID`
+- `/editarcliente CLIENT_ID CAMPO VALOR`
 
 ## Limites fiscales
 
@@ -84,3 +106,4 @@ La memoria, historial, drafts y logs viven en PostgreSQL local (`cfdi_bot`). Ver
 - No envia WhatsApp.
 - No expone webhook.
 - Toda salida requiere revision humana.
+- Todo calculo de impuestos es conservador y debe leerse como: BORRADOR SUJETO A REVISION HUMANA.

@@ -11,6 +11,8 @@ const safeFiles = [
   "data/concepts.normalized.json",
   "runtime/.gitkeep",
   "sql/001_init_cfdi_bot.sql",
+  "sql/003_clients_amounts_tax.sql",
+  "sql/003_seed_clients.example.sql",
   "workflow/cfdi_manual_test.n8n.json",
   "workflow/cfdi_telegram_postgres_polling.n8n.json",
   "workflow/POSTGRES_LOCAL_SETUP.md",
@@ -162,6 +164,20 @@ for (const required of [".env", "runtime/*.jsonl", "runtime/*.json", "logs/", "d
     name: `gitignore_contains:${required}`,
     pass: gitignore.includes(required),
     value: required,
+  });
+}
+checks.push({
+  name: "gitignore_contains:local_client_seed",
+  pass: gitignore.includes("sql/*clients*.local.sql"),
+  value: "sql/*clients*.local.sql",
+});
+
+if (exists("sql/003_seed_clients.example.sql")) {
+  const seed = readText("sql/003_seed_clients.example.sql");
+  checks.push({
+    name: "seed_clients_demo_only",
+    pass: seed.includes("CLI-DEMO-RIVERA") && !seed.includes("Juandi") && !seed.includes("Emberhub") && !seed.includes("CLIENTE_REAL"),
+    value: "CLI-DEMO-RIVERA",
   });
 }
 
