@@ -210,6 +210,11 @@ if (exists(workflowPath)) {
     value: "maxSeenUpdateId/skip_send",
   });
   checks.push({
+    name: "workflow_does_not_insert_raw_telegram_payload",
+    pass: !extractCode.includes("raw_payload") && !extractCode.includes("sqlJson(update)"),
+    value: "telegram_updates raw_payload default",
+  });
+  checks.push({
     name: "workflow_send_logs_sanitize_payload",
     pass: logCode.includes("stripSensitive") && logCode.includes("safeSource") && logCode.includes("safeCurrent") && !logCode.includes("{ source, send_result: current }"),
     value: "send_logs payload",

@@ -3,6 +3,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const workflowPath = path.join(root, "workflow", "cfdi_telegram_postgres_polling.n8n.json");
+const sqlPath = path.join(root, "sql", "001_init_cfdi_bot.sql");
 const expectedPlaceholder = "REEMPLAZAR_TELEGRAM_BOT_TOKEN_EN_N8N";
 const expectedWorkflowVersion = "CFDI_POSTGRES_POLLING_V1";
 const expectedCatalogPath = "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/data/concepts.normalized.json";
@@ -88,6 +89,23 @@ function makeNonTextUpdate(updateId, chatId = "chat-postgres-test") {
   };
 }
 
+function makeNestedUpdate(updateId, text, chatId = "chat-postgres-test") {
+  return {
+    update_id: updateId,
+    message: {
+      message_id: updateId + 1000,
+      chat: { id: chatId, type: "private", first_name: "Prueba" },
+      text,
+      entities: [{ offset: 0, length: 6, type: "bold" }],
+      reply_to_message: {
+        message_id: 99,
+        chat: { id: chatId },
+        text: "mensaje anterior",
+      },
+    },
+  };
+}
+
 function contextInput(text, extra = {}) {
   return {
     update_id: extra.update_id || 501,
@@ -116,6 +134,7 @@ const checks = [];
 checks.push({ name: "workflow_exists", pass: fs.existsSync(workflowPath), value: workflowPath });
 
 let raw = "";
+let sqlRaw = "";
 let workflow = null;
 let nodes = [];
 let handleCode = "";
@@ -127,6 +146,7 @@ let logCode = "";
 
 try {
   raw = fs.readFileSync(workflowPath, "utf8");
+  if (fs.existsSync(sqlPath)) sqlRaw = fs.readFileSync(sqlPath, "utf8");
   workflow = loadWorkflow();
   nodes = workflow.nodes || [];
   handleCode = getNode(workflow, "Handle Commands And Scoring").parameters.jsCode;
@@ -155,7 +175,8 @@ if (workflow) {
   checks.push({ name: "sendMessage_token_from_set_config", pass: sendNode.parameters.url.includes('$node["Set Config"].json.telegramBotToken'), value: "Set Config only" });
   checks.push({ name: "uses_bot_state_offset", pass: raw.includes("bot_state") && raw.includes("lastTelegramUpdateId") && raw.includes("nextOffset"), value: "bot_state.lastTelegramUpdateId" });
   checks.push({ name: "insert_updates_on_conflict", pass: raw.includes("ON CONFLICT (update_id) DO NOTHING") && raw.includes("RETURNING update_id"), value: "telegram_updates dedupe" });
-  checks.push({ name: "stores_raw_update_payload", pass: raw.includes("raw_payload") && raw.includes("sqlJson(update)"), value: "telegram_updates.raw_payload" });
+  checks.push({ name: "raw_payload_default_in_schema", pass: sqlRaw.toLowerCase().includes("raw_payload jsonb not null default '{}'::jsonb"), value: "schema default" });
+  checks.push({ name: "does_not_insert_raw_payload", pass: !extractCode.includes("raw_payload") && !extractCode.includes("sqlJson(update)"), value: "telegram_updates default raw_payload" });
   checks.push({ name: "stores_draft_action_and_message", pass: raw.includes("action, ready_to_copy") && raw.includes("telegram_message") && raw.includes("createDraftStatement"), value: "cfdi_drafts action/message" });
   checks.push({ name: "does_not_return_telegram_bot_token_sql_field", pass: !raw.includes("AS telegram_bot_token") && !raw.includes("input.telegram_bot_token"), value: "no SQL token field" });
   checks.push({ name: "offset_commit_for_seen_updates", pass: raw.includes("maxSeenUpdateId") && raw.includes("skip_send") && raw.includes("IGNORED_UPDATE"), value: "maxSeenUpdateId" });
@@ -191,6 +212,10 @@ try {
   behavior.empty = executeCode(extractCode, { ok: true, result: [] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
   behavior.old = executeCode(extractCode, { ok: true, result: [makeUpdate(500, "revis\u00e9 c\u00e1maras")] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
   behavior.normalExtract = executeCode(extractCode, { ok: true, result: [makeUpdate(501, "revis\u00e9 c\u00e1maras hikvision sin imagen")] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
+  behavior.accentExtract = executeCode(extractCode, { ok: true, result: [makeUpdate(511, "revis\u00e9 c\u00e1maras hikvision sin imagen")] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
+  behavior.multilineText = "revis\u00e9 c\u00e1maras hikvision sin imagen\nservicio t\u00e9cnico general\ndesarroll\u00e9 una app m\u00f3vil\nventa de fuente de poder para c\u00e1mara";
+  behavior.multilineExtract = executeCode(extractCode, { ok: true, result: [makeUpdate(512, behavior.multilineText)] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
+  behavior.nestedExtract = executeCode(extractCode, { ok: true, result: [makeNestedUpdate(513, "revis\u00e9 c\u00e1maras con reply anidado")] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
   behavior.nonTextOnlyExtract = executeCode(extractCode, { ok: true, result: [makeNonTextUpdate(510)] }, { nodeContext: { "Prepare Telegram Request": { json: behavior.prepare } } });
   behavior.nonTextBuild = executeCode(buildContextCode, { skip_send: true, max_seen_update_id: 510 });
   behavior.loadSql = executeCode(buildContextCode, {
@@ -241,13 +266,20 @@ try {
 if (behavior.normal) {
   const normalValidItem = Array.isArray(behavior.normalExtract) ? behavior.normalExtract.find((item) => item.json && item.json.skip_send !== true) : null;
   const normalOffsetItem = Array.isArray(behavior.normalExtract) ? behavior.normalExtract.find((item) => item.json && item.json.skip_send === true) : null;
+  const accentValidItem = Array.isArray(behavior.accentExtract) ? behavior.accentExtract.find((item) => item.json && item.json.skip_send !== true) : null;
+  const multilineValidItem = Array.isArray(behavior.multilineExtract) ? behavior.multilineExtract.find((item) => item.json && item.json.skip_send !== true) : null;
+  const nestedValidItem = Array.isArray(behavior.nestedExtract) ? behavior.nestedExtract.find((item) => item.json && item.json.skip_send !== true) : null;
   const nonTextOffsetItem = Array.isArray(behavior.nonTextOnlyExtract) ? behavior.nonTextOnlyExtract.find((item) => item.json && item.json.skip_send === true) : null;
   checks.push({ name: "empty_getUpdates_zero_send", pass: Array.isArray(behavior.empty) && behavior.empty.length === 0, value: `items=${behavior.empty.length}` });
   checks.push({ name: "old_update_zero_send", pass: Array.isArray(behavior.old) && behavior.old.length === 0, value: `items=${behavior.old.length}` });
   checks.push({ name: "normal_extract_builds_insert_sql", pass: behavior.normalExtract.length === 2 && normalValidItem && String(normalValidItem.json.insert_update_sql).includes("ON CONFLICT (update_id) DO NOTHING"), value: `items=${behavior.normalExtract.length}` });
-  checks.push({ name: "normal_extract_stores_raw_payload", pass: Boolean(normalValidItem) && String(normalValidItem.json.insert_update_sql).includes("raw_payload") && String(normalValidItem.json.insert_update_sql).includes("::jsonb"), value: "raw_payload jsonb" });
+  checks.push({ name: "normal_extract_omits_raw_payload", pass: Boolean(normalValidItem) && !String(normalValidItem.json.insert_update_sql).includes("raw_payload") && !String(normalValidItem.json.insert_update_sql).includes("sqlJson(update)"), value: "raw_payload default" });
+  checks.push({ name: "normal_extract_has_no_escaped_jsonb_payload", pass: Boolean(normalValidItem) && !String(normalValidItem.json.insert_update_sql).includes("\\\\\"") && !String(normalValidItem.json.insert_update_sql).includes("'{'"), value: "no raw JSON payload" });
   checks.push({ name: "normal_extract_has_offset_commit_item", pass: Boolean(normalOffsetItem) && String(normalOffsetItem.json.insert_update_sql).includes("INSERT INTO bot_state") && normalOffsetItem.json.max_seen_update_id === 501, value: normalOffsetItem ? `max=${normalOffsetItem.json.max_seen_update_id}` : "missing" });
   checks.push({ name: "insert_sql_excludes_token_placeholder", pass: Boolean(normalValidItem) && !String(normalValidItem.json.insert_update_sql).includes(expectedPlaceholder) && !String(normalValidItem.json.insert_update_sql).includes("TEST_TELEGRAM_TOKEN"), value: "insert_update_sql" });
+  checks.push({ name: "accent_message_insert_sql", pass: Boolean(accentValidItem) && String(accentValidItem.json.insert_update_sql).includes("revis\u00e9 c\u00e1maras") && !String(accentValidItem.json.insert_update_sql).includes("raw_payload"), value: "acentos" });
+  checks.push({ name: "multiline_message_insert_sql", pass: Boolean(multilineValidItem) && String(multilineValidItem.json.insert_update_sql).includes("servicio t\u00e9cnico general") && String(multilineValidItem.json.insert_update_sql).includes("venta de fuente de poder para c\u00e1mara") && !String(multilineValidItem.json.insert_update_sql).includes("raw_payload") && !String(multilineValidItem.json.insert_update_sql).includes("\\\\\""), value: "multiline text" });
+  checks.push({ name: "nested_update_does_not_insert_raw_object", pass: Boolean(nestedValidItem) && String(nestedValidItem.json.insert_update_sql).includes("reply anidado") && !String(nestedValidItem.json.insert_update_sql).includes("reply_to_message") && !String(nestedValidItem.json.insert_update_sql).includes("raw_payload"), value: "nested update" });
   checks.push({ name: "non_text_update_offset_only", pass: behavior.nonTextOnlyExtract.length === 1 && Boolean(nonTextOffsetItem) && nonTextOffsetItem.json.max_seen_update_id === 510, value: `items=${behavior.nonTextOnlyExtract.length}` });
   checks.push({ name: "non_text_update_logs_ignored_event", pass: Boolean(nonTextOffsetItem) && String(nonTextOffsetItem.json.insert_update_sql).includes("IGNORED_UPDATE") && String(nonTextOffsetItem.json.insert_update_sql).includes("missing_text"), value: "IGNORED_UPDATE" });
   checks.push({ name: "non_text_update_zero_send_after_build", pass: Array.isArray(behavior.nonTextBuild) && behavior.nonTextBuild.length === 0, value: `items=${behavior.nonTextBuild.length}` });
