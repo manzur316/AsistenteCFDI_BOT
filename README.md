@@ -109,6 +109,29 @@ Flujo recomendado:
 
 El workflow no crea el draft `PENDIENTE` final hasta recibir `confirmar`. Si el cliente no existe, ofrece crear cliente basico, continuar sin cliente o cancelar. El alta manual con `/nuevocliente` usa plantilla escrita y deja `validated_by_human=false` hasta ejecutar `/validarcliente CLIENT_ID`.
 
+### Politica conversacional 4.7
+
+El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.
+
+Si el cliente parece tener typo, por ejemplo `Privada Riviera` o `Privada Riveira`, el bot no crea cliente automatico. Primero pregunta si quisiste decir `Privada Rivera` y ofrece usar ese cliente, crear uno nuevo, continuar sin cliente o cancelar.
+
+Durante un preview puedes responder `editar` o `/editar`. En modo edicion acepta plantilla o lineas numeradas como:
+
+```text
+1.instalacion de camaras 800 + IVA
+2.- venta de camara CCTV 700 + IVA
+```
+
+Comandos utiles durante edicion:
+
+- `/editlinea N TEXTO`
+- `/quitarlinea N`
+- `/ver`
+- `/estado`
+- `/cancelar`
+
+Si una linea queda ambigua, el estado pasa a `LINE_NEEDS_CLARIFICATION`. Mensajes como `que necesitas`, `trabajo`, `ayuda` o `?` explican exactamente que falta y muestran como reescribir la linea. Mientras existan blockers, `confirmar` no crea `cfdi_drafts`.
+
 ## Limites fiscales
 
 - No timbra CFDI.

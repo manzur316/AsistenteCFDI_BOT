@@ -148,8 +148,14 @@ try {
 }
 
 if (workflow) {
-  for (const fn of ["parseInvoiceIntent", "extractClientQuery", "resolveClientByAlias", "extractWorkText", "extractAmount", "detectTaxMode", "detectOperationType", "detectNumberedLineItems", "detectMultiConcept", "computeMissingFields", "buildDraftPreview"]) {
+  for (const fn of ["parseInvoiceIntent", "extractClientQuery", "resolveClientByAlias", "extractWorkText", "extractAmount", "detectTaxMode", "detectOperationType", "detectNumberedLineItems", "detectMultiConcept", "computeMissingFields", "buildDraftPreview", "lineClarificationMessage", "editingPreviewMessage", "stateSummaryMessage"]) {
     checks.push({ name: `parser_fn:${fn}`, pass: handleCode.includes(`function ${fn}`), value: fn });
+  }
+  for (const state of ["PREVIEW_READY", "EDITING_PREVIEW", "LINE_NEEDS_CLARIFICATION"]) {
+    checks.push({ name: `conversation_state:${state}`, pass: handleCode.includes(state), value: state });
+  }
+  for (const command of ["/editlinea", "/quitarlinea", "/ver", "/estado"]) {
+    checks.push({ name: `conversation_command:${command}`, pass: handleCode.includes(command), value: command });
   }
   checks.push({ name: "no_real_token", pass: !/\b\d{6,}:[A-Za-z0-9_-]{20,}\b/.test(JSON.stringify(workflow)), value: "none" });
   checks.push({ name: "no_webhook", pass: !/webhook|telegramTrigger/i.test(JSON.stringify(workflow)), value: "polling" });

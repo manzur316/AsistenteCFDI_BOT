@@ -27,7 +27,7 @@ const forbiddenTexts = [
   "telegramTrigger",
 ];
 
-const commands = ["/start", "/help", "/debug", "/pendientes", "/hoy", "/aprobadas", "/aprobar", "/descartar", "/detalle", "/cancelar"];
+const commands = ["/start", "/help", "/debug", "/pendientes", "/hoy", "/aprobadas", "/aprobar", "/descartar", "/detalle", "/editlinea", "/quitarlinea", "/ver", "/estado", "/cancelar"];
 
 function printCheck(name, pass, value = "") {
   const suffix = value === "" ? "" : ` (${value})`;
@@ -321,7 +321,7 @@ if (behavior.normal) {
   checks.push({ name: "persistence_sql_no_literal_newline_escape", pass: !hasLiteralBackslashN(behavior.normal.persistence_sql) && !String(behavior.normal.persistence_sql).includes(";\nSELECT") && !String(behavior.normal.persistence_sql).includes("\nSELECT"), value: sqlSeparatorStatus(behavior.normal.persistence_sql) });
   checks.push({ name: "bot_events_sql_excludes_token", pass: !String(behavior.normal.persistence_sql).includes("TEST_TELEGRAM_TOKEN") && !String(behavior.normal.persistence_sql).includes("telegram_bot_token"), value: "bot_events payload SQL" });
   checks.push({ name: "wizard_persists_state_message", pass: String(behavior.normal.persistence_sql).includes("INVOICE_WIZARD") && String(behavior.normal.persistence_sql).includes("telegram_message"), value: "wizard contract" });
-  checks.push({ name: "generic_saves_service_clarification_state", pass: behavior.generic.action === "NEEDS_SERVICE_CLARIFICATION" && String(behavior.generic.persistence_sql).includes("INSERT INTO chat_states"), value: behavior.generic.action });
+  checks.push({ name: "generic_saves_service_clarification_state", pass: ["NEEDS_SERVICE_CLARIFICATION", "LINE_NEEDS_CLARIFICATION"].includes(behavior.generic.action) && String(behavior.generic.persistence_sql).includes("INSERT INTO chat_states"), value: behavior.generic.action });
   checks.push({ name: "clarified_idle_without_active_wizard", pass: behavior.clarified.action === "IDLE_HELP", value: behavior.clarified.action });
   checks.push({ name: "pendientes_lists_drafts", pass: behavior.pending.action === "COMMAND_PENDIENTES" && String(behavior.pending.telegram_message).includes("DRAFT-TEST-1"), value: behavior.pending.action });
   checks.push({ name: "aprobar_updates_status", pass: behavior.approve.action === "COMMAND_APROBAR" && String(behavior.approve.persistence_sql).includes("status = 'APROBADO'"), value: behavior.approve.action });
