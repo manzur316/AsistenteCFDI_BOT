@@ -181,6 +181,7 @@ if (exists(workflowPath)) {
     return node?.parameters?.jsCode || "";
   };
   const extractCode = getNodeCode("Extract Telegram Updates");
+  const buildContextCode = getNodeCode("Build Load Context SQL");
   const handleCode = getNodeCode("Handle Commands And Scoring");
   const logCode = getNodeCode("Log Send Result SQL");
 
@@ -213,6 +214,13 @@ if (exists(workflowPath)) {
     name: "workflow_does_not_insert_raw_telegram_payload",
     pass: !extractCode.includes("raw_payload") && !extractCode.includes("sqlJson(update)"),
     value: "telegram_updates raw_payload default",
+  });
+  checks.push({
+    name: "workflow_postgres_sql_no_literal_newline_joins",
+    pass: ![extractCode, buildContextCode, logCode].some((code) => code.includes("].join('\\n')") || code.includes('].join("\\n")')) &&
+      !handleCode.includes("statements.join('\\n')") &&
+      !handleCode.includes("'\\nSELECT '"),
+    value: "SQL joins use spaces",
   });
   checks.push({
     name: "workflow_send_logs_sanitize_payload",

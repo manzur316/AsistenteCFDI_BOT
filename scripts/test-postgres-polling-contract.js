@@ -130,6 +130,25 @@ function conceptId(response) {
   return response?.concept?.id || null;
 }
 
+function hasLiteralBackslashN(value) {
+  const text = String(value || "");
+  return text.includes("\\n") || text.includes("\\\\n");
+}
+
+function hasBadSqlStatementSeparator(value) {
+  const text = String(value || "");
+  return hasLiteralBackslashN(text) || text.includes(";\n") || text.includes("\nSELECT");
+}
+
+function sqlSeparatorStatus(value) {
+  const text = String(value || "");
+  if (text.includes("\\n")) return "contains \\n";
+  if (text.includes("\\\\n")) return "contains \\\\n";
+  if (text.includes(";\n")) return "contains ; newline";
+  if (text.includes("\nSELECT")) return "contains newline SELECT";
+  return "clean";
+}
+
 const checks = [];
 checks.push({ name: "workflow_exists", pass: fs.existsSync(workflowPath), value: workflowPath });
 
@@ -250,6 +269,12 @@ try {
   }))[0].json;
   const passthrough = extractBase64Select(behavior.normal.persistence_sql);
   behavior.restored = executeCode(restoreCode, { passthrough_b64: passthrough })[0].json;
+  behavior.sendOk = executeCode(logCode, {
+    ok: true,
+    result: { message_id: 99001 },
+  }, {
+    itemsGetter: (nodeName) => nodeName === "Restore Response After Persistence" ? [{ json: behavior.restored }] : [],
+  })[0].json;
   behavior.sendFail = executeCode(logCode, {
     error: {
       message: "The connection to the server was closed unexpectedly for https://api.telegram.org/bot" + fakeLeakToken + "/sendMessage",
@@ -280,14 +305,20 @@ if (behavior.normal) {
   checks.push({ name: "accent_message_insert_sql", pass: Boolean(accentValidItem) && String(accentValidItem.json.insert_update_sql).includes("revis\u00e9 c\u00e1maras") && !String(accentValidItem.json.insert_update_sql).includes("raw_payload"), value: "acentos" });
   checks.push({ name: "multiline_message_insert_sql", pass: Boolean(multilineValidItem) && String(multilineValidItem.json.insert_update_sql).includes("servicio t\u00e9cnico general") && String(multilineValidItem.json.insert_update_sql).includes("venta de fuente de poder para c\u00e1mara") && !String(multilineValidItem.json.insert_update_sql).includes("raw_payload") && !String(multilineValidItem.json.insert_update_sql).includes("\\\\\""), value: "multiline text" });
   checks.push({ name: "nested_update_does_not_insert_raw_object", pass: Boolean(nestedValidItem) && String(nestedValidItem.json.insert_update_sql).includes("reply anidado") && !String(nestedValidItem.json.insert_update_sql).includes("reply_to_message") && !String(nestedValidItem.json.insert_update_sql).includes("raw_payload"), value: "nested update" });
+  checks.push({ name: "normal_insert_sql_no_literal_newline_escape", pass: Boolean(normalValidItem) && !hasBadSqlStatementSeparator(normalValidItem.json.insert_update_sql), value: normalValidItem ? sqlSeparatorStatus(normalValidItem.json.insert_update_sql) : "missing" });
+  checks.push({ name: "offset_skip_send_sql_no_literal_newline_escape", pass: Boolean(normalOffsetItem) && !hasBadSqlStatementSeparator(normalOffsetItem.json.insert_update_sql) && String(normalOffsetItem.json.insert_update_sql).includes("INSERT INTO bot_state") && String(normalOffsetItem.json.insert_update_sql).includes("SELECT true::boolean AS skip_send"), value: normalOffsetItem ? sqlSeparatorStatus(normalOffsetItem.json.insert_update_sql) : "missing" });
+  checks.push({ name: "multiline_insert_sql_no_literal_newline_escape", pass: Boolean(multilineValidItem) && !hasBadSqlStatementSeparator(multilineValidItem.json.insert_update_sql), value: multilineValidItem ? sqlSeparatorStatus(multilineValidItem.json.insert_update_sql) : "missing" });
   checks.push({ name: "non_text_update_offset_only", pass: behavior.nonTextOnlyExtract.length === 1 && Boolean(nonTextOffsetItem) && nonTextOffsetItem.json.max_seen_update_id === 510, value: `items=${behavior.nonTextOnlyExtract.length}` });
   checks.push({ name: "non_text_update_logs_ignored_event", pass: Boolean(nonTextOffsetItem) && String(nonTextOffsetItem.json.insert_update_sql).includes("IGNORED_UPDATE") && String(nonTextOffsetItem.json.insert_update_sql).includes("missing_text"), value: "IGNORED_UPDATE" });
+  checks.push({ name: "non_text_offset_sql_no_literal_newline_escape", pass: Boolean(nonTextOffsetItem) && !hasBadSqlStatementSeparator(nonTextOffsetItem.json.insert_update_sql) && String(nonTextOffsetItem.json.insert_update_sql).includes("INSERT INTO bot_state") && String(nonTextOffsetItem.json.insert_update_sql).includes("SELECT true::boolean AS skip_send"), value: nonTextOffsetItem ? sqlSeparatorStatus(nonTextOffsetItem.json.insert_update_sql) : "missing" });
   checks.push({ name: "non_text_update_zero_send_after_build", pass: Array.isArray(behavior.nonTextBuild) && behavior.nonTextBuild.length === 0, value: `items=${behavior.nonTextBuild.length}` });
   checks.push({ name: "load_context_sql", pass: String(behavior.loadSql.load_context_sql).includes("chat_states") && String(behavior.loadSql.load_context_sql).includes("cfdi_drafts"), value: "context query" });
   checks.push({ name: "load_context_sql_excludes_token", pass: !String(behavior.loadSql.load_context_sql).includes("telegram_bot_token") && !String(behavior.loadSql.load_context_sql).includes("TEST_TELEGRAM_TOKEN"), value: "context query" });
+  checks.push({ name: "load_context_sql_no_literal_newline_escape", pass: !hasBadSqlStatementSeparator(behavior.loadSql.load_context_sql), value: sqlSeparatorStatus(behavior.loadSql.load_context_sql) });
   checks.push({ name: "normal_goes_to_scoring", pass: behavior.normal.action === "SUGERIR" && behavior.normal.ready_to_copy === true && behavior.normal.concept?.familia === "CCTV", value: `${behavior.normal.action}/${conceptId(behavior.normal)}` });
   checks.push({ name: "normal_output_excludes_token", pass: !JSON.stringify(behavior.normal).includes("TEST_TELEGRAM_TOKEN") && !JSON.stringify(behavior.normal).includes("telegram_bot_token"), value: "Handle output" });
   checks.push({ name: "sugerir_creates_draft_sql", pass: String(behavior.normal.persistence_sql).includes("INSERT INTO cfdi_drafts") && String(behavior.normal.persistence_sql).includes("PENDIENTE"), value: "cfdi_drafts" });
+  checks.push({ name: "persistence_sql_no_literal_newline_escape", pass: !hasLiteralBackslashN(behavior.normal.persistence_sql) && !String(behavior.normal.persistence_sql).includes(";\nSELECT") && !String(behavior.normal.persistence_sql).includes("\nSELECT"), value: sqlSeparatorStatus(behavior.normal.persistence_sql) });
   checks.push({ name: "bot_events_sql_excludes_token", pass: !String(behavior.normal.persistence_sql).includes("TEST_TELEGRAM_TOKEN") && !String(behavior.normal.persistence_sql).includes("telegram_bot_token"), value: "bot_events payload SQL" });
   checks.push({ name: "sugerir_persists_action_and_telegram_message", pass: String(behavior.normal.persistence_sql).includes("action, ready_to_copy") && String(behavior.normal.persistence_sql).includes("telegram_message"), value: "draft contract" });
   checks.push({ name: "generic_saves_chat_state", pass: behavior.generic.action === "PEDIR_ACLARACION" && String(behavior.generic.persistence_sql).includes("INSERT INTO chat_states"), value: behavior.generic.action });
@@ -297,8 +328,26 @@ if (behavior.normal) {
   checks.push({ name: "descartar_updates_status", pass: behavior.discard.action === "COMMAND_DESCARTAR" && String(behavior.discard.persistence_sql).includes("status = 'DESCARTADO'"), value: behavior.discard.action });
   checks.push({ name: "debug_shows_real_state", pass: behavior.debug.action === "COMMAND_DEBUG" && String(behavior.debug.telegram_message).includes("lastTelegramUpdateId: 999") && String(behavior.debug.telegram_message).includes("chatState: existe"), value: behavior.debug.action });
   checks.push({ name: "restore_passthrough", pass: behavior.restored.action === "SUGERIR" && behavior.restored.update_id === 501, value: `${behavior.restored.action}/${behavior.restored.update_id}` });
+  checks.push({ name: "send_ok_sql_no_literal_newline_escape", pass: behavior.sendOk.send_failed === false && !hasBadSqlStatementSeparator(behavior.sendOk.send_log_sql) && String(behavior.sendOk.send_log_sql).includes("INSERT INTO send_logs") && String(behavior.sendOk.send_log_sql).includes("INSERT INTO bot_state") && String(behavior.sendOk.send_log_sql).includes("SELECT"), value: sqlSeparatorStatus(behavior.sendOk.send_log_sql) });
   checks.push({ name: "send_failure_logged_no_retry_contract", pass: behavior.sendFail.send_failed === true && String(behavior.sendFail.send_log_sql).includes("INSERT INTO send_logs") && String(behavior.sendFail.send_log_sql).includes("INSERT INTO bot_state") && String(behavior.sendFail.send_log_sql).includes("501"), value: `send_failed=${behavior.sendFail.send_failed}` });
+  checks.push({ name: "send_fail_sql_no_literal_newline_escape", pass: behavior.sendFail.send_failed === true && !hasBadSqlStatementSeparator(behavior.sendFail.send_log_sql) && String(behavior.sendFail.send_log_sql).includes("INSERT INTO send_logs") && String(behavior.sendFail.send_log_sql).includes("INSERT INTO bot_state") && String(behavior.sendFail.send_log_sql).includes("SELECT"), value: sqlSeparatorStatus(behavior.sendFail.send_log_sql) });
   checks.push({ name: "send_logs_payload_excludes_token", pass: !String(behavior.sendFail.send_log_sql).includes(fakeLeakToken) && !String(behavior.sendFail.send_log_sql).includes("telegramBotToken") && !String(behavior.sendFail.send_log_sql).includes("TEST_TELEGRAM_TOKEN"), value: "send_logs payload" });
+  {
+    const generatedSql = [
+      normalValidItem?.json?.insert_update_sql,
+      normalOffsetItem?.json?.insert_update_sql,
+      accentValidItem?.json?.insert_update_sql,
+      multilineValidItem?.json?.insert_update_sql,
+      nestedValidItem?.json?.insert_update_sql,
+      nonTextOffsetItem?.json?.insert_update_sql,
+      behavior.loadSql.load_context_sql,
+      behavior.normal.persistence_sql,
+      behavior.sendOk.send_log_sql,
+      behavior.sendFail.send_log_sql,
+    ].filter(Boolean);
+    const dirty = generatedSql.filter(hasLiteralBackslashN);
+    checks.push({ name: "postgres_generated_sql_has_no_literal_backslash_n", pass: dirty.length === 0, value: dirty.length ? `${dirty.length} dirty SQL strings` : "clean" });
+  }
 }
 
 const passCount = checks.filter((check) => check.pass).length;
