@@ -168,6 +168,12 @@ El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cua
 
 Si el cliente parece tener typo, por ejemplo `Privada Riviera` o `Privada Riveira`, el bot no crea cliente automatico. Primero pregunta si quisiste decir `Privada Rivera` y ofrece usar ese cliente, crear uno nuevo, continuar sin cliente o cancelar.
 
+### Politica de clientes 4.8
+
+La busqueda de clientes usa coincidencia exacta normalizada, contains, overlap de tokens y distancia fuzzy. Typos como `Privada ricrsa`, `Privada Riveira`, `Privada Riviera`, `privada river` o `p riviera` sugieren `Privada Rivera` sin crear cliente automatico.
+
+En `NEEDS_CLIENT_DECISION`, escribir otro nombre de cliente vuelve a buscar desde cero y actualiza `client_query`; ya no queda anclado al intento anterior. Responder `?`, `ayuda`, `que hago` o `que necesitas` muestra ayuda contextual del estado.
+
 Durante un preview puedes responder `editar` o `/editar`. En modo edicion acepta plantilla o lineas numeradas como:
 
 ```text

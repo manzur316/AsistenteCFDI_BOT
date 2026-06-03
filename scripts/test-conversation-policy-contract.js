@@ -238,8 +238,8 @@ try {
 }
 
 if (behavior.typoRiviera) {
-  checks.push({ name: "typo_riviera_asks_confirmation", pass: behavior.typoRiviera.action === "NEEDS_CLIENT_DECISION" && String(behavior.typoRiviera.telegram_message).includes("Quisiste decir Privada Rivera") && !String(behavior.typoRiviera.persistence_sql).includes("INSERT INTO cfdi_clients"), value: behavior.typoRiviera.action });
-  checks.push({ name: "typo_riveira_asks_confirmation", pass: behavior.typoRiveira.action === "NEEDS_CLIENT_DECISION" && String(behavior.typoRiveira.telegram_message).includes("Quisiste decir Privada Rivera"), value: behavior.typoRiveira.action });
+  checks.push({ name: "typo_riviera_asks_confirmation", pass: behavior.typoRiviera.action === "NEEDS_CLIENT_DECISION" && String(behavior.typoRiviera.telegram_message).includes("cliente parecido") && String(behavior.typoRiviera.telegram_message).includes("Privada Rivera") && !String(behavior.typoRiviera.persistence_sql).includes("INSERT INTO cfdi_clients"), value: behavior.typoRiviera.action });
+  checks.push({ name: "typo_riveira_asks_confirmation", pass: behavior.typoRiveira.action === "NEEDS_CLIENT_DECISION" && String(behavior.typoRiveira.telegram_message).includes("cliente parecido") && String(behavior.typoRiveira.telegram_message).includes("Privada Rivera"), value: behavior.typoRiveira.action });
   checks.push({ name: "preview_edit_enters_editing", pass: behavior.editPreview.action === "EDITING_PREVIEW" && String(behavior.editPreview.persistence_sql).includes("EDITING_PREVIEW"), value: behavior.editPreview.action });
   checks.push({ name: "numbered_edit_without_comma_previews", pass: behavior.numberedEdit.action === "NEEDS_CONFIRM_DRAFT" && String(behavior.numberedEdit.telegram_message).includes("Lineas:"), value: behavior.numberedEdit.action });
   checks.push({ name: "numbered_line_parses_amount_tax", pass: String(behavior.numberedEdit.persistence_sql).includes("800") && String(behavior.numberedEdit.persistence_sql).includes("MAS_IVA"), value: "800/MAS_IVA" });
