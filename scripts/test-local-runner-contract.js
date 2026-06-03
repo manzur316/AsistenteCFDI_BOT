@@ -53,6 +53,8 @@ async function main() {
   checks.push({ name: "uses_getUpdates", pass: runnerText.includes("getUpdates"), value: "Telegram API" });
   checks.push({ name: "uses_allowed_updates_message_callback", pass: runnerText.includes("message") && runnerText.includes("callback_query") && runnerText.includes("allowed_updates"), value: "message/callback_query" });
   checks.push({ name: "uses_offset_file", pass: runnerText.includes("RUNNER_OFFSET_FILE") && runnerText.includes("readOffset") && runnerText.includes("writeOffset"), value: "runtime/runner-offset.json" });
+  checks.push({ name: "uses_ingest_timeout_config", pass: runnerText.includes("N8N_INGEST_TIMEOUT_MS") && envText.includes("N8N_INGEST_TIMEOUT_MS=60000"), value: "60000ms" });
+  checks.push({ name: "uses_abort_controller_for_ingest", pass: runnerText.includes("AbortController") && runnerText.includes("controller.abort()"), value: "AbortController" });
   checks.push({ name: "uses_runner_secret_header", pass: runnerText.includes("X-CFDI-Runner-Secret"), value: "secret header" });
   checks.push({ name: "uses_localhost_ingest_url", pass: envText.includes("http://127.0.0.1:5678/webhook/cfdi-local-ingest"), value: "local ingest" });
   checks.push({ name: "does_not_use_public_webhook_setup", pass: !/setWebhook|ngrok|https:\/\/[^\\s"']+webhook/i.test(runnerText), value: "no public webhook" });
@@ -66,6 +68,7 @@ async function main() {
     offsetFile,
     pollTimeoutSeconds: 25,
     pollLimit: 10,
+    ingestTimeoutMs: 50,
     runnerSecret: "TEST_SECRET",
   };
 
@@ -84,6 +87,21 @@ async function main() {
     checks.push({ name: "env_parser_basic", pass: parsed.A === "1" && parsed.B === "dos" && parsed.C === "tres", value: JSON.stringify(parsed) });
   } catch (error) {
     checks.push({ name: "env_parser_basic", pass: false, value: error.message });
+  }
+
+  try {
+    const parsedConfig = runner.readConfig({
+      envFilePath: path.join(testRuntimeDir, "missing.env"),
+      env: {
+        TELEGRAM_BOT_TOKEN: "TEST_TOKEN_1234567890_LOCAL_ONLY",
+        N8N_INGEST_URL: "http://127.0.0.1:5678/webhook/cfdi-local-ingest",
+        RUNNER_SECRET: "TEST_SECRET",
+        N8N_INGEST_TIMEOUT_MS: "60000",
+      },
+    });
+    checks.push({ name: "readConfig_parses_ingest_timeout", pass: parsedConfig.ingestTimeoutMs === 60000, value: `${parsedConfig.ingestTimeoutMs}` });
+  } catch (error) {
+    checks.push({ name: "readConfig_parses_ingest_timeout", pass: false, value: error.message });
   }
 
   try {
@@ -107,8 +125,29 @@ async function main() {
     checks.push({ name: "advances_offset_on_2xx", pass: result.processed === 1 && offset === 1002, value: `offset=${offset}` });
     checks.push({ name: "posts_update_to_n8n", pass: calls.length === 1 && calls[0].url === config.ingestUrl, value: `${calls.length} call` });
     checks.push({ name: "posts_runner_secret_header", pass: calls[0].options.headers["X-CFDI-Runner-Secret"] === "TEST_SECRET", value: "header sent" });
+    checks.push({ name: "posts_with_abort_signal", pass: Boolean(calls[0].options.signal), value: calls[0].options.signal ? "signal" : "none" });
   } catch (error) {
     checks.push({ name: "advances_offset_on_2xx", pass: false, value: error.message });
+  }
+
+  freshOffsetFile();
+  try {
+    const errors = [];
+    const timeoutConfig = { ...config, ingestTimeoutMs: 5 };
+    const fetchImpl = async (_url, options = {}) => new Promise((_resolve, reject) => {
+      if (!options.signal) reject(new Error("missing signal"));
+      options.signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      }, { once: true });
+    });
+    const result = await runner.processUpdates([{ update_id: 1501 }], timeoutConfig, fetchImpl, { log() {}, error(message) { errors.push(message); } });
+    const offset = runner.readOffset(offsetFile);
+    checks.push({ name: "does_not_advance_offset_when_n8n_times_out", pass: result.failed === true && offset === 0, value: `offset=${offset}` });
+    checks.push({ name: "logs_timeout_without_token", pass: errors.length === 1 && errors[0].includes("timeout") && !/\d{6,}:[A-Za-z0-9_-]{20,}/.test(errors[0]), value: errors[0] || "none" });
+  } catch (error) {
+    checks.push({ name: "does_not_advance_offset_when_n8n_times_out", pass: false, value: error.message });
   }
 
   freshOffsetFile();
@@ -135,6 +174,19 @@ async function main() {
     checks.push({ name: "fetchUpdates_uses_offset_file", pass: updates.length === 1 && updates[0].update_id === 3001, value: "update 3001" });
   } catch (error) {
     checks.push({ name: "fetchUpdates_uses_offset_file", pass: false, value: error.message });
+  }
+
+  freshOffsetFile();
+  try {
+    const posted = [];
+    const fetchImpl = async (_url, options) => {
+      posted.push(JSON.parse(options.body));
+      return { status: 204, text: async () => "" };
+    };
+    const result = await runner.processUpdates([{ update_id: 4003 }, { update_id: 4001 }, { update_id: 4002 }], config, fetchImpl, { log() {}, error() {} });
+    checks.push({ name: "processUpdates_orders_by_update_id", pass: result.processed === 3 && posted.map((item) => item.update_id).join(",") === "4001,4002,4003", value: posted.map((item) => item.update_id).join(",") });
+  } catch (error) {
+    checks.push({ name: "processUpdates_orders_by_update_id", pass: false, value: error.message });
   }
   }
 

@@ -3,6 +3,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const workflowPath = path.join(root, "workflow", "cfdi_telegram_postgres_polling.n8n.json");
+const localWorkflowPath = path.join(root, "workflow", "cfdi_telegram_local_ingest.n8n.json");
 const catalogPath = "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/data/concepts.normalized.json";
 
 function printCheck(name, pass, value = "") {
@@ -190,6 +191,8 @@ const checks = [];
 let workflow = null;
 let workflowText = "";
 let handleCode = "";
+let localWorkflowText = "";
+let localHandleCode = "";
 let behavior = {};
 
 try {
@@ -199,6 +202,15 @@ try {
   checks.push({ name: "workflow_valid_json", pass: true, value: "parsed" });
 } catch (error) {
   checks.push({ name: "workflow_valid_json", pass: false, value: error.message });
+}
+
+try {
+  localWorkflowText = fs.readFileSync(localWorkflowPath, "utf8");
+  const localWorkflow = JSON.parse(localWorkflowText);
+  localHandleCode = getNode(localWorkflow, "Handle Commands And Scoring").parameters.jsCode;
+  checks.push({ name: "local_workflow_valid_json", pass: true, value: "parsed" });
+} catch (error) {
+  checks.push({ name: "local_workflow_valid_json", pass: false, value: error.message });
 }
 
 if (workflow) {
@@ -233,6 +245,21 @@ try {
   behavior.multilineClear = executeCode(handleCode, contextInput("Privada Rivera,\n1. instalacion de camara de vigilancia, 800 +IVA\n2. venta de camara de vigilancia, 700 +IVA", { update_id: 9614 }));
   behavior.cancel = executeCode(handleCode, contextInput("/cancelar", { update_id: 9615, chat_state: previewState() }));
   behavior.idle = executeCode(handleCode, contextInput("hola", { update_id: 9616 }));
+  if (localHandleCode) {
+    behavior.localLineHelpQuestion = executeCode(localHandleCode, contextInput("?", { update_id: 9701, chat_state: lineClarificationState() }));
+    behavior.localLineHelpAyuda = executeCode(localHandleCode, contextInput("ayuda", { update_id: 9702, chat_state: lineClarificationState() }));
+    behavior.localLineHelpQueNecesitas = executeCode(localHandleCode, contextInput("que necesitas", { update_id: 9703, chat_state: lineClarificationState() }));
+    behavior.localLineHelpTrabajo = executeCode(localHandleCode, contextInput("trabajo", { update_id: 9704, chat_state: lineClarificationState() }));
+    behavior.localLineCctv = executeCode(localHandleCode, contextInput("cctv", { update_id: 9705, chat_state: lineClarificationState() }));
+    behavior.localLineOneCctv = executeCode(localHandleCode, contextInput("1 cctv", { update_id: 9706, chat_state: lineClarificationState() }));
+    behavior.localLineaOneCctv = executeCode(localHandleCode, contextInput("linea 1 cctv", { update_id: 9707, chat_state: lineClarificationState() }));
+    behavior.localEditLinea = executeCode(localHandleCode, contextInput("editlinea 1 instalacion de camara CCTV, 800 +IVA", { update_id: 9708, chat_state: lineClarificationState() }));
+    behavior.localSlashEditLinea = executeCode(localHandleCode, contextInput("/editlinea 1 instalacion de camara CCTV, 800 +IVA", { update_id: 97013, chat_state: lineClarificationState() }));
+    behavior.localLineRed = executeCode(localHandleCode, contextInput("red", { update_id: 9709, chat_state: lineClarificationState() }));
+    behavior.localLineComputo = executeCode(localHandleCode, contextInput("computo", { update_id: 9710, chat_state: lineClarificationState() }));
+    behavior.localLineControlAcceso = executeCode(localHandleCode, contextInput("control de acceso", { update_id: 9711, chat_state: lineClarificationState() }));
+    behavior.localLineBarrera = executeCode(localHandleCode, contextInput("barrera", { update_id: 9712, chat_state: lineClarificationState() }));
+  }
 } catch (error) {
   checks.push({ name: "behavior_execution", pass: false, value: error.message });
 }
@@ -256,6 +283,18 @@ if (behavior.typoRiviera) {
   checks.push({ name: "cancel_clears_state", pass: behavior.cancel.action === "COMMAND_CANCELAR" && String(behavior.cancel.persistence_sql).includes("DELETE FROM chat_states"), value: behavior.cancel.action });
   checks.push({ name: "idle_hola_no_invoice", pass: behavior.idle.action === "IDLE_HELP" && !String(behavior.idle.persistence_sql).includes("INSERT INTO cfdi_drafts"), value: behavior.idle.action });
   checks.push({ name: "tax_outputs_review_warning", pass: [behavior.numberedEdit, behavior.lineClarified, behavior.confirmReady, behavior.multilineClear].every((item) => String(item.telegram_message).includes("BORRADOR SUJETO A REVISION HUMANA")), value: "review" });
+}
+
+if (localHandleCode && behavior.localLineHelpQuestion) {
+  checks.push({ name: "local_line_help_question_keeps_state", pass: behavior.localLineHelpQuestion.action === "LINE_NEEDS_CLARIFICATION" && String(behavior.localLineHelpQuestion.telegram_message).includes("Opciones:"), value: behavior.localLineHelpQuestion.action });
+  checks.push({ name: "local_line_help_words_keep_state", pass: [behavior.localLineHelpAyuda, behavior.localLineHelpQueNecesitas, behavior.localLineHelpTrabajo].every((item) => item.action === "LINE_NEEDS_CLARIFICATION" && String(item.telegram_message).includes("Texto:")), value: [behavior.localLineHelpAyuda.action, behavior.localLineHelpQueNecesitas.action, behavior.localLineHelpTrabajo.action].join(",") });
+  checks.push({ name: "local_line_help_does_not_rewrite_chat_state", pass: [behavior.localLineHelpQuestion, behavior.localLineHelpQueNecesitas].every((item) => !String(item.persistence_sql).includes("INSERT INTO chat_states")), value: "no chat_state write" });
+  checks.push({ name: "local_line_family_cctv_retries_scoring", pass: behavior.localLineCctv.action === "NEEDS_CONFIRM_DRAFT" && String(behavior.localLineCctv.telegram_message).includes("BORRADOR CFDI"), value: behavior.localLineCctv.action });
+  checks.push({ name: "local_line_numbered_family_retries_scoring", pass: [behavior.localLineOneCctv, behavior.localLineaOneCctv].every((item) => item.action === "NEEDS_CONFIRM_DRAFT" && String(item.telegram_message).includes("BORRADOR CFDI")), value: [behavior.localLineOneCctv.action, behavior.localLineaOneCctv.action].join(",") });
+  checks.push({ name: "local_line_editlinea_without_slash_rewrites_line", pass: behavior.localEditLinea.action === "NEEDS_CONFIRM_DRAFT" && String(behavior.localEditLinea.telegram_message).includes("BORRADOR CFDI"), value: behavior.localEditLinea.action });
+  checks.push({ name: "local_line_editlinea_with_slash_rewrites_line", pass: behavior.localSlashEditLinea.action === "NEEDS_CONFIRM_DRAFT" && String(behavior.localSlashEditLinea.telegram_message).includes("BORRADOR CFDI"), value: behavior.localSlashEditLinea.action });
+  checks.push({ name: "local_line_family_variants_retry_scoring", pass: [behavior.localLineRed, behavior.localLineComputo, behavior.localLineControlAcceso, behavior.localLineBarrera].every((item) => item.action === "NEEDS_CONFIRM_DRAFT" && String(item.telegram_message).includes("BORRADOR CFDI")), value: [behavior.localLineRed.action, behavior.localLineComputo.action, behavior.localLineControlAcceso.action, behavior.localLineBarrera.action].join(",") });
+  checks.push({ name: "local_line_clarification_no_concat_instruction", pass: localHandleCode.includes("parseLineClarificationText") && !localHandleCode.includes('stateContext.line_text || \"\").trim() + \" \" + String(clarificationText'), value: "no raw concat" });
 }
 
 const passCount = checks.filter((check) => check.pass).length;

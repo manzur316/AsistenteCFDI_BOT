@@ -22,6 +22,7 @@ N8N_INGEST_URL=http://127.0.0.1:5678/webhook/cfdi-local-ingest
 RUNNER_OFFSET_FILE=runtime/runner-offset.json
 TELEGRAM_POLL_TIMEOUT_SECONDS=25
 TELEGRAM_POLL_LIMIT=10
+N8N_INGEST_TIMEOUT_MS=60000
 RUNNER_SECRET=CAMBIAR_SECRET_LOCAL
 ```
 
@@ -54,7 +55,7 @@ El runner guarda el offset en:
 runtime/runner-offset.json
 ```
 
-Si n8n responde 2xx, avanza a `update_id + 1`. Si n8n falla, no avanza offset y aplica backoff corto.
+Si n8n responde 2xx, avanza a `update_id + 1`. Si n8n falla o no termina antes de `N8N_INGEST_TIMEOUT_MS`, no avanza offset y aplica backoff corto.
 
 ## Seguridad
 

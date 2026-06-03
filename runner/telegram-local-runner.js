@@ -8,6 +8,7 @@ const DEFAULT_CONFIG = {
   RUNNER_OFFSET_FILE: "runtime/runner-offset.json",
   TELEGRAM_POLL_TIMEOUT_SECONDS: "25",
   TELEGRAM_POLL_LIMIT: "10",
+  N8N_INGEST_TIMEOUT_MS: "60000",
   RUNNER_SECRET: "CAMBIAR_SECRET_LOCAL",
 };
 
@@ -47,6 +48,7 @@ function readConfig({ env = process.env, envFilePath = ".env.local" } = {}) {
   const offsetFile = String(merged.RUNNER_OFFSET_FILE || DEFAULT_CONFIG.RUNNER_OFFSET_FILE).trim();
   const pollTimeoutSeconds = Math.max(1, Number(merged.TELEGRAM_POLL_TIMEOUT_SECONDS || 25) || 25);
   const pollLimit = Math.max(1, Math.min(100, Number(merged.TELEGRAM_POLL_LIMIT || 10) || 10));
+  const ingestTimeoutMs = Math.max(1000, Number(merged.N8N_INGEST_TIMEOUT_MS || 60000) || 60000);
   const runnerSecret = String(merged.RUNNER_SECRET || "").trim();
 
   if (!telegramBotToken || telegramBotToken.startsWith("REEMPLAZAR")) {
@@ -65,6 +67,7 @@ function readConfig({ env = process.env, envFilePath = ".env.local" } = {}) {
     offsetFile,
     pollTimeoutSeconds,
     pollLimit,
+    ingestTimeoutMs,
     runnerSecret,
   };
 }
@@ -109,6 +112,10 @@ function safeErrorMessage(error) {
   return sanitizeText(error.message || String(error));
 }
 
+function isAbortError(error) {
+  return Boolean(error && (error.name === "AbortError" || error.code === "ABORT_ERR"));
+}
+
 function buildGetUpdatesUrl(config, offset) {
   const url = new URL(`https://api.telegram.org/bot${config.telegramBotToken}/getUpdates`);
   if (offset > 0) url.searchParams.set("offset", String(offset));
@@ -135,19 +142,37 @@ async function fetchUpdates(config, fetchImpl = globalThis.fetch) {
 
 async function postUpdateToN8n(update, config, fetchImpl = globalThis.fetch) {
   if (typeof fetchImpl !== "function") throw new Error("fetch nativo no disponible. Usa Node.js 22 o superior.");
-  const response = await fetchImpl(config.ingestUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CFDI-Runner-Secret": config.runnerSecret,
-    },
-    body: JSON.stringify(update),
-  });
-  return {
-    ok: response.status >= 200 && response.status < 300,
-    status: response.status,
-    text: typeof response.text === "function" ? await response.text() : "",
-  };
+  const timeoutMs = Math.max(1, Number(config.ingestTimeoutMs || 60000) || 60000);
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const response = await fetchImpl(config.ingestUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CFDI-Runner-Secret": config.runnerSecret,
+      },
+      body: JSON.stringify(update),
+      signal: controller ? controller.signal : undefined,
+    });
+    return {
+      ok: response.status >= 200 && response.status < 300,
+      status: response.status,
+      text: typeof response.text === "function" ? await response.text() : "",
+    };
+  } catch (error) {
+    if (isAbortError(error)) {
+      return {
+        ok: false,
+        status: 0,
+        timedOut: true,
+        text: `n8n ingest timeout despues de ${timeoutMs}ms`,
+      };
+    }
+    throw error;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 async function processUpdates(updates, config, fetchImpl = globalThis.fetch, logger = console) {
@@ -160,7 +185,8 @@ async function processUpdates(updates, config, fetchImpl = globalThis.fetch, log
     if (!Number.isFinite(updateId)) continue;
     const result = await postUpdateToN8n(update, config, fetchImpl);
     if (!result.ok) {
-      logger.error(`n8n ingest fallo HTTP ${result.status}; offset no avanza para update ${Math.trunc(updateId)}.`);
+      const reason = result.timedOut ? `timeout ${config.ingestTimeoutMs || 60000}ms` : `HTTP ${result.status}`;
+      logger.error(`n8n ingest fallo ${reason}; offset no avanza para update ${Math.trunc(updateId)}.`);
       return { processed, failed: true, failedUpdateId: Math.trunc(updateId) };
     }
     writeOffset(config.offsetFile, Math.trunc(updateId) + 1);
@@ -205,6 +231,7 @@ module.exports = {
   sanitizeText,
   sanitizeTelegramUrl,
   safeErrorMessage,
+  isAbortError,
   buildGetUpdatesUrl,
   fetchUpdates,
   postUpdateToN8n,
