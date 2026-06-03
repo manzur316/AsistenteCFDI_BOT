@@ -8,13 +8,17 @@ const safeFiles = [
   ".gitignore",
   "README.md",
   ".env.example",
+  ".env.local.example",
   "data/concepts.normalized.json",
   "runtime/.gitkeep",
+  "runner/README.md",
+  "runner/telegram-local-runner.js",
   "sql/001_init_cfdi_bot.sql",
   "sql/003_clients_amounts_tax.sql",
   "sql/003_seed_clients.example.sql",
   "workflow/cfdi_manual_test.n8n.json",
   "workflow/cfdi_telegram_postgres_polling.n8n.json",
+  "workflow/cfdi_telegram_local_ingest.n8n.json",
   "workflow/POSTGRES_LOCAL_SETUP.md",
   "workflow/POSTGRES_POLLING_RUNBOOK.md",
 ];
@@ -32,8 +36,10 @@ const forbiddenVersionedPaths = [
 
 const scanFiles = [
   ".env.example",
+  ".env.local.example",
   "README.md",
   ".gitignore",
+  ...listFiles("runner"),
   ...listFiles("scripts"),
   ...listFiles("sql"),
   ...listFiles("workflow"),
@@ -159,7 +165,7 @@ checks.push({
 
 let gitignore = "";
 if (exists(".gitignore")) gitignore = readText(".gitignore");
-for (const required of [".env", "runtime/*.jsonl", "runtime/*.json", "logs/", "data/base_cfdi_resico_n8n_emberhub_2026.xlsx"]) {
+for (const required of [".env", ".env.local", "runtime/*.jsonl", "runtime/*.json", "runtime/runner-offset.json", "runner/*.log", "logs/", "data/base_cfdi_resico_n8n_emberhub_2026.xlsx"]) {
   checks.push({
     name: `gitignore_contains:${required}`,
     pass: gitignore.includes(required),

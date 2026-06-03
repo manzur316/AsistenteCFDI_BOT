@@ -78,6 +78,59 @@ La memoria, historial, drafts y logs viven en PostgreSQL local (`cfdi_bot`). Ver
 - `sql/003_clients_amounts_tax.sql`
 - `sql/003_seed_clients.example.sql`
 
+Este modo con Schedule Trigger queda como legacy. Funciona, pero puede sentirse lento porque depende del intervalo del Schedule.
+
+## Telegram local runner recomendado
+
+Modo recomendado para baja latencia:
+
+```text
+Telegram getUpdates -> runner/telegram-local-runner.js -> http://127.0.0.1:5678/webhook/cfdi-local-ingest -> n8n local -> PostgreSQL -> Telegram sendMessage
+```
+
+Workflow importable:
+
+```text
+workflow/cfdi_telegram_local_ingest.n8n.json
+```
+
+Runner:
+
+```text
+runner/telegram-local-runner.js
+```
+
+Plantilla local:
+
+```text
+.env.local.example
+```
+
+Arranca n8n local:
+
+```powershell
+$env:NODE_FUNCTION_ALLOW_BUILTIN="fs,path"
+$env:N8N_PORT="5678"
+$env:N8N_RUNNERS_ENABLED="false"
+n8n start
+```
+
+Arranca el runner en otra terminal:
+
+```powershell
+node runner/telegram-local-runner.js
+```
+
+El runner usa `runtime/runner-offset.json` para guardar el offset. Si n8n responde 2xx, avanza a `update_id + 1`; si n8n falla, no avanza offset. El workflow local valida `X-CFDI-Runner-Secret` contra `runnerSecret` en `Set Config`.
+
+No expone n8n a internet: el ingest esperado es solo local:
+
+```text
+http://127.0.0.1:5678/webhook/cfdi-local-ingest
+```
+
+Deten el runner con `Ctrl+C`.
+
 ## Clientes, Montos e Impuestos
 
 Las fases 4.5 y 4.6 agregan soporte local para:
@@ -138,6 +191,6 @@ Si una linea queda ambigua, el estado pasa a `LINE_NEEDS_CLARIFICATION`. Mensaje
 - No usa PAC.
 - No captura automaticamente en SAT.
 - No envia WhatsApp.
-- No expone webhook.
+- No expone webhook a internet.
 - Toda salida requiere revision humana.
 - Todo calculo de impuestos es conservador y debe leerse como: BORRADOR SUJETO A REVISION HUMANA.
