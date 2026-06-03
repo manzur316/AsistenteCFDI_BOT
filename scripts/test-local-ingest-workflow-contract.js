@@ -76,13 +76,15 @@ if (workflow) {
   const webhookNode = getNode(workflow, "Webhook Local Ingest");
   const sendNode = getNode(workflow, "Telegram sendMessage");
   const answerCallbackNode = getNode(workflow, "Telegram answerCallbackQuery");
+  const respondNode = getNode(workflow, "Respond to Webhook");
   const postgresNodes = nodes.filter((node) => node.type === "n8n-nodes-base.postgres");
   const allCode = nodes.map((node) => node.parameters?.jsCode || "").join("\n");
   const disallowedRequires = requireCalls(allCode).filter((item) => !["fs", "path"].includes(item));
 
   checks.push({ name: "uses_webhook_node", pass: webhookNode.type === "n8n-nodes-base.webhook", value: webhookNode.parameters.path });
   checks.push({ name: "webhook_post_path", pass: webhookNode.parameters.httpMethod === "POST" && webhookNode.parameters.path === "cfdi-local-ingest", value: "POST /cfdi-local-ingest" });
-  checks.push({ name: "webhook_waits_for_workflow_completion", pass: webhookNode.parameters.responseMode === "lastNode", value: webhookNode.parameters.responseMode });
+  checks.push({ name: "webhook_uses_response_node", pass: webhookNode.parameters.responseMode === "responseNode", value: webhookNode.parameters.responseMode });
+  checks.push({ name: "uses_respond_to_webhook_final_node", pass: respondNode.type === "n8n-nodes-base.respondToWebhook" && respondNode.parameters.respondWith === "json", value: "Respond to Webhook" });
   checks.push({ name: "no_schedule_trigger", pass: !nodeTypes.includes("n8n-nodes-base.scheduleTrigger") && !raw.includes("Schedule Trigger"), value: "none" });
   checks.push({ name: "no_telegram_trigger", pass: !/telegramTrigger/i.test(raw), value: "none" });
   checks.push({ name: "no_telegram_getUpdates", pass: !raw.includes("getUpdates"), value: "none" });
@@ -99,7 +101,7 @@ if (workflow) {
   checks.push({ name: "processes_callback_query_data", pass: extractCode.includes("callback_query") && extractCode.includes("callbackQuery.data"), value: "callback_query.data" });
   checks.push({ name: "normalizes_source_kind_and_message_id", pass: extractCode.includes("sourceKind") && extractCode.includes("sourceMessageId") && extractCode.includes("callbackQueryId"), value: "source fields" });
   checks.push({ name: "dedupe_by_update_id", pass: extractCode.includes("ON CONFLICT (update_id) DO NOTHING"), value: "telegram_updates.update_id" });
-  checks.push({ name: "duplicate_update_dedupes_before_send", pass: webhookNode.parameters.responseMode === "lastNode" && extractCode.includes("ON CONFLICT (update_id) DO NOTHING") && !extractCode.includes("ON CONFLICT (update_id) DO UPDATE"), value: "dedupe/no resend" });
+  checks.push({ name: "duplicate_update_dedupes_before_send", pass: webhookNode.parameters.responseMode === "responseNode" && extractCode.includes("ON CONFLICT (update_id) DO NOTHING") && extractCode.includes("webhook_status") && extractCode.includes("duplicate") && !extractCode.includes("ON CONFLICT (update_id) DO UPDATE"), value: "dedupe/no resend" });
   checks.push({ name: "uses_telegram_updates_table", pass: raw.includes("telegram_updates") && raw.includes("RECEIVED"), value: "telegram_updates" });
   checks.push({ name: "uses_chat_states", pass: raw.includes("chat_states"), value: "chat_states" });
   checks.push({ name: "uses_cfdi_drafts", pass: raw.includes("cfdi_drafts"), value: "cfdi_drafts" });

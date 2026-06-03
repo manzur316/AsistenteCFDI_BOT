@@ -123,6 +123,8 @@ node runner/telegram-local-runner.js
 
 El runner usa `runtime/runner-offset.json` para guardar el offset. Si n8n responde 2xx despues de terminar el ingest, avanza a `update_id + 1`; si n8n falla o supera `N8N_INGEST_TIMEOUT_MS`, no avanza offset. El workflow local valida `X-CFDI-Runner-Secret` contra `runnerSecret` en `Set Config`.
 
+El webhook local responde al runner con JSON 200 tambien en updates duplicados, ignorados o sin accion de Telegram, por ejemplo `{"ok":true,"status":"duplicate"}`. Asi el runner no queda atrapado reintentando un update que n8n ya deduplico o manejo.
+
 No expone n8n a internet: el ingest esperado es solo local:
 
 ```text
