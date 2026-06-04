@@ -210,6 +210,36 @@ Si un mensaje mezcla material y mano de obra en un solo monto, el bot entra a `N
 
 Las facturas largas deben soportar al menos 10 partidas. Si hay mas de 10, el preview se compacta y sugiere usar `/ver`; el contexto completo se conserva para confirmar o editar. Todo sigue siendo BORRADOR SUJETO A REVISION HUMANA.
 
+### Expansion controlada de catalogo 5G
+
+La ampliacion de conceptos no modifica `data/concepts.normalized.json` ni el Excel fuente. Primero requiere colocar un catalogo oficial SAT local en:
+
+```text
+data/sat_official/
+```
+
+Si falta `catCFDI` oficial, los scripts se detienen con:
+
+```text
+Falta catálogo oficial SAT. Coloca el archivo oficial catCFDI del SAT en data/sat_official/ y vuelve a ejecutar.
+```
+
+Flujo:
+
+```bash
+node scripts/import-sat-catalog.js
+node scripts/propose-resico-catalog-expansion.js
+node scripts/audit-catalog-gaps.js
+```
+
+Salidas:
+
+- `data/catalog_expansion/proposed_concepts.resico_626.json`
+- `data/catalog_expansion/concepts.normalized.candidate.json`
+- `docs/CATALOG_GAPS_REPORT.md`
+
+El candidate queda sin activar hasta revision humana. No se inventan claves SAT; todo concepto sugerible nuevo debe venir con `source=SAT_OFFICIAL`, `clave_prod_serv`, `clave_unidad` y trazabilidad al archivo SAT local. La vista normal del borrador oculta campos internos como familia, tipo, score, keywords y notas de guardrail.
+
 Comandos utiles durante edicion:
 
 - `/editlinea N TEXTO`

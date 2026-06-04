@@ -1,0 +1,4053 @@
+{
+  "schema_version": "1.0.0",
+  "candidate_status": "NOT_ACTIVATED_MISSING_SAT_OFFICIAL_CATALOG",
+  "base_catalog_path": "data/concepts.normalized.json",
+  "base_catalog_unchanged": true,
+  "proposed_additions_count": 0,
+  "message": "Falta catálogo oficial SAT. Coloca el archivo oficial catCFDI del SAT en data/sat_official/ y vuelve a ejecutar.",
+  "concepts": [
+    {
+      "id": "SVC-AC-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y REVISIÓN DE SISTEMA DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 92,
+        "match_keywords": [
+          "control acceso",
+          "zkteco",
+          "zkbio",
+          "accesspro",
+          "biometrico",
+          "lectora",
+          "tag",
+          "tarjeta",
+          "puerta",
+          "chapa",
+          "torniquete",
+          "panel",
+          "permisos",
+          "residentes",
+          "acceso"
+        ],
+        "exclude_keywords": [
+          "software",
+          "app",
+          "web",
+          "plomeria",
+          "albañileria"
+        ]
+      },
+      "example_telegram": "revisé por qué los tags no abren el acceso de residentes",
+      "guardrail_notes": "Usar para diagnóstico/revisión. Si incluye instalación nueva, preferir SVC-AC-003.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE SOPORTE TÉCNICO PARA SISTEMA DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 90,
+        "match_keywords": [
+          "soporte",
+          "falla",
+          "acceso",
+          "panel",
+          "tag",
+          "lector",
+          "biometrico",
+          "residente",
+          "permiso",
+          "accesspro",
+          "zkteco"
+        ],
+        "exclude_keywords": [
+          "desarrollo software",
+          "app",
+          "página web"
+        ]
+      },
+      "example_telegram": "di soporte a panel de acceso y lectores",
+      "guardrail_notes": "Soporte general sin intervención física mayor.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE INSTALACIÓN DE SISTEMA DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "72151701",
+        "product_service_description": "Servicio de instalación de sistemas de control de acceso",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 96,
+        "match_keywords": [
+          "instalacion",
+          "instalar",
+          "control de acceso",
+          "lector",
+          "panel",
+          "biometrico",
+          "puerta",
+          "chapa",
+          "botón",
+          "salida",
+          "electromagnetica"
+        ],
+        "exclude_keywords": [
+          "solo diagnóstico",
+          "sin instalar"
+        ]
+      },
+      "example_telegram": "instalé lector biométrico y panel de acceso en caseta",
+      "guardrail_notes": "Clave específica de instalación de control de acceso.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CONFIGURACIÓN DE EQUIPOS DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "81111809",
+        "product_service_description": "Servicio de instalación de sistemas",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 82,
+        "match_keywords": [
+          "configurar",
+          "programación",
+          "parametros",
+          "permisos",
+          "horarios",
+          "usuarios",
+          "niveles de acceso",
+          "zkteco",
+          "hikvision",
+          "accesspro"
+        ],
+        "exclude_keywords": [
+          "software a medida",
+          "desarrollo",
+          "app"
+        ]
+      },
+      "example_telegram": "configuré horarios y permisos en sistema de acceso",
+      "guardrail_notes": "Si la configuración fue parte de instalación física, considerar 72151701.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO PREVENTIVO DE SISTEMA DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "72151704",
+        "product_service_description": "Servicio de instalación y mantenimiento de sistemas instrumentados de seguridad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A2",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 91,
+        "match_keywords": [
+          "mantenimiento preventivo",
+          "limpieza",
+          "prueba",
+          "ajuste",
+          "acceso",
+          "lectores",
+          "panel",
+          "chapa",
+          "control acceso"
+        ],
+        "exclude_keywords": [
+          "instalación nueva",
+          "venta de equipo"
+        ]
+      },
+      "example_telegram": "mantenimiento preventivo a lectoras y chapas de acceso",
+      "guardrail_notes": "Mantenimiento recurrente o programado.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO CORRECTIVO DE SISTEMA DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "72151704",
+        "product_service_description": "Servicio de instalación y mantenimiento de sistemas instrumentados de seguridad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A2",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 92,
+        "match_keywords": [
+          "mantenimiento correctivo",
+          "falla",
+          "reparación",
+          "no abre",
+          "no lee",
+          "no registra",
+          "acceso",
+          "lector",
+          "panel",
+          "chapa"
+        ],
+        "exclude_keywords": [
+          "software app web"
+        ]
+      },
+      "example_telegram": "corregí falla de lector que no registraba tags",
+      "guardrail_notes": "Si incluye refacción, dividir servicio/producto.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-007",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE REVISIÓN Y AJUSTE DE CHAPA MAGNÉTICA O ELECTROMAGNÉTICA",
+      "sat": {
+        "product_service_key": "72151704",
+        "product_service_description": "Servicio de instalación y mantenimiento de sistemas instrumentados de seguridad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A2",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 90,
+        "match_keywords": [
+          "chapa magnetica",
+          "electroiman",
+          "cerradura",
+          "puerta",
+          "ajuste",
+          "alarma puerta",
+          "cierre",
+          "accesspro",
+          "sensor puerta"
+        ],
+        "exclude_keywords": [
+          "plomería",
+          "carpintería pura"
+        ]
+      },
+      "example_telegram": "ajusté chapa magnética y sensor de puerta",
+      "guardrail_notes": "Si fue solo venta de chapa/refacción, separar producto.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-008",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE INSTALACIÓN DE CHAPA MAGNÉTICA, BOTÓN DE SALIDA Y ACCESORIOS DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "72151701",
+        "product_service_description": "Servicio de instalación de sistemas de control de acceso",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 94,
+        "match_keywords": [
+          "instalé chapa",
+          "boton salida",
+          "fuente",
+          "cerradura",
+          "control acceso",
+          "puerta",
+          "electroiman"
+        ],
+        "exclude_keywords": [
+          "solo venta de refacción"
+        ]
+      },
+      "example_telegram": "instalé chapa magnética con botón de salida",
+      "guardrail_notes": "Instalación dentro del sistema de control de acceso.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-009",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y REVISIÓN DE LECTORES BIOMÉTRICOS O RFID",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 90,
+        "match_keywords": [
+          "biometrico",
+          "huella",
+          "rostro",
+          "rfid",
+          "tags",
+          "tarjetas",
+          "lector",
+          "no lee",
+          "falla lector"
+        ],
+        "exclude_keywords": [
+          "software app"
+        ]
+      },
+      "example_telegram": "revisé lector biométrico que no reconoce usuarios",
+      "guardrail_notes": "Diagnóstico de periféricos electrónicos del sistema.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-010",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Control de acceso",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE ALTA, BAJA Y ACTUALIZACIÓN DE USUARIOS EN SISTEMA DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 74,
+        "match_keywords": [
+          "alta usuarios",
+          "baja usuarios",
+          "residentes",
+          "permisos",
+          "huellas",
+          "tarjetas",
+          "tags",
+          "enrolamiento",
+          "acceso"
+        ],
+        "exclude_keywords": [
+          "desarrollo de sistema",
+          "base de datos a medida"
+        ]
+      },
+      "example_telegram": "di de alta residentes y actualicé permisos en ZKTeco",
+      "guardrail_notes": "Revisar si el servicio es soporte técnico operativo. No venderlo como desarrollo de software.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-011",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Acceso vehicular",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y REVISIÓN DE BARRERA VEHICULAR",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A2",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 89,
+        "match_keywords": [
+          "barrera",
+          "pluma",
+          "brazo",
+          "servo",
+          "motor",
+          "acceso vehicular",
+          "estacionamiento",
+          "control vehicular"
+        ],
+        "exclude_keywords": [
+          "obra civil",
+          "herreria estructural"
+        ]
+      },
+      "example_telegram": "revisé barrera vehicular que marcaba error",
+      "guardrail_notes": "Si hay reparación mecánica fuerte, considerar 72151802.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-012",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Acceso vehicular",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO Y AJUSTE DE BARRERA VEHICULAR",
+      "sat": {
+        "product_service_key": "72151704",
+        "product_service_description": "Servicio de instalación y mantenimiento de sistemas instrumentados de seguridad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A2",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 91,
+        "match_keywords": [
+          "mantenimiento",
+          "ajuste",
+          "resorte",
+          "brazo",
+          "pluma",
+          "barrera",
+          "motor",
+          "servo",
+          "rebote",
+          "acceso vehicular"
+        ],
+        "exclude_keywords": [
+          "instalación nueva",
+          "obra civil"
+        ]
+      },
+      "example_telegram": "ajusté resorte y brazo de barrera vehicular",
+      "guardrail_notes": "Correcto para mantenimiento/ajuste del sistema de acceso.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-013",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Videoportero / interfon",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE INSTALACIÓN Y CONFIGURACIÓN DE SISTEMA DE VIDEOPORTERÍA O INTERFONÍA",
+      "sat": {
+        "product_service_key": "72151604",
+        "product_service_description": "Servicio de instalación de teléfonos y equipos para teléfonos",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 82,
+        "match_keywords": [
+          "videoportero",
+          "interfon",
+          "hikvision",
+          "monitor",
+          "llamada",
+          "frente de calle",
+          "telefono",
+          "intercomunicador"
+        ],
+        "exclude_keywords": [
+          "software app web"
+        ]
+      },
+      "example_telegram": "instalé y configuré videoportero IP con monitor",
+      "guardrail_notes": "Si el foco es seguridad/acceso, también puede mapear a control de acceso.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-AC-014",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Videoportero / interfon",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y REVISIÓN DE VIDEOPORTERO IP O INTERFÓN",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 80,
+        "match_keywords": [
+          "videoportero",
+          "interfon",
+          "monitor",
+          "frente de calle",
+          "hikvision",
+          "llamada",
+          "no llama",
+          "no enlaza"
+        ],
+        "exclude_keywords": [
+          "instalación nueva"
+        ]
+      },
+      "example_telegram": "revisé videoportero que no llama al monitor",
+      "guardrail_notes": "Soporte técnico de equipo de comunicación.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y REVISIÓN DE SISTEMA DE VIDEOVIGILANCIA CCTV",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 93,
+        "match_keywords": [
+          "cctv",
+          "camara",
+          "camaras",
+          "videovigilancia",
+          "dvr",
+          "nvr",
+          "hikvision",
+          "dahua",
+          "grabador",
+          "video",
+          "vigilancia"
+        ],
+        "exclude_keywords": [
+          "marketing",
+          "fotos",
+          "producción video"
+        ]
+      },
+      "example_telegram": "revisé sistema CCTV sin imagen en cámaras",
+      "guardrail_notes": "Diagnóstico/revisión sin instalación nueva.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE INSTALACIÓN DE SISTEMA DE VIDEOVIGILANCIA CCTV",
+      "sat": {
+        "product_service_key": "72151702",
+        "product_service_description": "Servicio de instalación de sistemas de televisión de circuito cerrado",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 97,
+        "match_keywords": [
+          "instalación",
+          "instalar",
+          "camaras",
+          "cctv",
+          "dvr",
+          "nvr",
+          "videovigilancia",
+          "cableado cámaras"
+        ],
+        "exclude_keywords": [
+          "diagnóstico solamente"
+        ]
+      },
+      "example_telegram": "instalé cámaras CCTV y DVR",
+      "guardrail_notes": "Clave específica para instalación CCTV.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CONFIGURACIÓN DE EQUIPOS DE VIDEOVIGILANCIA CCTV",
+      "sat": {
+        "product_service_key": "81111809",
+        "product_service_description": "Servicio de instalación de sistemas",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 83,
+        "match_keywords": [
+          "configurar",
+          "hik-connect",
+          "ivms",
+          "dahua",
+          "xmeye",
+          "dvr",
+          "nvr",
+          "cámaras ip",
+          "cctv",
+          "acceso remoto"
+        ],
+        "exclude_keywords": [
+          "software app web"
+        ]
+      },
+      "example_telegram": "configuré cámaras para visualización remota",
+      "guardrail_notes": "Config técnica; no desarrollo de software.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO PREVENTIVO DE SISTEMA DE VIDEOVIGILANCIA CCTV",
+      "sat": {
+        "product_service_key": "72151704",
+        "product_service_description": "Servicio de instalación y mantenimiento de sistemas instrumentados de seguridad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 91,
+        "match_keywords": [
+          "mantenimiento preventivo",
+          "limpieza camaras",
+          "enfoque",
+          "ajuste",
+          "prueba grabación",
+          "cctv"
+        ],
+        "exclude_keywords": [
+          "venta de cámara solamente"
+        ]
+      },
+      "example_telegram": "di mantenimiento preventivo a cámaras y grabador",
+      "guardrail_notes": "Mantenimiento programado del sistema.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO CORRECTIVO DE SISTEMA DE VIDEOVIGILANCIA CCTV",
+      "sat": {
+        "product_service_key": "72151704",
+        "product_service_description": "Servicio de instalación y mantenimiento de sistemas instrumentados de seguridad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 92,
+        "match_keywords": [
+          "mantenimiento correctivo",
+          "sin video",
+          "no graba",
+          "falla cámara",
+          "falla dvr",
+          "falla nvr",
+          "cctv"
+        ],
+        "exclude_keywords": [
+          "software app web"
+        ]
+      },
+      "example_telegram": "corregí falla de grabación en NVR",
+      "guardrail_notes": "Si cambiaste disco/cámara, dividir producto.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE SOPORTE TÉCNICO PARA SISTEMA DE VIDEOVIGILANCIA",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 88,
+        "match_keywords": [
+          "soporte tecnico",
+          "cctv",
+          "camaras",
+          "hikvision",
+          "dahua",
+          "dvr",
+          "nvr",
+          "remoto",
+          "usuario",
+          "contraseña"
+        ],
+        "exclude_keywords": [
+          "desarrollo de app"
+        ]
+      },
+      "example_telegram": "di soporte para acceso remoto de cámaras",
+      "guardrail_notes": "Uso general para asistencia sin instalación.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-007",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE REUBICACIÓN, ORIENTACIÓN Y AJUSTE DE CÁMARAS DE VIDEOVIGILANCIA",
+      "sat": {
+        "product_service_key": "72151704",
+        "product_service_description": "Servicio de instalación y mantenimiento de sistemas instrumentados de seguridad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 88,
+        "match_keywords": [
+          "reubicar cámara",
+          "orientar cámara",
+          "enfoque",
+          "ángulo",
+          "ajuste cámara",
+          "cctv"
+        ],
+        "exclude_keywords": [
+          "instalación completa nueva"
+        ]
+      },
+      "example_telegram": "reorienté cámaras y ajusté enfoque",
+      "guardrail_notes": "Mantenimiento/ajuste de sistema CCTV.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-008",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CAMBIO, FORMATEO O CONFIGURACIÓN DE DISCO EN DVR/NVR",
+      "sat": {
+        "product_service_key": "81111812",
+        "product_service_description": "Servicio de mantenimiento o soporte del hardware del computador",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 78,
+        "match_keywords": [
+          "disco duro",
+          "dvr",
+          "nvr",
+          "grabación",
+          "formateo disco",
+          "almacenamiento",
+          "hdd",
+          "cctv"
+        ],
+        "exclude_keywords": [
+          "venta disco solamente"
+        ]
+      },
+      "example_telegram": "cambié y configuré disco duro de DVR",
+      "guardrail_notes": "Dividir disco duro como producto si se cobró por separado.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-009",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE ACTUALIZACIÓN DE FIRMWARE Y PRUEBAS DE EQUIPO DE VIDEOVIGILANCIA",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 72,
+        "match_keywords": [
+          "firmware",
+          "actualizar",
+          "dvr",
+          "nvr",
+          "cámara",
+          "hikvision",
+          "dahua",
+          "prueba equipo"
+        ],
+        "exclude_keywords": [
+          "desarrollo software"
+        ]
+      },
+      "example_telegram": "actualicé firmware de NVR y probé cámaras",
+      "guardrail_notes": "Revisión humana recomendada porque puede confundirse con software.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-CCTV-010",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE RECUPERACIÓN DE ACCESO O CONTRASEÑA EN EQUIPO DE VIDEOVIGILANCIA",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 70,
+        "match_keywords": [
+          "recuperar contraseña",
+          "reset",
+          "dvr",
+          "nvr",
+          "cámara",
+          "acceso remoto",
+          "usuario"
+        ],
+        "exclude_keywords": [
+          "hackeo",
+          "ilegal",
+          "vulnerar"
+        ]
+      },
+      "example_telegram": "recuperé acceso de administrador del DVR del cliente",
+      "guardrail_notes": "Solo con autorización del propietario.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y REVISIÓN DE RED DE DATOS",
+      "sat": {
+        "product_service_key": "81111803",
+        "product_service_description": "Mantenimiento o soporte de redes de área local (LAN)",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 94,
+        "match_keywords": [
+          "red",
+          "internet",
+          "lan",
+          "switch",
+          "router",
+          "access point",
+          "ap",
+          "wifi",
+          "cableado",
+          "ping",
+          "conexión",
+          "conectividad"
+        ],
+        "exclude_keywords": [
+          "desarrollo web",
+          "marketing"
+        ]
+      },
+      "example_telegram": "diagnostiqué falla de red en caseta",
+      "guardrail_notes": "Clave específica de soporte LAN.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO O SOPORTE DE RED LOCAL LAN",
+      "sat": {
+        "product_service_key": "81111803",
+        "product_service_description": "Mantenimiento o soporte de redes de área local (LAN)",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 93,
+        "match_keywords": [
+          "mantenimiento red",
+          "soporte red",
+          "lan",
+          "router",
+          "switch",
+          "ap",
+          "wifi",
+          "ruijie",
+          "ubiquiti",
+          "mikrotik"
+        ],
+        "exclude_keywords": [
+          "software app"
+        ]
+      },
+      "example_telegram": "di soporte a red local y switch",
+      "guardrail_notes": "Mantenimiento LAN.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CABLEADO PARA VIDEO, DATOS Y VOZ",
+      "sat": {
+        "product_service_key": "72151605",
+        "product_service_description": "Servicio de cableado para video, datos y voz",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 96,
+        "match_keywords": [
+          "cableado",
+          "utp",
+          "red",
+          "datos",
+          "voz",
+          "video",
+          "ponchado",
+          "canalización",
+          "rj45",
+          "ethernet"
+        ],
+        "exclude_keywords": [
+          "cable solo vendido",
+          "sin instalación"
+        ]
+      },
+      "example_telegram": "hice cableado para cámaras y red",
+      "guardrail_notes": "Clave específica de cableado.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CONFIGURACIÓN DE ROUTER, SWITCH O PUNTO DE ACCESO",
+      "sat": {
+        "product_service_key": "81111803",
+        "product_service_description": "Mantenimiento o soporte de redes de área local (LAN)",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 89,
+        "match_keywords": [
+          "configurar router",
+          "switch",
+          "access point",
+          "ap",
+          "wifi",
+          "vlan",
+          "red invitados",
+          "ruijie",
+          "mikrotik",
+          "ubiquiti"
+        ],
+        "exclude_keywords": [
+          "desarrollo software"
+        ]
+      },
+      "example_telegram": "configuré router y AP para red de invitados",
+      "guardrail_notes": "Soporte/configuración de red local.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE INSTALACIÓN DE EQUIPO DE RED LOCAL",
+      "sat": {
+        "product_service_key": "72151605",
+        "product_service_description": "Servicio de cableado para video, datos y voz",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 86,
+        "match_keywords": [
+          "instalar router",
+          "switch",
+          "access point",
+          "cableado",
+          "rack",
+          "red local",
+          "wifi"
+        ],
+        "exclude_keywords": [
+          "solo venta equipo"
+        ]
+      },
+      "example_telegram": "instalé switch y access point en caseta",
+      "guardrail_notes": "Si solo fue configurar sin instalar, usar 81111803.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE PONCHADO, ETIQUETADO Y PRUEBAS DE PUNTOS DE RED",
+      "sat": {
+        "product_service_key": "72151605",
+        "product_service_description": "Servicio de cableado para video, datos y voz",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 90,
+        "match_keywords": [
+          "ponchado",
+          "rj45",
+          "jack",
+          "patch panel",
+          "etiquetado",
+          "pruebas",
+          "tester",
+          "punto de red",
+          "ethernet"
+        ],
+        "exclude_keywords": [
+          "venta cable solamente"
+        ]
+      },
+      "example_telegram": "ponché y probé puntos de red",
+      "guardrail_notes": "Correcto para mano de obra de cableado.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-007",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CONFIGURACIÓN DE RED WI-FI PARA INVITADOS O VOUCHERS",
+      "sat": {
+        "product_service_key": "81111803",
+        "product_service_description": "Mantenimiento o soporte de redes de área local (LAN)",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 85,
+        "match_keywords": [
+          "wifi invitados",
+          "vouchers",
+          "portal cautivo",
+          "ruijie",
+          "guest",
+          "hotspot",
+          "acceso temporal"
+        ],
+        "exclude_keywords": [
+          "desarrollo portal web a medida"
+        ]
+      },
+      "example_telegram": "configuré vouchers WiFi para invitados",
+      "guardrail_notes": "Si desarrollaste portal/software personalizado, bloquear y actualizar actividad.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-008",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y CONFIGURACIÓN DE ENLACE INALÁMBRICO",
+      "sat": {
+        "product_service_key": "81111803",
+        "product_service_description": "Mantenimiento o soporte de redes de área local (LAN)",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 82,
+        "match_keywords": [
+          "enlace punto a punto",
+          "antena",
+          "ubiquiti",
+          "ruijie",
+          "radioenlace",
+          "inalámbrico",
+          "wifi exterior"
+        ],
+        "exclude_keywords": [
+          "torre civil",
+          "obra"
+        ]
+      },
+      "example_telegram": "configuré enlace inalámbrico entre caseta y administración",
+      "guardrail_notes": "Validar si implica obra/canalización mayor.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-009",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE ORDENAMIENTO Y REACOMODO DE RACK DE COMUNICACIONES",
+      "sat": {
+        "product_service_key": "81111803",
+        "product_service_description": "Mantenimiento o soporte de redes de área local (LAN)",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 86,
+        "match_keywords": [
+          "rack",
+          "gabinete",
+          "cableado",
+          "patch cord",
+          "switch",
+          "ordenamiento",
+          "reacomodo",
+          "etiquetar"
+        ],
+        "exclude_keywords": [
+          "mueble/carpintería"
+        ]
+      },
+      "example_telegram": "reacomodé rack y cables de red",
+      "guardrail_notes": "Soporte de infraestructura de red.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-RED-010",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE INSTALACIÓN DE CANALETA O CANALIZACIÓN PARA CABLEADO DE RED, VIDEO O VOZ",
+      "sat": {
+        "product_service_key": "72151605",
+        "product_service_description": "Servicio de cableado para video, datos y voz",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 76,
+        "match_keywords": [
+          "canaleta",
+          "canalización",
+          "tubería",
+          "cableado",
+          "red",
+          "cámaras",
+          "voz",
+          "datos"
+        ],
+        "exclude_keywords": [
+          "obra civil mayor",
+          "albañilería"
+        ]
+      },
+      "example_telegram": "instalé canaleta para cableado de red",
+      "guardrail_notes": "No usar si el trabajo fue construcción/obra civil sin cableado técnico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y REVISIÓN DE EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "81111812",
+        "product_service_description": "Servicio de mantenimiento o soporte del hardware del computador",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 94,
+        "match_keywords": [
+          "computadora",
+          "laptop",
+          "pc",
+          "diagnóstico",
+          "revisión",
+          "no prende",
+          "lento",
+          "hardware",
+          "equipo de cómputo"
+        ],
+        "exclude_keywords": [
+          "app",
+          "software a medida",
+          "web"
+        ]
+      },
+      "example_telegram": "diagnostiqué laptop que no encendía",
+      "guardrail_notes": "Hardware/cómputo.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO PREVENTIVO DE EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "81111812",
+        "product_service_description": "Servicio de mantenimiento o soporte del hardware del computador",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 93,
+        "match_keywords": [
+          "mantenimiento preventivo",
+          "limpieza",
+          "pasta térmica",
+          "pc",
+          "laptop",
+          "computadora",
+          "hardware"
+        ],
+        "exclude_keywords": [
+          "desarrollo software"
+        ]
+      },
+      "example_telegram": "di mantenimiento preventivo a computadora",
+      "guardrail_notes": "Correcto para limpieza/servicio de hardware.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE MANTENIMIENTO CORRECTIVO O REPARACIÓN DE EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "81111812",
+        "product_service_description": "Servicio de mantenimiento o soporte del hardware del computador",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 94,
+        "match_keywords": [
+          "reparación computadora",
+          "pc",
+          "laptop",
+          "no prende",
+          "disco",
+          "ram",
+          "fuente",
+          "hardware",
+          "falla"
+        ],
+        "exclude_keywords": [
+          "software app"
+        ]
+      },
+      "example_telegram": "reparé computadora con falla de disco",
+      "guardrail_notes": "Si vendes refacciones, separar producto.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / soporte",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE SOPORTE TÉCNICO ESPECIALIZADO EN EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 89,
+        "match_keywords": [
+          "soporte técnico",
+          "computadora",
+          "laptop",
+          "impresora",
+          "usuario",
+          "configuración",
+          "remoto",
+          "asistencia"
+        ],
+        "exclude_keywords": [
+          "desarrollo de software"
+        ]
+      },
+      "example_telegram": "di soporte técnico a equipo de cómputo",
+      "guardrail_notes": "Soporte general.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / soporte",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE FORMATEO, INSTALACIÓN Y CONFIGURACIÓN DE SISTEMA OPERATIVO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 78,
+        "match_keywords": [
+          "formateo",
+          "windows",
+          "instalación sistema operativo",
+          "drivers",
+          "office",
+          "programas básicos"
+        ],
+        "exclude_keywords": [
+          "desarrollo",
+          "licencia pirata",
+          "crack"
+        ]
+      },
+      "example_telegram": "formateé computadora e instalé sistema operativo",
+      "guardrail_notes": "No incluir venta de licencias no autorizadas. Revisar si incluye software.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE INSTALACIÓN O SUSTITUCIÓN DE COMPONENTES DE EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "81111812",
+        "product_service_description": "Servicio de mantenimiento o soporte del hardware del computador",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 90,
+        "match_keywords": [
+          "instalar ram",
+          "cambiar disco",
+          "ssd",
+          "fuente",
+          "tarjeta",
+          "componente",
+          "pc",
+          "laptop"
+        ],
+        "exclude_keywords": [
+          "venta componente sola"
+        ]
+      },
+      "example_telegram": "instalé SSD y memoria RAM en computadora",
+      "guardrail_notes": "Separar producto si se cobró SSD/RAM.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-007",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / soporte",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE RESPALDO Y MIGRACIÓN DE INFORMACIÓN EN EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 70,
+        "match_keywords": [
+          "respaldo",
+          "migración",
+          "archivos",
+          "datos",
+          "computadora",
+          "disco",
+          "transferencia",
+          "backup"
+        ],
+        "exclude_keywords": [
+          "recuperación forense",
+          "datos sensibles sin autorización"
+        ]
+      },
+      "example_telegram": "migré información de una laptop a otra",
+      "guardrail_notes": "Requiere autorización del dueño de datos.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-008",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / soporte",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CONFIGURACIÓN DE IMPRESORA, ESCÁNER O PERIFÉRICO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 75,
+        "match_keywords": [
+          "impresora",
+          "escaner",
+          "periferico",
+          "configurar",
+          "driver",
+          "red",
+          "pc"
+        ],
+        "exclude_keywords": [
+          "venta de impresora"
+        ]
+      },
+      "example_telegram": "configuré impresora de red",
+      "guardrail_notes": "Soporte técnico de equipo/periférico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-009",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / soporte",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE DIAGNÓSTICO Y CONFIGURACIÓN DE SERVIDOR LOCAL O EQUIPO DE RESPALDO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 72,
+        "match_keywords": [
+          "servidor",
+          "nas",
+          "respaldo",
+          "windows server",
+          "acceso remoto",
+          "carpetas compartidas",
+          "usuarios"
+        ],
+        "exclude_keywords": [
+          "desarrollo software",
+          "cloud app"
+        ]
+      },
+      "example_telegram": "diagnostiqué servidor local y acceso compartido",
+      "guardrail_notes": "Revisión humana: puede cruzarse con software/administración de sistemas.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "SVC-PC-010",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Servicios",
+      "subfamily": "Cómputo / soporte",
+      "item_type": "Servicio",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "SERVICIO DE CONFIGURACIÓN DE ACCESO REMOTO Y CONECTIVIDAD A EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 70,
+        "match_keywords": [
+          "acceso remoto",
+          "anydesk",
+          "teamviewer",
+          "vpn",
+          "hamachi",
+          "escritorio remoto",
+          "conectividad"
+        ],
+        "exclude_keywords": [
+          "vigilancia",
+          "spyware",
+          "acceso sin permiso"
+        ]
+      },
+      "example_telegram": "configuré acceso remoto autorizado al servidor",
+      "guardrail_notes": "Solo con autorización del cliente; no vender software malicioso.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-AC-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Control de acceso",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE SISTEMA O EQUIPO DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "46171619",
+        "product_service_description": "Sistemas de seguridad o de control de acceso",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 91,
+        "match_keywords": [
+          "venta",
+          "panel",
+          "sistema control acceso",
+          "controlador",
+          "accesspro",
+          "zkteco",
+          "hikvision",
+          "control acceso"
+        ],
+        "exclude_keywords": [
+          "servicio instalación"
+        ]
+      },
+      "example_telegram": "vendí panel de control de acceso",
+      "guardrail_notes": "Producto. Si instalas, agregar línea de servicio separada.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-AC-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Control de acceso",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE TAG, TARJETA O LLAVERO RFID PARA CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "43211710",
+        "product_service_description": "Dispositivos de identificación por radio frecuencia",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 93,
+        "match_keywords": [
+          "venta",
+          "tag",
+          "tarjeta",
+          "llavero",
+          "rfid",
+          "acceso",
+          "proximidad"
+        ],
+        "exclude_keywords": [
+          "alta usuarios",
+          "programación"
+        ]
+      },
+      "example_telegram": "vendí tarjetas RFID para acceso",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-AC-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Control de acceso",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE REFACCIÓN O ACCESORIO PARA EQUIPO DE COMUNICACIÓN O CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "43191600",
+        "product_service_description": "Partes o accesorios de dispositivos de comunicación personal",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 72,
+        "match_keywords": [
+          "refacción",
+          "accesorio",
+          "repuesto",
+          "comunicación",
+          "control acceso",
+          "lector",
+          "cable",
+          "fuente"
+        ],
+        "exclude_keywords": [
+          "servicio mano de obra"
+        ]
+      },
+      "example_telegram": "vendí refacción para lector de acceso",
+      "guardrail_notes": "Preferir clave más específica cuando exista.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-AC-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Control de acceso",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE CHAPA MAGNÉTICA, BOTÓN DE SALIDA O ACCESORIO DE ACCESO",
+      "sat": {
+        "product_service_key": "46171619",
+        "product_service_description": "Sistemas de seguridad o de control de acceso",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 70,
+        "match_keywords": [
+          "chapa magnética",
+          "botón salida",
+          "electroiman",
+          "cerradura",
+          "fuente acceso",
+          "accesorio acceso"
+        ],
+        "exclude_keywords": [
+          "instalación"
+        ]
+      },
+      "example_telegram": "vendí chapa magnética",
+      "guardrail_notes": "Clave genérica de control de acceso; validar producto específico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-AC-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Control de acceso",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE VIDEOPORTERO, INTERFÓN O EQUIPO DE COMUNICACIÓN",
+      "sat": {
+        "product_service_key": "43191500",
+        "product_service_description": "Dispositivos de comunicación personal",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 86,
+        "match_keywords": [
+          "videoportero",
+          "interfon",
+          "telefono ip",
+          "monitor",
+          "frente de calle",
+          "comunicación"
+        ],
+        "exclude_keywords": [
+          "servicio instalación"
+        ]
+      },
+      "example_telegram": "vendí videoportero IP",
+      "guardrail_notes": "Producto de comunicación.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-AC-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Acceso vehicular",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE EQUIPO O REFACCIÓN PARA SISTEMA DE ACCESO VEHICULAR",
+      "sat": {
+        "product_service_key": "46171619",
+        "product_service_description": "Sistemas de seguridad o de control de acceso",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 68,
+        "match_keywords": [
+          "barrera",
+          "pluma",
+          "control vehicular",
+          "tarjeta control",
+          "receptor",
+          "motor",
+          "brazo",
+          "refacción"
+        ],
+        "exclude_keywords": [
+          "mantenimiento"
+        ]
+      },
+      "example_telegram": "vendí refacción para barrera vehicular",
+      "guardrail_notes": "Validar clave más específica según pieza real.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-CCTV-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE CÁMARA DE VIDEOVIGILANCIA",
+      "sat": {
+        "product_service_key": "45121500",
+        "product_service_description": "Cámaras",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 94,
+        "match_keywords": [
+          "venta cámara",
+          "cámara ip",
+          "cámara cctv",
+          "hikvision",
+          "dahua",
+          "vigilancia",
+          "domo",
+          "bala"
+        ],
+        "exclude_keywords": [
+          "instalación servicio"
+        ]
+      },
+      "example_telegram": "vendí cámara IP",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-CCTV-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE DVR, NVR O GRABADOR DE VIDEOVIGILANCIA",
+      "sat": {
+        "product_service_key": "46171621",
+        "product_service_description": "Grabadoras de video o audio de vigilancia",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 93,
+        "match_keywords": [
+          "dvr",
+          "nvr",
+          "grabador",
+          "videovigilancia",
+          "cctv",
+          "venta"
+        ],
+        "exclude_keywords": [
+          "configuración",
+          "mantenimiento"
+        ]
+      },
+      "example_telegram": "vendí NVR para cámaras",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-CCTV-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE SISTEMA DE TELEVISIÓN DE CIRCUITO CERRADO CCTV",
+      "sat": {
+        "product_service_key": "46171622",
+        "product_service_description": "Sistema de televisión de circuito cerrado CCTV",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 92,
+        "match_keywords": [
+          "kit cctv",
+          "sistema cctv",
+          "paquete cámaras",
+          "videovigilancia",
+          "dvr",
+          "nvr"
+        ],
+        "exclude_keywords": [
+          "instalación"
+        ]
+      },
+      "example_telegram": "vendí kit CCTV",
+      "guardrail_notes": "Para kit/sistema; separar instalación.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-CCTV-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE ACCESORIO PARA CÁMARA O SISTEMA CCTV",
+      "sat": {
+        "product_service_key": "45121600",
+        "product_service_description": "Accesorios para cámaras",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A3"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 75,
+        "match_keywords": [
+          "soporte cámara",
+          "accesorio cámara",
+          "caja conexión",
+          "base cámara",
+          "cctv"
+        ],
+        "exclude_keywords": [
+          "servicio ajuste"
+        ]
+      },
+      "example_telegram": "vendí soporte para cámara",
+      "guardrail_notes": "Preferir clave específica si aplica.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-CCTV-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE DISCO DURO O DISPOSITIVO DE ALMACENAMIENTO PARA DVR/NVR",
+      "sat": {
+        "product_service_key": "43201800",
+        "product_service_description": "Dispositivos de almacenamiento",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A5",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 84,
+        "match_keywords": [
+          "disco duro",
+          "hdd",
+          "ssd",
+          "almacenamiento",
+          "dvr",
+          "nvr",
+          "grabación"
+        ],
+        "exclude_keywords": [
+          "servicio instalación"
+        ]
+      },
+      "example_telegram": "vendí disco duro para NVR",
+      "guardrail_notes": "Producto de almacenamiento.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-CCTV-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE CABLE COAXIAL PARA SISTEMA CCTV",
+      "sat": {
+        "product_service_key": "26121606",
+        "product_service_description": "Cable coaxial",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 80,
+        "match_keywords": [
+          "cable coaxial",
+          "rg59",
+          "rg6",
+          "cctv",
+          "video"
+        ],
+        "exclude_keywords": [
+          "servicio cableado"
+        ]
+      },
+      "example_telegram": "vendí cable coaxial",
+      "guardrail_notes": "Si se vende por metro, ajustar unidad.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-CCTV-007",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "CCTV / videovigilancia",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE FUENTE DE PODER PARA EQUIPO ELECTRÓNICO O CCTV",
+      "sat": {
+        "product_service_key": "39121004",
+        "product_service_description": "Unidades de suministro de energía",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 72,
+        "match_keywords": [
+          "fuente poder",
+          "adaptador",
+          "energia",
+          "cctv",
+          "camara",
+          "control acceso"
+        ],
+        "exclude_keywords": [
+          "instalación servicio"
+        ]
+      },
+      "example_telegram": "vendí fuente de poder para cámara",
+      "guardrail_notes": "Validar producto específico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE ROUTER O ENRUTADOR DE RED",
+      "sat": {
+        "product_service_key": "43222609",
+        "product_service_description": "Enrutadores de red",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 95,
+        "match_keywords": [
+          "router",
+          "enrutador",
+          "mikrotik",
+          "ruijie",
+          "tplink",
+          "red",
+          "internet"
+        ],
+        "exclude_keywords": [
+          "configuración"
+        ]
+      },
+      "example_telegram": "vendí router",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE SWITCH O INTERRUPTOR DE RED",
+      "sat": {
+        "product_service_key": "43222612",
+        "product_service_description": "Interruptores de red",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 95,
+        "match_keywords": [
+          "switch",
+          "interruptor red",
+          "poe",
+          "red",
+          "ethernet"
+        ],
+        "exclude_keywords": [
+          "configuración",
+          "instalación"
+        ]
+      },
+      "example_telegram": "vendí switch PoE",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE PUNTO DE ACCESO INALÁMBRICO",
+      "sat": {
+        "product_service_key": "43222640",
+        "product_service_description": "Punto de acceso inalámbrico",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 95,
+        "match_keywords": [
+          "access point",
+          "ap",
+          "punto acceso",
+          "wifi",
+          "ruijie",
+          "ubiquiti",
+          "tp-link"
+        ],
+        "exclude_keywords": [
+          "configuración"
+        ]
+      },
+      "example_telegram": "vendí access point inalámbrico",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE EQUIPO DE SERVICIO DE RED",
+      "sat": {
+        "product_service_key": "43222600",
+        "product_service_description": "Equipo de servicio de red",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 78,
+        "match_keywords": [
+          "equipo red",
+          "gateway",
+          "firewall",
+          "controlador",
+          "red",
+          "comunicación"
+        ],
+        "exclude_keywords": [
+          "servicio instalación"
+        ]
+      },
+      "example_telegram": "vendí gateway de red",
+      "guardrail_notes": "Preferir router/switch/AP específico si aplica.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE CABLE DE RED",
+      "sat": {
+        "product_service_key": "26121609",
+        "product_service_description": "Cable de redes",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 88,
+        "match_keywords": [
+          "cable red",
+          "cable utp",
+          "ethernet",
+          "patch cord",
+          "cat5",
+          "cat6",
+          "cat6a"
+        ],
+        "exclude_keywords": [
+          "servicio cableado"
+        ]
+      },
+      "example_telegram": "vendí cable de red",
+      "guardrail_notes": "Si se vende por metro, ajustar unidad.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE CONECTORES, PLUGS O TERMINALES PARA CABLEADO DE RED",
+      "sat": {
+        "product_service_key": "39121446",
+        "product_service_description": "Equipo conector de terminal de cable",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 84,
+        "match_keywords": [
+          "conector",
+          "plug",
+          "rj45",
+          "jack",
+          "terminal",
+          "faceplate",
+          "patch panel"
+        ],
+        "exclude_keywords": [
+          "servicio ponchado"
+        ]
+      },
+      "example_telegram": "vendí conectores RJ45",
+      "guardrail_notes": "Producto accesorio.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-007",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE CABLE DE FIBRA ÓPTICA",
+      "sat": {
+        "product_service_key": "26121607",
+        "product_service_description": "Cable de fibra óptica",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 72,
+        "match_keywords": [
+          "fibra óptica",
+          "cable fibra",
+          "fibra",
+          "patch cord fibra"
+        ],
+        "exclude_keywords": [
+          "fusión fibra servicio"
+        ]
+      },
+      "example_telegram": "vendí patch cord de fibra óptica",
+      "guardrail_notes": "Si se vende por metro, ajustar unidad.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-008",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE UPS O NO BREAK PARA EQUIPO DE CÓMPUTO O COMUNICACIÓN",
+      "sat": {
+        "product_service_key": "39121011",
+        "product_service_description": "Fuentes ininterrumpibles de potencia",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 80,
+        "match_keywords": [
+          "ups",
+          "no break",
+          "regulador",
+          "respaldo energia",
+          "batería",
+          "equipo red"
+        ],
+        "exclude_keywords": [
+          "instalación eléctrica"
+        ]
+      },
+      "example_telegram": "vendí UPS para rack",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-RED-009",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Redes / comunicación",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE CABLE O ACCESORIO DE COMPUTADOR",
+      "sat": {
+        "product_service_key": "43202222",
+        "product_service_description": "Cables de computador",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A5",
+          "A4"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 76,
+        "match_keywords": [
+          "cable hdmi",
+          "cable usb",
+          "cable computadora",
+          "adaptador",
+          "cable energia"
+        ],
+        "exclude_keywords": [
+          "servicio instalación"
+        ]
+      },
+      "example_telegram": "vendí cable HDMI",
+      "guardrail_notes": "Producto accesorio.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-PC-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "43211500",
+        "product_service_description": "Computadores",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 96,
+        "match_keywords": [
+          "computadora",
+          "laptop",
+          "mini pc",
+          "cpu",
+          "equipo cómputo",
+          "venta pc"
+        ],
+        "exclude_keywords": [
+          "servicio mantenimiento"
+        ]
+      },
+      "example_telegram": "vendí laptop",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-PC-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE ACCESORIO DE COMPUTADORA",
+      "sat": {
+        "product_service_key": "43211600",
+        "product_service_description": "Accesorios de computador",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 86,
+        "match_keywords": [
+          "mouse",
+          "teclado",
+          "adaptador",
+          "cargador",
+          "accesorio computadora",
+          "base laptop"
+        ],
+        "exclude_keywords": [
+          "servicio reparación"
+        ]
+      },
+      "example_telegram": "vendí teclado y mouse",
+      "guardrail_notes": "Preferir clave más específica si existe.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-PC-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE MONITOR O PANTALLA DE COMPUTADOR",
+      "sat": {
+        "product_service_key": "43211902",
+        "product_service_description": "Monitores o pantallas de computador",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 88,
+        "match_keywords": [
+          "monitor",
+          "pantalla",
+          "display",
+          "computadora"
+        ],
+        "exclude_keywords": [
+          "instalación",
+          "configuración"
+        ]
+      },
+      "example_telegram": "vendí monitor para computadora",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-PC-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE DISCO DURO, SSD O DISPOSITIVO DE ALMACENAMIENTO",
+      "sat": {
+        "product_service_key": "43201800",
+        "product_service_description": "Dispositivos de almacenamiento",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": false
+      },
+      "scoring": {
+        "base_score": 90,
+        "match_keywords": [
+          "disco duro",
+          "ssd",
+          "nvme",
+          "almacenamiento",
+          "usb",
+          "memoria"
+        ],
+        "exclude_keywords": [
+          "servicio instalación"
+        ]
+      },
+      "example_telegram": "vendí SSD para computadora",
+      "guardrail_notes": "Producto físico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "PROD-PC-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Productos",
+      "subfamily": "Cómputo / hardware",
+      "item_type": "Producto",
+      "action_n8n": "SUGERIR",
+      "invoice_concept": "VENTA DE MEMORIA, REFACCIÓN O ACCESORIO DE EQUIPO DE CÓMPUTO",
+      "sat": {
+        "product_service_key": "43211600",
+        "product_service_description": "Accesorios de computador",
+        "unit_key": "H87",
+        "unit": "Pieza",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Bajo",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 76,
+        "match_keywords": [
+          "ram",
+          "memoria",
+          "refacción computadora",
+          "fuente pc",
+          "accesorio pc"
+        ],
+        "exclude_keywords": [
+          "servicio reparación"
+        ]
+      },
+      "example_telegram": "vendí memoria RAM",
+      "guardrail_notes": "Usar clave más específica si tu facturador la ofrece.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "MIX-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Casos mixtos",
+      "subfamily": "Producto + servicio",
+      "item_type": "Mixto",
+      "action_n8n": "PEDIR_ACLARACION",
+      "invoice_concept": "SEPARAR EN LÍNEAS: VENTA DE EQUIPO Y SERVICIO DE INSTALACIÓN/CONFIGURACIÓN",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3",
+          "A4",
+          "A5"
+        ],
+        "certificate_coverage": "Fuerte",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 65,
+        "match_keywords": [
+          "vendí e instalé",
+          "incluí equipo y mano de obra",
+          "equipo instalado",
+          "suministro e instalación"
+        ],
+        "exclude_keywords": [
+          "solo servicio",
+          "solo venta"
+        ]
+      },
+      "example_telegram": "vendí e instalé cámaras con cableado",
+      "guardrail_notes": "Bot debe sugerir separar producto y servicio en conceptos distintos.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "MIX-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Casos mixtos",
+      "subfamily": "Diagnóstico + reparación",
+      "item_type": "Mixto",
+      "action_n8n": "PEDIR_ACLARACION",
+      "invoice_concept": "DEFINIR SI FUE DIAGNÓSTICO, MANTENIMIENTO CORRECTIVO O REPARACIÓN CON REFACCIÓN",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A2",
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 60,
+        "match_keywords": [
+          "revisé y arreglé",
+          "quedó funcionando",
+          "cambié pieza",
+          "reparación",
+          "falla"
+        ],
+        "exclude_keywords": [
+          "software app web"
+        ]
+      },
+      "example_telegram": "revisé y cambié fuente de cámara",
+      "guardrail_notes": "Preguntar si incluye refacción facturable.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "MIX-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Casos mixtos",
+      "subfamily": "Red + CCTV",
+      "item_type": "Mixto",
+      "action_n8n": "PEDIR_ACLARACION",
+      "invoice_concept": "DEFINIR SI EL SERVICIO PRINCIPAL FUE CCTV, RED O CABLEADO",
+      "sat": {
+        "product_service_key": "72151605",
+        "product_service_description": "Servicio de cableado para video, datos y voz",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A1",
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 58,
+        "match_keywords": [
+          "cámaras con internet",
+          "cctv y red",
+          "cableado cámaras",
+          "conexión remota"
+        ],
+        "exclude_keywords": [
+          "software app"
+        ]
+      },
+      "example_telegram": "hice cableado y conecté cámaras a internet",
+      "guardrail_notes": "Si lo principal fue cableado: 72151605; si instalación CCTV: 72151702.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "MIX-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Casos mixtos",
+      "subfamily": "Control de acceso + usuarios",
+      "item_type": "Mixto",
+      "action_n8n": "PEDIR_ACLARACION",
+      "invoice_concept": "DEFINIR SI FUE CONFIGURACIÓN OPERATIVA O SOPORTE DE CONTROL DE ACCESO",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A4"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 55,
+        "match_keywords": [
+          "usuarios",
+          "residentes",
+          "permisos",
+          "tags",
+          "alta baja",
+          "base de datos",
+          "acceso"
+        ],
+        "exclude_keywords": [
+          "desarrollo sistema"
+        ]
+      },
+      "example_telegram": "di de alta usuarios y reorganicé permisos",
+      "guardrail_notes": "Evitar describir como desarrollo de software.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "MIX-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Casos mixtos",
+      "subfamily": "Servidor / sistemas",
+      "item_type": "Mixto",
+      "action_n8n": "PEDIR_ACLARACION",
+      "invoice_concept": "VALIDAR QUE SEA SOPORTE TÉCNICO DE EQUIPO, NO DESARROLLO DE SOFTWARE",
+      "sat": {
+        "product_service_key": "81111811",
+        "product_service_description": "Servicios de soporte técnico o de mesa de ayuda",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": true,
+        "supported_activity_ids": [
+          "A3",
+          "A5"
+        ],
+        "certificate_coverage": "Media",
+        "fiscal_risk": "Medio",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 52,
+        "match_keywords": [
+          "servidor",
+          "sistema",
+          "base de datos",
+          "programa",
+          "aplicación",
+          "n8n",
+          "automatización"
+        ],
+        "exclude_keywords": [
+          "desarrollo software",
+          "ia",
+          "web",
+          "app"
+        ]
+      },
+      "example_telegram": "configuré servidor local para acceso remoto",
+      "guardrail_notes": "Si menciona desarrollo/automatización, bloquear hasta agregar actividad.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-001",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Software / apps / IA",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR CON ACTIVIDADES ACTUALES: DESARROLLO DE SOFTWARE, APP, IA O AUTOMATIZACIÓN",
+      "sat": {
+        "product_service_key": "81111500",
+        "product_service_description": "Ingeniería de software o hardware",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "Fuera actividad actual",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 20,
+        "match_keywords": [
+          "software",
+          "app",
+          "aplicación",
+          "desarrollo",
+          "programación",
+          "ia",
+          "inteligencia artificial",
+          "n8n",
+          "automatización",
+          "api",
+          "chatbot",
+          "sistema web",
+          "saas"
+        ],
+        "exclude_keywords": [
+          "control acceso físico",
+          "cctv",
+          "hardware"
+        ]
+      },
+      "example_telegram": "desarrollé una app o flujo n8n para cliente",
+      "guardrail_notes": "Agregar actividad económica de software/consultoría informática antes de facturar fuerte.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-002",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Codificación / programación",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR CON ACTIVIDADES ACTUALES: CODIFICACIÓN O PROGRAMACIÓN DE SOFTWARE",
+      "sat": {
+        "product_service_key": "81111810",
+        "product_service_description": "Servicios de codificación de software",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "Fuera actividad actual",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 20,
+        "match_keywords": [
+          "codigo",
+          "codificación",
+          "programé",
+          "programacion",
+          "script",
+          "backend",
+          "frontend",
+          "api",
+          "node",
+          "python",
+          "react",
+          "flutter"
+        ],
+        "exclude_keywords": [
+          "hardware",
+          "cctv",
+          "red física"
+        ]
+      },
+      "example_telegram": "programé un script para automatizar reportes",
+      "guardrail_notes": "Requiere actualización de actividad.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-003",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Páginas web",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR CON ACTIVIDADES ACTUALES: DISEÑO O DESARROLLO DE SITIO WEB",
+      "sat": {
+        "product_service_key": "81112103",
+        "product_service_description": "Servicios de diseño de sitios web",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": true,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "Fuera actividad actual",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 20,
+        "match_keywords": [
+          "página web",
+          "sitio web",
+          "landing",
+          "wordpress",
+          "ecommerce",
+          "tienda online",
+          "seo web"
+        ],
+        "exclude_keywords": [
+          "cableado",
+          "cámaras"
+        ]
+      },
+      "example_telegram": "hice una página web",
+      "guardrail_notes": "Requiere actividad de servicios web/software.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-004",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Plomería / baño",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR: PLOMERÍA, BAÑOS O INSTALACIONES HIDROSANITARIAS NO CUBIERTAS",
+      "sat": {
+        "product_service_key": "72101510",
+        "product_service_description": "Servicios de plomería",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": false,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "No cubierto",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 5,
+        "match_keywords": [
+          "plomería",
+          "baño",
+          "taza",
+          "sanitario",
+          "lavabo",
+          "tubería agua",
+          "drenaje",
+          "fuga agua"
+        ],
+        "exclude_keywords": [
+          "control acceso",
+          "cctv",
+          "red"
+        ]
+      },
+      "example_telegram": "instalé una taza de baño",
+      "guardrail_notes": "Fuera de tus actividades actuales.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-005",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Obra civil / construcción general",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR: OBRA CIVIL, ALBAÑILERÍA O CONSTRUCCIÓN GENERAL NO TÉCNICA",
+      "sat": {
+        "product_service_key": "72111100",
+        "product_service_description": "Servicios de construcción de unidades unifamiliares",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": false,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "No cubierto",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 5,
+        "match_keywords": [
+          "albañilería",
+          "muro",
+          "cemento",
+          "pintura",
+          "impermeabilizar",
+          "losa",
+          "construcción general"
+        ],
+        "exclude_keywords": [
+          "canaleta para cableado",
+          "cámaras"
+        ]
+      },
+      "example_telegram": "pinté una barda",
+      "guardrail_notes": "Solo instalación/equipamiento técnico relacionado con tus actividades.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-006",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Gestoría / contabilidad / legal",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR: SERVICIOS CONTABLES, FISCALES, LEGALES O DE GESTORÍA",
+      "sat": {
+        "product_service_key": "84111500",
+        "product_service_description": "Servicios contables",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": false,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "No cubierto",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 5,
+        "match_keywords": [
+          "contador",
+          "sat",
+          "trámite",
+          "gestoría",
+          "legal",
+          "contrato",
+          "fiscal",
+          "declaración"
+        ],
+        "exclude_keywords": [
+          "soporte técnico equipo"
+        ]
+      },
+      "example_telegram": "hice trámite fiscal a cliente",
+      "guardrail_notes": "Fuera de actividades actuales.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-007",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Marketing / contenido",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR: MARKETING, DISEÑO GRÁFICO O PRODUCCIÓN DE CONTENIDO",
+      "sat": {
+        "product_service_key": "82101800",
+        "product_service_description": "Servicios de agencia de publicidad",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": false,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "No cubierto",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 5,
+        "match_keywords": [
+          "marketing",
+          "publicidad",
+          "diseño",
+          "logo",
+          "video",
+          "redes sociales",
+          "community manager"
+        ],
+        "exclude_keywords": [
+          "redes de datos",
+          "cctv"
+        ]
+      },
+      "example_telegram": "hice publicaciones de redes sociales",
+      "guardrail_notes": "Fuera de actividades actuales.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    },
+    {
+      "id": "BLOCK-008",
+      "source_sheet": "Catalogo_Conceptos",
+      "family": "Bloqueos",
+      "subfamily": "Comida / viáticos personales",
+      "item_type": "Servicio",
+      "action_n8n": "BLOQUEAR",
+      "invoice_concept": "NO FACTURAR COMO SERVICIO TÉCNICO: COMIDA, OCIO O GASTOS PERSONALES",
+      "sat": {
+        "product_service_key": "90101500",
+        "product_service_description": "Establecimientos para comer y beber",
+        "unit_key": "E48",
+        "unit": "Unidad de servicio",
+        "tax_object": "02",
+        "suggested_iva": "16%"
+      },
+      "fiscal_fit": {
+        "resico_626_ok": false,
+        "current_activity_ok": false,
+        "supported_activity_ids": [
+          "NO_ACTUAL"
+        ],
+        "certificate_coverage": "No cubierto",
+        "fiscal_risk": "Alto",
+        "requires_human_review": true
+      },
+      "scoring": {
+        "base_score": 5,
+        "match_keywords": [
+          "comida",
+          "restaurante",
+          "tacos",
+          "gasolina personal",
+          "ocio",
+          "cine",
+          "mercado"
+        ],
+        "exclude_keywords": [
+          "visita técnica"
+        ]
+      },
+      "example_telegram": "comida de trabajo",
+      "guardrail_notes": "No convertir gastos personales en concepto técnico.",
+      "source_url": "https://wwwmat.sat.gob.mx/consultas/53693/catalogo-de-productos-y-servicios",
+      "reviewed_at": "2026-06-02"
+    }
+  ]
+}

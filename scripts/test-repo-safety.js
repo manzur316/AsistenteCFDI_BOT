@@ -10,6 +10,9 @@ const safeFiles = [
   ".env.example",
   ".env.local.example",
   "data/concepts.normalized.json",
+  "data/sat_official/README.md",
+  "data/catalog_expansion/proposed_concepts.resico_626.json",
+  "data/catalog_expansion/concepts.normalized.candidate.json",
   "runtime/.gitkeep",
   "runner/README.md",
   "runner/telegram-local-runner.js",
@@ -32,6 +35,7 @@ const forbiddenVersionedPaths = [
   /^backups\//i,
   /^data\/base_cfdi_resico_n8n_emberhub_2026\.xlsx$/i,
   /\.(token|secret|key|pem|p12|pfx|cer|zip|7z|rar|pdf)$/i,
+  /^data\/sat_official\/(?!README\.md$).+/i,
 ];
 
 const scanFiles = [
@@ -43,7 +47,10 @@ const scanFiles = [
   ...listFiles("scripts"),
   ...listFiles("sql"),
   ...listFiles("workflow"),
+  ...listFiles("docs"),
   "data/concepts.normalized.json",
+  "data/sat_official/README.md",
+  "data/catalog_expansion/proposed_concepts.resico_626.json",
 ];
 
 const tokenPatterns = [
@@ -166,6 +173,13 @@ checks.push({
 let gitignore = "";
 if (exists(".gitignore")) gitignore = readText(".gitignore");
 for (const required of [".env", ".env.local", "runtime/*.jsonl", "runtime/*.json", "runtime/runner-offset.json", "runner/*.log", "logs/", "data/base_cfdi_resico_n8n_emberhub_2026.xlsx"]) {
+  checks.push({
+    name: `gitignore_contains:${required}`,
+    pass: gitignore.includes(required),
+    value: required,
+  });
+}
+for (const required of ["data/sat_official/*", "!data/sat_official/README.md", "data/sat_official/imported_sat_catalog.normalized.json"]) {
   checks.push({
     name: `gitignore_contains:${required}`,
     pass: gitignore.includes(required),

@@ -1,0 +1,1309 @@
+{
+  "schema_version": "1.0.0",
+  "status": "BLOCKED_MISSING_SAT_OFFICIAL_CATALOG",
+  "message": "Falta catálogo oficial SAT. Coloca el archivo oficial catCFDI del SAT en data/sat_official/ y vuelve a ejecutar.",
+  "generated_at": "2026-06-04T02:08:28.671Z",
+  "source": "NO_SAT_OFFICIAL_LOCAL",
+  "desired_concepts": [
+    {
+      "id": "EXP-PROD-CCTV-CAMERA",
+      "familia": "CCTV",
+      "subfamilia": "Camara videovigilancia",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CAMARA CCTV O CAMARA DE VIDEOVIGILANCIA",
+      "search_terms": [
+        "camara",
+        "videovigilancia"
+      ],
+      "keywords_excluir": [
+        "dvr",
+        "nvr",
+        "grabador"
+      ],
+      "desired_precision_level": "EXACT"
+    },
+    {
+      "id": "EXP-PROD-CCTV-DVR-NVR",
+      "familia": "CCTV",
+      "subfamilia": "Grabador videovigilancia",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE DVR, NVR O GRABADOR DE VIDEOVIGILANCIA",
+      "search_terms": [
+        "dvr",
+        "nvr",
+        "grabador",
+        "videovigilancia"
+      ],
+      "keywords_excluir": [
+        "camara"
+      ],
+      "desired_precision_level": "EXACT"
+    },
+    {
+      "id": "EXP-PROD-CCTV-POWER",
+      "familia": "CCTV",
+      "subfamilia": "Fuente CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE FUENTE DE PODER PARA CCTV",
+      "search_terms": [
+        "fuente",
+        "poder"
+      ],
+      "keywords_excluir": [
+        "camara",
+        "dvr",
+        "nvr"
+      ],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-CCTV-DISK",
+      "familia": "CCTV",
+      "subfamilia": "Disco CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE DISCO DURO PARA DVR O NVR",
+      "search_terms": [
+        "disco",
+        "duro"
+      ],
+      "keywords_excluir": [
+        "camara"
+      ],
+      "desired_precision_level": "EXACT"
+    },
+    {
+      "id": "EXP-PROD-CCTV-ACCESSORY",
+      "familia": "CCTV",
+      "subfamilia": "Accesorios CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CONECTOR, BALUN O ACCESORIO PARA CCTV",
+      "search_terms": [
+        "conector",
+        "accesorio"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-CCTV-CABLE",
+      "familia": "CCTV",
+      "subfamilia": "Cable CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CABLE PARA SISTEMA CCTV",
+      "search_terms": [
+        "cable"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-CCTV-CAMERA-INSTALL",
+      "familia": "CCTV",
+      "subfamilia": "Instalacion camara",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE CAMARA CCTV",
+      "search_terms": [
+        "instalacion",
+        "camara"
+      ],
+      "keywords_excluir": [
+        "dvr",
+        "nvr"
+      ],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-CCTV-SYSTEM-INSTALL",
+      "familia": "CCTV",
+      "subfamilia": "Instalacion sistema",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE SISTEMA DE VIDEOVIGILANCIA",
+      "search_terms": [
+        "instalacion",
+        "videovigilancia"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-CCTV-DVR-INSTALL",
+      "familia": "CCTV",
+      "subfamilia": "Instalacion DVR/NVR",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE DVR O NVR",
+      "search_terms": [
+        "instalacion",
+        "dvr"
+      ],
+      "keywords_excluir": [
+        "camara"
+      ],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-CCTV-MAINT",
+      "familia": "CCTV",
+      "subfamilia": "Mantenimiento CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO DE SISTEMA CCTV",
+      "search_terms": [
+        "mantenimiento",
+        "videovigilancia"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-CCTV-DIAG",
+      "familia": "CCTV",
+      "subfamilia": "Diagnostico CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO Y REVISION DE SISTEMA CCTV",
+      "search_terms": [
+        "soporte",
+        "tecnico"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-CCTV-CONFIG",
+      "familia": "CCTV",
+      "subfamilia": "Configuracion CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "CONFIGURACION DE DVR, NVR O CAMARAS CCTV",
+      "search_terms": [
+        "configuracion",
+        "sistema"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-CCTV-CABLING",
+      "familia": "CCTV",
+      "subfamilia": "Cableado CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "CABLEADO PARA SISTEMA CCTV",
+      "search_terms": [
+        "cableado",
+        "instalacion"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-AC-LOCK-INSTALL",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Chapa magnetica",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE CHAPA MAGNETICA O ELECTROIMAN",
+      "search_terms": [
+        "instalacion",
+        "control",
+        "acceso"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-AC-READER-INSTALL",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Lector biometrico",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE LECTOR, BIOMETRICO O PANEL DE ACCESO",
+      "search_terms": [
+        "instalacion",
+        "control",
+        "acceso"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-AC-ACCESSORY-INSTALL",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Accesorio control acceso",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE BOTON, FUENTE O ACCESORIO DE CONTROL DE ACCESO",
+      "search_terms": [
+        "instalacion",
+        "control",
+        "acceso"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-AC-MAINT",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Mantenimiento control acceso",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO Y REVISION DE CONTROL DE ACCESO",
+      "search_terms": [
+        "soporte",
+        "tecnico"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-AC-LOCK",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Chapa electroiman",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CHAPA MAGNETICA O ELECTROIMAN",
+      "search_terms": [
+        "cerradura",
+        "electromagnetica"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-AC-READER",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Lector biometrico",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE LECTOR O BIOMETRICO DE CONTROL DE ACCESO",
+      "search_terms": [
+        "lector"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-AC-TAG",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Tarjetas tags",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE TARJETA, TAG O LLAVERO RFID",
+      "search_terms": [
+        "tarjeta",
+        "rfid"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "EXACT"
+    },
+    {
+      "id": "EXP-PROD-AC-ACCESSORY",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Accesorios control acceso",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE FUENTE, BOTON O ACCESORIO DE CONTROL DE ACCESO",
+      "search_terms": [
+        "accesorio"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-AC-CONFIG",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Configuracion acceso",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "CONFIGURACION DE SISTEMA DE CONTROL DE ACCESO",
+      "search_terms": [
+        "configuracion",
+        "sistema"
+      ],
+      "keywords_excluir": [
+        "software"
+      ],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-MAINT",
+      "familia": "BARRERA",
+      "subfamilia": "Mantenimiento barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO DE BARRERA VEHICULAR",
+      "search_terms": [
+        "mantenimiento",
+        "seguridad"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-DIAG",
+      "familia": "BARRERA",
+      "subfamilia": "Diagnostico barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO DE BARRERA VEHICULAR",
+      "search_terms": [
+        "soporte",
+        "tecnico"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-ADJUST",
+      "familia": "BARRERA",
+      "subfamilia": "Ajuste barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "AJUSTE DE RESORTE, BRAZO O SENSOR DE BARRERA VEHICULAR",
+      "search_terms": [
+        "mantenimiento",
+        "seguridad"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-INSTALL",
+      "familia": "BARRERA",
+      "subfamilia": "Instalacion barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE BARRERA VEHICULAR",
+      "search_terms": [
+        "instalacion",
+        "seguridad"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-BARRERA-PART",
+      "familia": "BARRERA",
+      "subfamilia": "Refacciones barrera",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE REFACCION O ACCESORIO PARA BARRERA VEHICULAR",
+      "search_terms": [
+        "accesorio"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-RED-ROUTER",
+      "familia": "RED",
+      "subfamilia": "Router",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "INSTALACION O CONFIGURACION DE ROUTER",
+      "search_terms": [
+        "configuracion",
+        "router"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-RED-SWITCH",
+      "familia": "RED",
+      "subfamilia": "Switch",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "INSTALACION O CONFIGURACION DE SWITCH",
+      "search_terms": [
+        "configuracion",
+        "switch"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-RED-AP",
+      "familia": "RED",
+      "subfamilia": "Access point",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION O CONFIGURACION DE ACCESS POINT",
+      "search_terms": [
+        "configuracion",
+        "red"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-RED-WIFI",
+      "familia": "RED",
+      "subfamilia": "WiFi",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "CONFIGURACION DE RED WIFI",
+      "search_terms": [
+        "configuracion",
+        "red"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-RED-DIAG",
+      "familia": "RED",
+      "subfamilia": "Diagnostico red",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO DE RED LOCAL",
+      "search_terms": [
+        "soporte",
+        "red"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-RED-CABLING",
+      "familia": "RED",
+      "subfamilia": "Cableado red",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "CABLEADO DE RED LIGADO A EQUIPAMIENTO",
+      "search_terms": [
+        "cableado",
+        "instalacion"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-RED-ROUTER",
+      "familia": "RED",
+      "subfamilia": "Router",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE ROUTER",
+      "search_terms": [
+        "router"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "EXACT"
+    },
+    {
+      "id": "EXP-PROD-RED-SWITCH",
+      "familia": "RED",
+      "subfamilia": "Switch",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE SWITCH DE RED",
+      "search_terms": [
+        "switch"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "EXACT"
+    },
+    {
+      "id": "EXP-PROD-RED-AP",
+      "familia": "RED",
+      "subfamilia": "Access point",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE ACCESS POINT",
+      "search_terms": [
+        "access",
+        "point"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-RED-CABLE",
+      "familia": "RED",
+      "subfamilia": "Cable accesorios",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CABLE UTP, CONECTOR O ACCESORIO DE COMUNICACION",
+      "search_terms": [
+        "cable",
+        "conector"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-RED-EQUIPMENT",
+      "familia": "RED",
+      "subfamilia": "Equipo comunicacion",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE EQUIPO DE COMUNICACION",
+      "search_terms": [
+        "comunicacion"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-PC-COMPUTER",
+      "familia": "COMPUTO",
+      "subfamilia": "Computadora",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE COMPUTADORA",
+      "search_terms": [
+        "computadora"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "EXACT"
+    },
+    {
+      "id": "EXP-PROD-PC-LAPTOP",
+      "familia": "COMPUTO",
+      "subfamilia": "Laptop",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE LAPTOP",
+      "search_terms": [
+        "computadora",
+        "portatil"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-PC-SSD",
+      "familia": "COMPUTO",
+      "subfamilia": "SSD",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE SSD O UNIDAD DE ESTADO SOLIDO",
+      "search_terms": [
+        "disco",
+        "estado",
+        "solido"
+      ],
+      "keywords_excluir": [
+        "cctv",
+        "dvr"
+      ],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-PC-RAM",
+      "familia": "COMPUTO",
+      "subfamilia": "RAM",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE MEMORIA RAM",
+      "search_terms": [
+        "memoria"
+      ],
+      "keywords_excluir": [
+        "cctv"
+      ],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-PC-POWER",
+      "familia": "COMPUTO",
+      "subfamilia": "Fuente PC",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE FUENTE DE PODER PARA PC",
+      "search_terms": [
+        "fuente",
+        "poder"
+      ],
+      "keywords_excluir": [
+        "cctv"
+      ],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-PROD-PC-PERIPHERAL",
+      "familia": "COMPUTO",
+      "subfamilia": "Perifericos",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE TECLADO, MOUSE, MONITOR O PERIFERICO",
+      "search_terms": [
+        "teclado",
+        "mouse"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-PC-MAINT",
+      "familia": "COMPUTO",
+      "subfamilia": "Mantenimiento computadora",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO DE COMPUTADORA",
+      "search_terms": [
+        "mantenimiento",
+        "computadora"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-PC-REPAIR",
+      "familia": "COMPUTO",
+      "subfamilia": "Reparacion computadora",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "REPARACION DE COMPUTADORA",
+      "search_terms": [
+        "reparacion",
+        "computadora"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-PC-DIAG",
+      "familia": "COMPUTO",
+      "subfamilia": "Diagnostico computadora",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO DE COMPUTADORA",
+      "search_terms": [
+        "soporte",
+        "tecnico"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-PC-FORMAT",
+      "familia": "COMPUTO",
+      "subfamilia": "Formateo",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "FORMATEO O MANTENIMIENTO TECNICO DE EQUIPO DE COMPUTO",
+      "search_terms": [
+        "mantenimiento",
+        "computadora"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    },
+    {
+      "id": "EXP-SVC-PC-COMPONENT",
+      "familia": "COMPUTO",
+      "subfamilia": "Componente fisico",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE COMPONENTE FISICO EN EQUIPO DE COMPUTO",
+      "search_terms": [
+        "instalacion",
+        "computadora"
+      ],
+      "keywords_excluir": [],
+      "desired_precision_level": "BROAD_ALLOWED"
+    }
+  ],
+  "concepts": [],
+  "gaps": [
+    {
+      "id": "EXP-PROD-CCTV-CAMERA",
+      "familia": "CCTV",
+      "subfamilia": "Camara videovigilancia",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CAMARA CCTV O CAMARA DE VIDEOVIGILANCIA",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-CCTV-DVR-NVR",
+      "familia": "CCTV",
+      "subfamilia": "Grabador videovigilancia",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE DVR, NVR O GRABADOR DE VIDEOVIGILANCIA",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-CCTV-POWER",
+      "familia": "CCTV",
+      "subfamilia": "Fuente CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE FUENTE DE PODER PARA CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-CCTV-DISK",
+      "familia": "CCTV",
+      "subfamilia": "Disco CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE DISCO DURO PARA DVR O NVR",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-CCTV-ACCESSORY",
+      "familia": "CCTV",
+      "subfamilia": "Accesorios CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CONECTOR, BALUN O ACCESORIO PARA CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-CCTV-CABLE",
+      "familia": "CCTV",
+      "subfamilia": "Cable CCTV",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CABLE PARA SISTEMA CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-CCTV-CAMERA-INSTALL",
+      "familia": "CCTV",
+      "subfamilia": "Instalacion camara",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE CAMARA CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-CCTV-SYSTEM-INSTALL",
+      "familia": "CCTV",
+      "subfamilia": "Instalacion sistema",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE SISTEMA DE VIDEOVIGILANCIA",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-CCTV-DVR-INSTALL",
+      "familia": "CCTV",
+      "subfamilia": "Instalacion DVR/NVR",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE DVR O NVR",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-CCTV-MAINT",
+      "familia": "CCTV",
+      "subfamilia": "Mantenimiento CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO DE SISTEMA CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-CCTV-DIAG",
+      "familia": "CCTV",
+      "subfamilia": "Diagnostico CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO Y REVISION DE SISTEMA CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-CCTV-CONFIG",
+      "familia": "CCTV",
+      "subfamilia": "Configuracion CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "CONFIGURACION DE DVR, NVR O CAMARAS CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-CCTV-CABLING",
+      "familia": "CCTV",
+      "subfamilia": "Cableado CCTV",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "CABLEADO PARA SISTEMA CCTV",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-AC-LOCK-INSTALL",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Chapa magnetica",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE CHAPA MAGNETICA O ELECTROIMAN",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-AC-READER-INSTALL",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Lector biometrico",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE LECTOR, BIOMETRICO O PANEL DE ACCESO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-AC-ACCESSORY-INSTALL",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Accesorio control acceso",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE BOTON, FUENTE O ACCESORIO DE CONTROL DE ACCESO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-AC-MAINT",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Mantenimiento control acceso",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO Y REVISION DE CONTROL DE ACCESO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-AC-LOCK",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Chapa electroiman",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CHAPA MAGNETICA O ELECTROIMAN",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-AC-READER",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Lector biometrico",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE LECTOR O BIOMETRICO DE CONTROL DE ACCESO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-AC-TAG",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Tarjetas tags",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE TARJETA, TAG O LLAVERO RFID",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-AC-ACCESSORY",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Accesorios control acceso",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE FUENTE, BOTON O ACCESORIO DE CONTROL DE ACCESO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-AC-CONFIG",
+      "familia": "CONTROL_ACCESO",
+      "subfamilia": "Configuracion acceso",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "CONFIGURACION DE SISTEMA DE CONTROL DE ACCESO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-MAINT",
+      "familia": "BARRERA",
+      "subfamilia": "Mantenimiento barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO DE BARRERA VEHICULAR",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-DIAG",
+      "familia": "BARRERA",
+      "subfamilia": "Diagnostico barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO DE BARRERA VEHICULAR",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-ADJUST",
+      "familia": "BARRERA",
+      "subfamilia": "Ajuste barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "AJUSTE DE RESORTE, BRAZO O SENSOR DE BARRERA VEHICULAR",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-BARRERA-INSTALL",
+      "familia": "BARRERA",
+      "subfamilia": "Instalacion barrera",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE BARRERA VEHICULAR",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-BARRERA-PART",
+      "familia": "BARRERA",
+      "subfamilia": "Refacciones barrera",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE REFACCION O ACCESORIO PARA BARRERA VEHICULAR",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-RED-ROUTER",
+      "familia": "RED",
+      "subfamilia": "Router",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "INSTALACION O CONFIGURACION DE ROUTER",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-RED-SWITCH",
+      "familia": "RED",
+      "subfamilia": "Switch",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "INSTALACION O CONFIGURACION DE SWITCH",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-RED-AP",
+      "familia": "RED",
+      "subfamilia": "Access point",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION O CONFIGURACION DE ACCESS POINT",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-RED-WIFI",
+      "familia": "RED",
+      "subfamilia": "WiFi",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "CONFIGURACION DE RED WIFI",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-RED-DIAG",
+      "familia": "RED",
+      "subfamilia": "Diagnostico red",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO DE RED LOCAL",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-RED-CABLING",
+      "familia": "RED",
+      "subfamilia": "Cableado red",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "CABLEADO DE RED LIGADO A EQUIPAMIENTO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-RED-ROUTER",
+      "familia": "RED",
+      "subfamilia": "Router",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE ROUTER",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-RED-SWITCH",
+      "familia": "RED",
+      "subfamilia": "Switch",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE SWITCH DE RED",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-RED-AP",
+      "familia": "RED",
+      "subfamilia": "Access point",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE ACCESS POINT",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-RED-CABLE",
+      "familia": "RED",
+      "subfamilia": "Cable accesorios",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE CABLE UTP, CONECTOR O ACCESORIO DE COMUNICACION",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-RED-EQUIPMENT",
+      "familia": "RED",
+      "subfamilia": "Equipo comunicacion",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE EQUIPO DE COMUNICACION",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-PC-COMPUTER",
+      "familia": "COMPUTO",
+      "subfamilia": "Computadora",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE COMPUTADORA",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-PC-LAPTOP",
+      "familia": "COMPUTO",
+      "subfamilia": "Laptop",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE LAPTOP",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-PC-SSD",
+      "familia": "COMPUTO",
+      "subfamilia": "SSD",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE SSD O UNIDAD DE ESTADO SOLIDO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-PC-RAM",
+      "familia": "COMPUTO",
+      "subfamilia": "RAM",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE MEMORIA RAM",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-PC-POWER",
+      "familia": "COMPUTO",
+      "subfamilia": "Fuente PC",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE FUENTE DE PODER PARA PC",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-PROD-PC-PERIPHERAL",
+      "familia": "COMPUTO",
+      "subfamilia": "Perifericos",
+      "tipo": "PRODUCTO",
+      "operation_type": "PRODUCTO",
+      "concepto_factura_recomendado": "VENTA DE TECLADO, MOUSE, MONITOR O PERIFERICO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-PC-MAINT",
+      "familia": "COMPUTO",
+      "subfamilia": "Mantenimiento computadora",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "MANTENIMIENTO DE COMPUTADORA",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-PC-REPAIR",
+      "familia": "COMPUTO",
+      "subfamilia": "Reparacion computadora",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "REPARACION DE COMPUTADORA",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-PC-DIAG",
+      "familia": "COMPUTO",
+      "subfamilia": "Diagnostico computadora",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "DIAGNOSTICO DE COMPUTADORA",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-PC-FORMAT",
+      "familia": "COMPUTO",
+      "subfamilia": "Formateo",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO",
+      "concepto_factura_recomendado": "FORMATEO O MANTENIMIENTO TECNICO DE EQUIPO DE COMPUTO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    },
+    {
+      "id": "EXP-SVC-PC-COMPONENT",
+      "familia": "COMPUTO",
+      "subfamilia": "Componente fisico",
+      "tipo": "SERVICIO",
+      "operation_type": "SERVICIO_INSTALACION",
+      "concepto_factura_recomendado": "INSTALACION DE COMPONENTE FISICO EN EQUIPO DE COMPUTO",
+      "precision_level": "GAP_REQUIRES_REVIEW",
+      "requires_human_review": true,
+      "suggestible": false,
+      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+    }
+  ]
+}
