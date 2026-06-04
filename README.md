@@ -326,6 +326,16 @@ a intentar desde `GET /v4/cfdi/uid/{cfdi_uid}` y desde el XML descargado cuando
 `CREATE_OK_IDENTITY_MISSING`, no aumenta `successful` y el analyzer reporta
 `identity_missing`.
 
+Fase 6A.7D separa HTTP OK de exito de negocio Factura.com. Una respuesta HTTP
+200 con cuerpo `{ "response": "error" }` o `{ "status": "error" }` ahora queda
+como `http_ok=true`, `api_ok=false`, `ok=false` y el intento se marca
+`CREATE_API_ERROR`. Un error de transporte queda como `CREATE_HTTP_ERROR`. En
+ambos casos el smoke conserva request/response sanitizados, no hace lookup,
+download ni cancel, no cuenta `identity_missing` y el analyzer reporta
+`api_errors`, `http_errors`, `create_api_errors`, `create_http_errors`,
+`api_error_messages_detected`, `business_successful` e
+`identity_missing_after_api_success`.
+
 Fase 6A.7C agrega inspeccion segura de la forma real de respuesta sandbox:
 
 ```powershell
@@ -339,7 +349,9 @@ keys, tipos, longitudes y marcadores como `uid-like`, `uuid-like`,
 credenciales, XML/PDF completos ni headers de request. El analyzer tambien
 reporta `create_response_shapes_detected`, `header_identity_candidates`,
 `forbidden_client_uid_candidates_detected`, `cfdi_identity_source` e
-`identity_ambiguous`.
+`identity_ambiguous`. Para errores de negocio, el inspector puede mostrar
+previews cortos de `response`, `status` y `message`, con RFC, secretos e IDs
+largos redactados.
 
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como

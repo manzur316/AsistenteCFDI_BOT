@@ -242,6 +242,9 @@ Reglas especificas sandbox:
 - Si falta `cfdi_uid`, Storage puede usar `uuid`, `pac_invoice_id`,
   `internal_invoice_id` o `draft_id + attempt index`, pero marca
   `PARTIAL_INTERNAL_ID` o `MISSING`.
+- Si create devuelve `CREATE_API_ERROR` o `CREATE_HTTP_ERROR`, Storage guarda
+  evidencia tecnica con status `ERROR` e `identity_status=MISSING`; no debe
+  presentarlo como CFDI creado aunque exista `internal_invoice_id`.
 - Si dos drafts chocan en el mismo invoice id, Storage agrega sufijo
   `__<draft_id>` y reporta `identity_collisions`/`duplicate_invoice_ids`.
 - Todo documento conserva `BORRADOR SUJETO A REVISION HUMANA`.
@@ -261,6 +264,23 @@ identidad CFDI clara. En ese caso:
 - El fallback post-create por busqueda queda apagado hasta que exista endpoint
   oficial documentado por serie/folio/receptor/fecha/total/comentarios con
   criterios estrictos.
+
+### Factura.com API Error Normalization 6A.7D
+
+Factura.com puede devolver HTTP 200 con error de negocio dentro del JSON. El
+cliente live normaliza esas respuestas con `http_ok`, `api_ok`, `api_status`,
+`api_status_unknown`, `api_message_summary` y `api_error_fields`. La decision
+operativa usa `ok = http_ok && api_ok !== false`.
+
+Estados nuevos:
+
+- `CREATE_API_ERROR`: HTTP OK, pero `response/status=error`.
+- `CREATE_HTTP_ERROR`: HTTP no OK.
+
+El analyzer reporta `api_errors`, `http_errors`, `create_api_errors`,
+`create_http_errors`, `api_error_messages_detected`, `business_successful` e
+`identity_missing_after_api_success`. Reporting debe usar estos campos para no
+confundir error de negocio con CFDI creado sin identidad.
 
 ## Reporting Engine
 

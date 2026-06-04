@@ -63,6 +63,7 @@ function parseDateParts(value) {
 }
 
 function identityStatus(attempt = {}) {
+  if (/^CREATE_(API|HTTP)_ERROR$/i.test(String(attempt.status || ""))) return "MISSING";
   const hasProviderUid = Boolean(text(attempt.cfdi_uid));
   const hasUuid = Boolean(text(attempt.uuid));
   if (hasProviderUid && hasUuid) return "COMPLETE";
@@ -214,6 +215,12 @@ function buildStoredInvoiceManifest(attempt = {}, artifacts = [], context = {}) 
     lookup_status: text(attempt.lookup_status),
     cancel_status: text(attempt.cancel_status),
     source_attempt_status: text(attempt.status),
+    http_ok: attempt.http_ok === undefined ? null : Boolean(attempt.http_ok),
+    api_ok: attempt.api_ok === undefined ? null : attempt.api_ok,
+    api_status: text(attempt.api_status),
+    api_status_unknown: attempt.api_status_unknown === undefined ? null : Boolean(attempt.api_status_unknown),
+    api_message_summary: text(attempt.api_message_summary),
+    api_error: attempt.api_error || null,
     identity_sources: Array.isArray(attempt.identity_sources) ? attempt.identity_sources : [],
     has_xml: hasCategory(artifacts, "xml"),
     has_pdf: hasCategory(artifacts, "pdf"),

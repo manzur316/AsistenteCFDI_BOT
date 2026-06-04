@@ -305,7 +305,21 @@ node scripts/inspect-facturacom-sandbox-response-shape.js
 ```
 
 El inspector solo muestra shape y marcadores. No imprime valores completos,
-credenciales, XML/PDF completos ni headers de request.
+credenciales, XML/PDF completos ni headers de request. Desde 6A.7D tambien
+muestra previews seguros y truncados de `response`, `status` y `message` para
+diagnosticar errores de negocio Factura.com sin abrir el JSON completo.
+
+El smoke distingue errores HTTP de errores API de Factura.com:
+
+- `CREATE_HTTP_ERROR`: el transporte no fue OK.
+- `CREATE_API_ERROR`: el transporte fue OK, pero el cuerpo trae
+  `response/status=error`.
+- `CREATE_OK_IDENTITY_MISSING`: solo despues de `ok=true` semantico sin
+  `cfdi_uid`, `uuid` ni `pac_invoice_id`.
+
+`CREATE_API_ERROR` conserva artifacts de request/response, incrementa
+`api_errors`/`create_api_errors`, no ejecuta lookup/download/cancel y Storage lo
+clasifica como `ERROR` con `identity_status=MISSING`.
 
 Los resultados viven solo en:
 

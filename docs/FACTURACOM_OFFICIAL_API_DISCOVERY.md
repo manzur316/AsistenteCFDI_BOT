@@ -196,6 +196,20 @@ Tambien se advierte que el mensaje puede variar segun el nodo/campo incorrecto.
 Por eso el adapter debe normalizar tanto `status` como `response`, y aceptar
 `message` como string u objeto.
 
+Regla local 6A.7D: HTTP 2xx no equivale automaticamente a exito de negocio.
+El cliente sandbox separa:
+
+- `http_ok`: transporte HTTP 2xx.
+- `api_ok`: `false` si el cuerpo trae `response/status=error`; `true` si trae
+  `response/status=success|ok|created`; `null` si el estado API no aparece.
+- `ok`: `http_ok && api_ok !== false`.
+- `api_status_unknown`: `true` cuando no existe `response` ni `status` semantico.
+
+Si `POST /v4/cfdi40/create` devuelve HTTP 200 con `response=error` o
+`status=error`, el smoke marca `CREATE_API_ERROR`, guarda request/response
+sanitizados y no intenta lookup, download ni cancel. `CREATE_OK_IDENTITY_MISSING`
+solo aplica despues de un exito semantico real sin identidad CFDI clara.
+
 No se encontro una estructura oficial unica de warnings en las paginas
 auditadas. Queda pendiente confirmar si Factura.com devuelve warnings separados
 del error principal.

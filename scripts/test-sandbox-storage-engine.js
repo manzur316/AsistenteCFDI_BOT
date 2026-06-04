@@ -216,6 +216,37 @@ check("manifest_soporta_uuid_null_y_uid_parcial", () => {
   return manifest.identity_status;
 });
 
+check("create_api_error_se_guarda_como_error_con_identidad_missing", () => {
+  const manifest = buildStoredInvoiceManifest({
+    draft_id: "DRAFT-API-ERROR",
+    internal_invoice_id: "INTERNAL-DRAFT-API-ERROR",
+    client_id: "CLIENT-DEMO-PF-GENERIC",
+    status: "CREATE_API_ERROR",
+    http_ok: true,
+    api_ok: false,
+    api_status: "error",
+    api_message_summary: "UsoCFDI invalido para receptor demo",
+    api_error: {
+      http_ok: true,
+      api_ok: false,
+      api_status: "error",
+      api_message_summary: "UsoCFDI invalido para receptor demo",
+    },
+  }, [], {
+    storageRoot: path.join(tempRoot, "api-error-storage"),
+    createdAt: "2026-06-04T00:00:00.000Z",
+  });
+  assert.strictEqual(manifest.status, "ERROR");
+  assert.strictEqual(manifest.identity_status, "MISSING");
+  assert.strictEqual(manifest.source_attempt_status, "CREATE_API_ERROR");
+  assert.strictEqual(manifest.http_ok, true);
+  assert.strictEqual(manifest.api_ok, false);
+  assert.strictEqual(manifest.api_status, "error");
+  assert.strictEqual(manifest.api_error.api_status, "error");
+  assert.strictEqual(identityStatus({ status: "CREATE_API_ERROR", internal_invoice_id: "INTERNAL" }), "MISSING");
+  return "error/missing";
+});
+
 check("store_cli_genera_manifest_index_summary_y_copia_artifacts", () => {
   const { smokeRuntime } = createSmokeFixture("store-smoke");
   const storageRoot = path.join(tempRoot, "storage-sandbox");

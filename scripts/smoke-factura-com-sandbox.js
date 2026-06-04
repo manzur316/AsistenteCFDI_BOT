@@ -6,6 +6,7 @@ const { mapCanonicalInvoiceToFacturaComPayload } = require("./lib/factura-com-pa
 const {
   assertFacturaComSandboxEnv,
   facturaComRequest,
+  normalizeFacturaComHttpResponse,
   sanitizeFacturaComError,
   sanitizeValue,
 } = require("./lib/factura-com-live-client");
@@ -970,6 +971,21 @@ async function maybeRunPostCreateSearch({ attempt, body, createResponse, config,
   return { ok: true, identity };
 }
 
+function createApiErrorSummary(response = {}) {
+  return {
+    http_ok: response.http_ok === true,
+    api_ok: response.api_ok === undefined ? null : response.api_ok,
+    api_status: response.api_status || null,
+    api_status_unknown: response.api_status_unknown === true,
+    api_message_summary: response.api_message_summary || null,
+    api_error_fields: response.api_error_fields || {},
+    status: response.status ?? null,
+    statusText: response.statusText ?? null,
+    contentType: response.contentType || "",
+    responseHeaders: response.responseHeaders || {},
+  };
+}
+
 async function processDraft({
   fixture,
   client,
@@ -1045,13 +1061,32 @@ async function processDraft({
   attempt.artifacts.push(path.relative(root, requestFile).replace(/\\/g, "/"));
   manifest.artifacts.push({ type: "CFDI_CREATE_REQUEST", draft_id: fixture.draft_id, path: path.relative(root, requestFile).replace(/\\/g, "/") });
 
-  const createResponse = await requestFn({ method: "POST", path: "/v4/cfdi40/create", body, env });
+  const createResponse = normalizeFacturaComHttpResponse(
+    await requestFn({ method: "POST", path: "/v4/cfdi40/create", body, env }),
+    env,
+  );
   const responseFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-create-cfdi-response.json`, createResponse, env);
   attempt.artifacts.push(path.relative(root, responseFile).replace(/\\/g, "/"));
   manifest.artifacts.push({ type: "CFDI_CREATE_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: createResponse.ok });
 
-  if (!createResponse.ok) {
-    attempt.status = "CREATE_ERROR";
+  attempt.http_ok = createResponse.http_ok === true;
+  attempt.api_ok = createResponse.api_ok === undefined ? null : createResponse.api_ok;
+  attempt.api_status = createResponse.api_status || null;
+  attempt.api_status_unknown = createResponse.api_status_unknown === true;
+  attempt.api_message_summary = createResponse.api_message_summary || null;
+  if (attempt.api_status_unknown) summary.api_status_unknown += 1;
+
+  if (createResponse.ok === false) {
+    attempt.status = createResponse.http_ok === true ? "CREATE_API_ERROR" : "CREATE_HTTP_ERROR";
+    attempt.api_error = createApiErrorSummary(createResponse);
+    if (attempt.status === "CREATE_API_ERROR") {
+      summary.api_errors += 1;
+      summary.create_api_errors += 1;
+    } else {
+      summary.http_errors += 1;
+      summary.create_http_errors += 1;
+    }
+    if (attempt.api_message_summary) summary.api_error_messages_detected.push(attempt.api_message_summary);
     summary.errors += 1;
     return attempt;
   }
@@ -1080,11 +1115,13 @@ async function processDraft({
     if (!attempt.identity_ambiguous) attempt.status = "CREATE_OK_IDENTITY_MISSING";
     attempt.warnings.push("CFDI_UID_MISSING");
     summary.warnings.push(`cfdi_uid_missing:${fixture.draft_id}`);
+    summary.identity_missing_after_api_success += 1;
     finalizeAttemptIdentity(attempt, summary);
     return attempt;
   } else {
     attempt.status = "CREATE_OK";
     summary.successful += 1;
+    summary.business_successful += 1;
   }
 
   if (attempt.cfdi_uid) {
@@ -1188,6 +1225,14 @@ function buildSummary(config) {
     identity_ambiguous: 0,
     xml_uuid_found: 0,
     lookup_identity_found: 0,
+    api_errors: 0,
+    http_errors: 0,
+    api_status_unknown: 0,
+    create_api_errors: 0,
+    create_http_errors: 0,
+    api_error_messages_detected: [],
+    business_successful: 0,
+    identity_missing_after_api_success: 0,
     cfdi_uids: [],
     pac_invoice_ids: [],
     sandbox_uuids: [],

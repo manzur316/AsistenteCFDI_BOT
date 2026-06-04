@@ -54,16 +54,37 @@ function classifyString(value, pathLabel = "") {
   return markers;
 }
 
+function allowsSafePreview(pathLabel = "") {
+  const normalized = String(pathLabel || "").replace(/\.\d+\./g, ".").toLowerCase();
+  return /(^|\.)(response|status|message)$/.test(normalized)
+    || /(^|\.)data\.(response|status|message)$/.test(normalized);
+}
+
+function safePreview(value) {
+  let cleaned = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return null;
+  if (/^<\?xml|^<cfdi:|^<[^>]+>/i.test(cleaned)) return `[REDACTED_XML_TEXT len=${cleaned.length}]`;
+  if (/^%PDF/i.test(cleaned)) return `[REDACTED_PDF_TEXT len=${cleaned.length}]`;
+  cleaned = cleaned.replace(/\b[A-Z&\u00d1]{3,4}\d{6}[A-Z0-9]{3}\b/gi, "[REDACTED_RFC]");
+  cleaned = cleaned.replace(/\b[A-Za-z0-9_-]{16,90}\b/g, "[REDACTED_ID]");
+  cleaned = cleaned.replace(/(api[-_ ]?key|secret|plugin|token|authorization|password)\s*[:=]\s*[^\s,'"{}]+/gi, "$1=[REDACTED]");
+  return cleaned.length > 120 ? `${cleaned.slice(0, 120)}...` : cleaned;
+}
+
 function describeValue(value, pathLabel = "") {
   if (value === null) return "null";
   if (Array.isArray(value)) return `array(len=${value.length})`;
   if (typeof value === "string") {
     const markers = classifyString(value, pathLabel);
-    const suffix = markers.length ? `(${markers.join(", ")}, len=${value.length})` : `(len=${value.length})`;
+    const preview = allowsSafePreview(pathLabel) ? safePreview(value) : null;
+    const previewText = preview ? `, preview="${preview.replace(/"/g, "'")}"` : "";
+    const suffix = markers.length ? `(${markers.join(", ")}, len=${value.length}${previewText})` : `(len=${value.length}${previewText})`;
     return `string${suffix}`;
   }
-  if (typeof value === "number") return "number";
-  if (typeof value === "boolean") return "boolean";
+  if (typeof value === "number") return allowsSafePreview(pathLabel) ? `number(value=${value})` : "number";
+  if (typeof value === "boolean") return allowsSafePreview(pathLabel) ? `boolean(value=${value})` : "boolean";
   if (typeof value === "object") return `object(keys=${Object.keys(value).length})`;
   return typeof value;
 }

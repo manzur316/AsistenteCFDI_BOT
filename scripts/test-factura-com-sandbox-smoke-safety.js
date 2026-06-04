@@ -5,6 +5,11 @@ const { execFileSync, spawnSync } = require("child_process");
 const {
   assertFacturaComSandboxEnv,
   buildFacturaComHeaders,
+  extractFacturaComApiMessage,
+  extractFacturaComApiStatus,
+  isFacturaComApiError,
+  isFacturaComApiSuccess,
+  normalizeFacturaComHttpResponse,
   sanitizeFacturaComError,
   sanitizeFacturaComResponse,
   sanitizeValue,
@@ -159,6 +164,54 @@ check("request_response_error_sanitizados", () => {
   assert(JSON.stringify(response).includes("[REDACTED_RFC]"));
   assert(JSON.stringify(error).includes("[REDACTED_RFC]"));
   return "clean";
+});
+
+check("normaliza_error_api_facturacom_con_http_200", () => {
+  const env = validLiveEnv();
+  const response = normalizeFacturaComHttpResponse({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    contentType: "application/json",
+    responseHeaders: { "content-type": "application/json" },
+    data: {
+      response: "error",
+      message: `RFC AAA010101AAA invalido ${env.FACTURACOM_SECRET_KEY}`,
+    },
+    rawText: '{"response":"error"}',
+  }, env);
+  assert.strictEqual(extractFacturaComApiStatus(response.data), "error");
+  assert(extractFacturaComApiMessage(response.data).includes("[REDACTED_RFC]"));
+  assert.strictEqual(isFacturaComApiError(response.data), true);
+  assert.strictEqual(isFacturaComApiSuccess(response.data), false);
+  assert.strictEqual(response.http_ok, true);
+  assert.strictEqual(response.api_ok, false);
+  assert.strictEqual(response.ok, false);
+  assert.strictEqual(response.api_status_unknown, false);
+  assert.strictEqual(response.api_message_summary.includes("[REDACTED_RFC]"), true);
+  assertNoSecret(response, env.FACTURACOM_SECRET_KEY);
+  return "http ok/api error";
+});
+
+check("normaliza_success_y_estado_api_desconocido", () => {
+  const success = normalizeFacturaComHttpResponse({
+    ok: true,
+    status: 201,
+    data: { status: "success", Data: { UID: "CFDI-UID-DEMO" } },
+  }, validLiveEnv());
+  const unknown = normalizeFacturaComHttpResponse({
+    ok: true,
+    status: 200,
+    data: { Data: { UID: "CFDI-UID-DEMO" } },
+  }, validLiveEnv());
+  assert.strictEqual(success.http_ok, true);
+  assert.strictEqual(success.api_ok, true);
+  assert.strictEqual(success.ok, true);
+  assert.strictEqual(unknown.http_ok, true);
+  assert.strictEqual(unknown.api_ok, null);
+  assert.strictEqual(unknown.api_status_unknown, true);
+  assert.strictEqual(unknown.ok, true);
+  return "success/unknown";
 });
 
 check("smoke_no_escribe_fuera_de_runtime", () => {
@@ -319,6 +372,73 @@ check("analyzer_reporta_identity_missing_sin_secretos", () => {
   return "missing";
 });
 
+check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
+  const runtimeDir = path.join(tempRoot, "api-error-runtime");
+  const responsePath = path.join(runtimeDir, "DRAFT-API-ERROR-create-cfdi-response.json");
+  writeJson(responsePath, {
+    ok: false,
+    http_ok: true,
+    api_ok: false,
+    status: 200,
+    api_status: "error",
+    api_message_summary: "UsoCFDI invalido para receptor demo",
+    api_error_fields: {
+      response: "error",
+      message: "UsoCFDI invalido para receptor demo",
+    },
+    data: {
+      response: "error",
+      message: "UsoCFDI invalido para receptor demo",
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [{
+      type: "CFDI_CREATE_RESPONSE",
+      draft_id: "DRAFT-API-ERROR",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+      ok: false,
+    }],
+    attempts: [{
+      draft_id: "DRAFT-API-ERROR",
+      status: "CREATE_API_ERROR",
+      http_ok: true,
+      api_ok: false,
+      api_status: "error",
+      api_message_summary: "UsoCFDI invalido para receptor demo",
+      api_error: {
+        http_ok: true,
+        api_ok: false,
+        api_status: "error",
+        api_message_summary: "UsoCFDI invalido para receptor demo",
+      },
+    }],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 1,
+    successful: 0,
+    errors: 1,
+    api_errors: 1,
+    http_errors: 0,
+    create_api_errors: 1,
+    create_http_errors: 0,
+    api_error_messages_detected: ["UsoCFDI invalido para receptor demo"],
+    business_successful: 0,
+    identity_missing_after_api_success: 0,
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.api_errors, 1);
+  assert.strictEqual(result.create_api_errors, 1);
+  assert.strictEqual(result.http_errors, 0);
+  assert.strictEqual(result.identity_missing_after_api_success, 0);
+  assert.strictEqual(result.api_error_messages_detected.length, 1);
+  assert.strictEqual(result.sensitive_findings.length, 0);
+  return "api error";
+});
+
 check("analyzer_detecta_client_uid_como_cfdi_uid", () => {
   const runtimeDir = path.join(tempRoot, "client-uid-collision-runtime");
   const requestPath = path.join(runtimeDir, "DRAFT-DEMO-create-cfdi-request.json");
@@ -361,6 +481,8 @@ check("inspector_no_imprime_valores_completos_y_marca_forbidden", () => {
     ok: true,
     status: 200,
     data: {
+      response: "error",
+      message: "Validacion fallida para CFDI-UID-SHAPE-SECRET",
       request: {
         body: {
           Receptor: { UID: "UID-CLIENT-SHAPE-SECRET", RFC: "XAXX010101000" },
@@ -380,6 +502,8 @@ check("inspector_no_imprime_valores_completos_y_marca_forbidden", () => {
   const output = inspectRuntime(runtimeDir);
   assert(output.includes("FORBIDDEN_CLIENT_UID_SOURCE"), output);
   assert(output.includes("uid-like"), output);
+  assert(output.includes('preview="error"'), output);
+  assert(output.includes("[REDACTED_ID]"), output);
   assert(!output.includes("UID-CLIENT-SHAPE-SECRET"), "no debe imprimir client UID completo");
   assert(!output.includes("CFDI-UID-SHAPE-SECRET"), "no debe imprimir cfdi UID completo");
   return "shape safe";
@@ -647,6 +771,50 @@ checkAsync("create_ok_sin_uid_hace_lookup_y_continua_cfdi", async () => {
   const gitChanged = git(["status", "--short", "runtime/client-uids.local.json"]);
   assert.strictEqual(gitChanged.length, 0, "client-uids.local.json raiz no debe versionarse");
   return "lookup ok";
+});
+
+checkAsync("create_api_error_http_200_no_hace_lookup_ni_identity_missing", async () => {
+  const runtimeDir = path.join(tempRoot, "create-api-error-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+    FACTURACOM_SANDBOX_DOWNLOAD_TEST: "1",
+    FACTURACOM_SANDBOX_CANCEL_TEST: "1",
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        contentType: "application/json",
+        data: {
+          response: "error",
+          message: "UsoCFDI no permitido para el receptor demo",
+        },
+      };
+    }
+    throw new Error(`no debe continuar despues de API error: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.summary.errors, 1);
+  assert.strictEqual(result.summary.api_errors, 1);
+  assert.strictEqual(result.summary.create_api_errors, 1);
+  assert.strictEqual(result.summary.identity_missing_after_api_success, 0);
+  assert.strictEqual(attempt.status, "CREATE_API_ERROR");
+  assert.strictEqual(attempt.http_ok, true);
+  assert.strictEqual(attempt.api_ok, false);
+  assert.strictEqual(attempt.api_error.api_status, "error");
+  assert.strictEqual(calls.length, 1);
+  assert(!calls.some((call) => call.method === "GET"), "no debe hacer lookup/download");
+  const responseArtifact = result.manifest.artifacts.find((artifact) => artifact.type === "CFDI_CREATE_RESPONSE");
+  assert.strictEqual(responseArtifact.ok, false);
+  return "api error cutoff";
 });
 
 checkAsync("identity_se_completa_desde_lookup_si_create_no_trae_uuid", async () => {

@@ -238,6 +238,15 @@ function analyze(runtimeArg = process.argv[2]) {
   const documentsByDraftId = {};
   const documentsByInvoiceId = {};
   const cfdiIdentitySource = {};
+  const createApiErrors = attempts.filter((attempt) => attempt.status === "CREATE_API_ERROR");
+  const createHttpErrors = attempts.filter((attempt) => attempt.status === "CREATE_HTTP_ERROR");
+  const apiErrorMessagesDetected = unique([
+    ...(Array.isArray(summary.api_error_messages_detected) ? summary.api_error_messages_detected : []),
+    ...attempts.map((attempt) => attempt.api_message_summary || attempt.api_error?.api_message_summary),
+  ]);
+  const apiStatusUnknownAttempts = attempts.filter((attempt) => attempt.api_status_unknown === true);
+  const businessSuccessfulAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK");
+  const identityMissingAfterApiSuccessAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK_IDENTITY_MISSING");
   for (const attempt of attempts) {
     increment(documentsByDraftId, attempt.draft_id);
     increment(documentsByInvoiceId, attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id);
@@ -286,6 +295,14 @@ function analyze(runtimeArg = process.argv[2]) {
     forbidden_client_uid_candidates_detected: forbiddenClientUidCandidatesDetected,
     cfdi_identity_source: cfdiIdentitySource,
     identity_ambiguous: Number(summary.identity_ambiguous || attempts.filter((attempt) => attempt.identity_ambiguous).length),
+    api_errors: Number(summary.api_errors ?? createApiErrors.length),
+    http_errors: Number(summary.http_errors ?? createHttpErrors.length),
+    api_status_unknown: Number(summary.api_status_unknown ?? apiStatusUnknownAttempts.length),
+    create_api_errors: Number(summary.create_api_errors ?? createApiErrors.length),
+    create_http_errors: Number(summary.create_http_errors ?? createHttpErrors.length),
+    api_error_messages_detected: apiErrorMessagesDetected,
+    business_successful: Number(summary.business_successful ?? businessSuccessfulAttempts.length),
+    identity_missing_after_api_success: Number(summary.identity_missing_after_api_success ?? identityMissingAfterApiSuccessAttempts.length),
     possible_client_uid_used_as_cfdi_uid: possibleClientUidUsedAsCfdiUid,
     duplicate_invoice_ids: duplicateInvoiceIds,
     documents_by_draft_id: documentsByDraftId,
@@ -330,6 +347,14 @@ function printResult(result) {
   console.log(`Forbidden client UID candidates: ${result.forbidden_client_uid_candidates_detected.length}`);
   console.log(`CFDI identity source: ${JSON.stringify(result.cfdi_identity_source)}`);
   console.log(`Identity ambiguous: ${result.identity_ambiguous}`);
+  console.log(`API errors: ${result.api_errors}`);
+  console.log(`HTTP errors: ${result.http_errors}`);
+  console.log(`API status unknown: ${result.api_status_unknown}`);
+  console.log(`Create API errors: ${result.create_api_errors}`);
+  console.log(`Create HTTP errors: ${result.create_http_errors}`);
+  console.log(`API error messages detectados: ${result.api_error_messages_detected.join(" | ") || "none"}`);
+  console.log(`Business successful: ${result.business_successful}`);
+  console.log(`Identity missing after API success: ${result.identity_missing_after_api_success}`);
   console.log(`CFDI UIDs: ${result.cfdi_uids.join(", ") || "none"}`);
   console.log(`PAC invoice IDs: ${result.pac_invoice_ids.join(", ") || "none"}`);
   console.log(`UUIDs demo/sandbox: ${result.sandbox_uuids.join(", ") || "none"}`);
