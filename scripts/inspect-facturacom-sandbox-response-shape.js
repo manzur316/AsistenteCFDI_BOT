@@ -42,9 +42,12 @@ function classifyString(value, pathLabel = "") {
   const markers = [];
   const cleaned = String(value || "");
   if (UUID_PATTERN.test(cleaned)) markers.push("uuid-like");
-  if (RFC_PATTERN.test(cleaned)) markers.push("rfc-like");
+  if (RFC_PATTERN.test(cleaned)) markers.push("rfc-like", "REDACTED_RFC_VALUE");
   if (/^[A-Za-z0-9_-]{8,90}$/.test(cleaned) && !UUID_PATTERN.test(cleaned) && !RFC_PATTERN.test(cleaned)) {
     markers.push("uid-like");
+  }
+  if (/(^|\.)(uid|uid_receptor|client_uid|cliente_uid|customer_uid)$/i.test(pathLabel) || /(^|\.)(cliente|client|customer|receptor)\.(uid|UID)$/i.test(pathLabel)) {
+    markers.push("client_uid_candidate");
   }
   if (/request\.body\.Receptor\.UID$/i.test(pathLabel) || /(^|\.)Receptor\.UID$/i.test(pathLabel)) {
     markers.push("FORBIDDEN_CLIENT_UID_SOURCE");
@@ -126,11 +129,12 @@ function inspectXmlText(content, prefix = "xml") {
 function inspectArtifact(runtimeDir, artifact = {}) {
   const artifactPath = resolveArtifactPath(runtimeDir, artifact);
   const title = `${artifact.type || "UNKNOWN"} ${artifact.draft_id || ""}`.trim();
+  const endpointType = endpointTypeForArtifact(artifact);
   if (!artifactPath || !fs.existsSync(artifactPath)) {
-    return [`${title} paths:`, "- artifact: missing_or_outside_runtime"];
+    return [`${title} paths:`, `- endpoint_type: ${endpointType}`, "- artifact: missing_or_outside_runtime"];
   }
   const raw = fs.readFileSync(artifactPath, "utf8");
-  const lines = [`${title} paths:`];
+  const lines = [`${title} paths:`, `- endpoint_type: ${endpointType}`];
   if (/XML/i.test(String(artifact.type || "")) || artifactPath.toLowerCase().endsWith(".xml")) {
     lines.push(...inspectXmlText(raw, "xml"));
     return lines;
@@ -148,12 +152,29 @@ function inspectArtifact(runtimeDir, artifact = {}) {
   return lines;
 }
 
+function endpointTypeForArtifact(artifact = {}) {
+  const type = String(artifact.type || "");
+  if (type.startsWith("CLIENT_CREATE")) return "client_create";
+  if (type.startsWith("CLIENT_LOOKUP")) return "client_lookup";
+  if (type.startsWith("CFDI_CREATE")) return "cfdi_create";
+  if (type.startsWith("CFDI_LOOKUP")) return "cfdi_lookup";
+  if (type.startsWith("CFDI_XML")) return "cfdi_xml";
+  return "unknown";
+}
+
 function inspectRuntime(runtimeArg = DEFAULT_RUNTIME_DIR) {
   const runtimeDir = assertRuntimePath(runtimeArg);
   const manifestPath = path.join(runtimeDir, "manifest.json");
   if (!fs.existsSync(manifestPath)) throw new Error(`No existe manifest: ${manifestPath}`);
   const manifest = readJson(manifestPath);
-  const allowedTypes = new Set(["CFDI_CREATE_RESPONSE", "CFDI_LOOKUP_RESPONSE", "CFDI_XML"]);
+  const allowedTypes = new Set([
+    "CLIENT_CREATE_REQUEST",
+    "CLIENT_CREATE_RESPONSE",
+    "CLIENT_LOOKUP_RESPONSE",
+    "CFDI_CREATE_RESPONSE",
+    "CFDI_LOOKUP_RESPONSE",
+    "CFDI_XML",
+  ]);
   const artifacts = (manifest.artifacts || []).filter((artifact) => allowedTypes.has(String(artifact.type || "")));
   const output = [
     "Factura.com sandbox response shape inspection",
@@ -179,4 +200,5 @@ module.exports = {
   collectShapeLines,
   describeValue,
   inspectRuntime,
+  endpointTypeForArtifact,
 };

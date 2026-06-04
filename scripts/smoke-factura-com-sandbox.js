@@ -7,6 +7,7 @@ const {
   assertFacturaComSandboxEnv,
   facturaComRequest,
   normalizeFacturaComHttpResponse,
+  safeApiMessagePreview,
   sanitizeFacturaComError,
   sanitizeValue,
 } = require("./lib/factura-com-live-client");
@@ -866,13 +867,18 @@ async function lookupClientUidAfterCreate({ client, config, env, requestFn, mani
       method: "GET",
       path: lookupPath,
     }, env);
-    const response = await requestFn({ method: "GET", path: lookupPath, env });
+    const response = normalizeFacturaComHttpResponse(
+      await requestFn({ method: "GET", path: lookupPath, env }),
+      env,
+    );
     const responseFile = writeJson(config.runtimeDir, `${artifactPrefix}-response.json`, response, env);
     manifest.artifacts.push({ type: "CLIENT_LOOKUP_REQUEST", client_id: client.client_id, path: path.relative(root, requestFile).replace(/\\/g, "/") });
     manifest.artifacts.push({ type: "CLIENT_LOOKUP_RESPONSE", client_id: client.client_id, path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: response.ok });
 
     if (!response.ok) {
+      const failure = recordClientLookupFailure(summary, response, env);
       summary.warnings.push(`client_lookup_failed:${client.client_id}:${lookupPath}`);
+      summary.warnings.push(`client_lookup_error:${client.client_id}:${failure.status}`);
       continue;
     }
     const lookup = findClientUidInResponse(response, client);
@@ -895,14 +901,44 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
     path: "/v1/clients/create",
     body,
   }, env);
-  const response = await requestFn({ method: "POST", path: "/v1/clients/create", body, env });
+  const response = normalizeFacturaComHttpResponse(
+    await requestFn({ method: "POST", path: "/v1/clients/create", body, env }),
+    env,
+  );
   const responseFile = writeJson(config.runtimeDir, `${artifactPrefix}-create-response.json`, response, env);
   manifest.artifacts.push({ type: "CLIENT_CREATE_REQUEST", path: path.relative(root, requestFile).replace(/\\/g, "/") });
   manifest.artifacts.push({ type: "CLIENT_CREATE_RESPONSE", path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: response.ok });
   if (!response.ok) {
+    const failure = recordClientCreateFailure(summary, response, env);
+    summary.warnings.push(`client_create_failed:${client.client_id}:${failure.status}`);
+    const foundAfterFailure = await lookupClientUidAfterCreate({ client, config, env, requestFn, manifest, summary });
+    if (foundAfterFailure.uid) {
+      uidMap[client.client_id] = foundAfterFailure.uid;
+      writeJsonIfChanged(config.runtimeDir, "client-uids.local.json", uidMap, env);
+      summary.client_uids_found += 1;
+      summary.warnings.push(`client_create_failed_but_lookup_found_uid:${client.client_id}`);
+      return {
+        ...foundAfterFailure,
+        reason: "found_after_client_create_error",
+        client_create_status: failure.status,
+        client_create_error: failure,
+      };
+    }
+    if (foundAfterFailure.reason === "ambiguous_client_uid") {
+      summary.ambiguous_clients += 1;
+      summary.warnings.push(`ambiguous_client_uid_after_create_error:${client.client_id}`);
+    } else {
+      summary.client_uid_missing += 1;
+      summary.warnings.push(`client_uid_missing_after_create_error:${client.client_id}`);
+    }
     summary.errors += 1;
-    summary.warnings.push(`client_create_failed:${client.client_id}`);
-    return { uid: null, reason: "client_create_failed" };
+    return {
+      uid: null,
+      reason: "client_create_failed",
+      lookup_reason: foundAfterFailure.reason,
+      client_create_status: failure.status,
+      client_create_error: failure,
+    };
   }
 
   summary.clients_created += 1;
@@ -986,6 +1022,67 @@ function createApiErrorSummary(response = {}) {
   };
 }
 
+function pushUnique(list = [], value) {
+  const cleaned = text(value);
+  if (cleaned && !list.includes(cleaned)) list.push(cleaned);
+}
+
+function clientErrorMessage(response = {}, env = {}) {
+  return safeApiMessagePreview(
+    response.api_message_summary
+      || response.api_error_fields?.message
+      || response.api_error_fields?.mensaje
+      || response.api_error_fields?.error
+      || response.data?.message
+      || response.data?.mensaje
+      || response.data?.error
+      || response.data?.errors
+      || response.rawText
+      || response.statusText,
+    env,
+    240,
+  );
+}
+
+function isClientAlreadyExistsMessage(message) {
+  const normalized = normalizeComparable(message);
+  return /\b(EXISTE|EXISTENTE|REGISTRAD[OA]|DUPLICAD[OA]|ALREADY|EXISTS|DUPLICATE)\b/.test(normalized);
+}
+
+function isClientValidationErrorMessage(message) {
+  const normalized = normalizeComparable(message);
+  return /\b(VALIDACI[OÓ]N|VALIDACION|INVALID[OA]|REQUERID[OA]|OBLIGATORI[OA]|CAMPO|FORMATO|CODIGO POSTAL|REGIMEN|RFC)\b/.test(normalized);
+}
+
+function recordClientCreateFailure(summary, response = {}, env = {}) {
+  const status = response.http_ok === true ? "CLIENT_CREATE_API_ERROR" : "CLIENT_CREATE_HTTP_ERROR";
+  const message = clientErrorMessage(response, env);
+  summary.client_create_errors += 1;
+  if (status === "CLIENT_CREATE_HTTP_ERROR") summary.http_errors += 1;
+  else summary.api_errors += 1;
+  pushUnique(summary.client_create_error_messages, message);
+  if (isClientAlreadyExistsMessage(message)) summary.client_already_exists_detected += 1;
+  if (isClientValidationErrorMessage(message)) summary.client_validation_error_detected += 1;
+  return {
+    status,
+    message,
+    api_error: createApiErrorSummary(response),
+    already_exists: isClientAlreadyExistsMessage(message),
+    validation_error: isClientValidationErrorMessage(message),
+  };
+}
+
+function recordClientLookupFailure(summary, response = {}, env = {}) {
+  const message = clientErrorMessage(response, env);
+  summary.client_lookup_errors += 1;
+  pushUnique(summary.client_lookup_error_messages, message);
+  return {
+    status: response.http_ok === true ? "CLIENT_LOOKUP_API_ERROR" : "CLIENT_LOOKUP_HTTP_ERROR",
+    message,
+    api_error: createApiErrorSummary(response),
+  };
+}
+
 async function processDraft({
   fixture,
   client,
@@ -1038,8 +1135,14 @@ async function processDraft({
 
   const clientUidResult = await maybeCreateClient({ client, config, env, uidMap, manifest, summary, requestFn });
   if (config.createClients && !clientUidResult.uid) {
-    attempt.status = clientUidResult.reason === "ambiguous_client_uid" ? "CLIENT_UID_AMBIGUOUS" : "CLIENT_UID_MISSING";
+    attempt.status = clientUidResult.reason === "ambiguous_client_uid" || clientUidResult.lookup_reason === "ambiguous_client_uid"
+      ? "CLIENT_UID_AMBIGUOUS"
+      : (clientUidResult.client_create_status ? "CLIENT_CREATE_FAILED" : "CLIENT_UID_MISSING");
+    attempt.client_create_status = clientUidResult.client_create_status || null;
+    attempt.client_create_error = clientUidResult.client_create_error || null;
+    attempt.client_lookup_reason = clientUidResult.lookup_reason || clientUidResult.reason || null;
     attempt.warnings.push(clientUidResult.reason);
+    if (clientUidResult.client_create_status) attempt.warnings.push(clientUidResult.client_create_status);
     return attempt;
   }
   const clientUid = clientUidResult.uid;
@@ -1230,6 +1333,12 @@ function buildSummary(config) {
     api_status_unknown: 0,
     create_api_errors: 0,
     create_http_errors: 0,
+    client_create_errors: 0,
+    client_lookup_errors: 0,
+    client_create_error_messages: [],
+    client_lookup_error_messages: [],
+    client_already_exists_detected: 0,
+    client_validation_error_detected: 0,
     api_error_messages_detected: [],
     business_successful: 0,
     identity_missing_after_api_success: 0,

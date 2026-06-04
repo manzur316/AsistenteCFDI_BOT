@@ -507,6 +507,58 @@ check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
   return "api error";
 });
 
+check("analyzer_reporta_client_create_error_seguro", () => {
+  const runtimeDir = path.join(tempRoot, "client-create-error-runtime");
+  const responsePath = path.join(runtimeDir, "client-create-response.json");
+  const message = "El cliente ya existe para RFC XAXX010101000";
+  writeJson(responsePath, {
+    ok: false,
+    http_ok: true,
+    api_ok: false,
+    status: 200,
+    api_status: "error",
+    api_message_summary: safeApiMessagePreview(message),
+    data: {
+      response: "error",
+      message,
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [{
+      type: "CLIENT_CREATE_RESPONSE",
+      client_id: "CLIENT-DEMO-PF-GENERIC",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+      ok: false,
+    }],
+    attempts: [],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 0,
+    successful: 0,
+    errors: 1,
+    client_create_errors: 1,
+    client_create_error_messages: [message],
+    client_already_exists_detected: 1,
+    client_validation_error_detected: 0,
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.client_create_errors, 1);
+  assert.strictEqual(result.client_create_response_shapes_detected.length, 1);
+  assert.strictEqual(result.client_already_exists_detected > 0, true);
+  assert(result.client_create_error_messages[0].includes("[REDACTED_RFC]"), result.client_create_error_messages[0]);
+  const cli = runNode(["scripts/analyze-factura-com-sandbox-results.js", runtimeDir]);
+  assert.strictEqual(cli.status, 0, cli.stderr);
+  assert(cli.stdout.includes("Client create errors: 1"), cli.stdout);
+  assert(cli.stdout.includes("Client create error messages:"), cli.stdout);
+  assert(!cli.stdout.includes("XAXX010101000"), cli.stdout);
+  assert.strictEqual(result.sensitive_findings.length, 0);
+  return "client create";
+});
+
 check("analyzer_detecta_client_uid_como_cfdi_uid", () => {
   const runtimeDir = path.join(tempRoot, "client-uid-collision-runtime");
   const requestPath = path.join(runtimeDir, "DRAFT-DEMO-create-cfdi-request.json");
@@ -581,6 +633,55 @@ check("inspector_no_imprime_valores_completos_y_marca_forbidden", () => {
   assert(!output.includes("CFDI-UID-SHAPE-SECRET"), "no debe imprimir cfdi UID completo");
   assert(!output.includes("SHOULD-NOT-PRINT-REQUEST-HEADER"), "no debe imprimir headers de request");
   return "shape safe";
+});
+
+check("inspector_muestra_client_create_response_y_request_seguro", () => {
+  const runtimeDir = path.join(tempRoot, "inspect-client-runtime");
+  const requestPath = path.join(runtimeDir, "client-create-request.json");
+  const responsePath = path.join(runtimeDir, "client-create-response.json");
+  writeJson(requestPath, {
+    method: "POST",
+    path: "/v1/clients/create",
+    body: {
+      RFC: "XAXX010101000",
+      RazonSocial: "PERSONA FISICA GENERICA DEMO",
+    },
+  });
+  writeJson(responsePath, {
+    ok: false,
+    http_ok: true,
+    api_ok: false,
+    api_status: "error",
+    api_message_summary: "El cliente ya existe para RFC XAXX010101000",
+    data: {
+      response: "error",
+      message: "El cliente ya existe para RFC XAXX010101000",
+      Data: { UID: "UID-CLIENT-SHAPE-SECRET" },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    artifacts: [{
+      type: "CLIENT_CREATE_REQUEST",
+      client_id: "CLIENT-DEMO-PF-GENERIC",
+      path: path.relative(root, requestPath).replace(/\\/g, "/"),
+    }, {
+      type: "CLIENT_CREATE_RESPONSE",
+      client_id: "CLIENT-DEMO-PF-GENERIC",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+      ok: false,
+    }],
+    attempts: [],
+  });
+  const output = inspectRuntime(runtimeDir);
+  assert(output.includes("Artifacts inspected: 2"), output);
+  assert(output.includes("endpoint_type: client_create"), output);
+  assert(output.includes("CLIENT_CREATE_RESPONSE"), output);
+  assert(output.includes("REDACTED_RFC_VALUE"), output);
+  assert(output.includes("client_uid_candidate"), output);
+  assert(output.includes("[REDACTED_RFC]"), output);
+  assert(!output.includes("XAXX010101000"), output);
+  assert(!output.includes("UID-CLIENT-SHAPE-SECRET"), output);
+  return "client inspect";
 });
 
 check("analyzer_reporta_shapes_headers_y_forbidden_sources", () => {
@@ -845,6 +946,99 @@ checkAsync("create_ok_sin_uid_hace_lookup_y_continua_cfdi", async () => {
   const gitChanged = git(["status", "--short", "runtime/client-uids.local.json"]);
   assert.strictEqual(gitChanged.length, 0, "client-uids.local.json raiz no debe versionarse");
   return "lookup ok";
+});
+
+checkAsync("client_create_api_error_existente_hace_lookup_y_continua_cfdi", async () => {
+  const runtimeDir = path.join(tempRoot, "client-create-exists-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    if (method === "POST" && requestPath === "/v1/clients/create") {
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          response: "error",
+          message: "El cliente ya existe para RFC XAXX010101000",
+        },
+      };
+    }
+    if (method === "GET" && requestPath === "/v1/clients/XAXX010101000") {
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          data: [{
+            UID: "UID-CLIENT-EXISTS-LOOKUP",
+            rfc: "XAXX010101000",
+            client_id: "CLIENT-DEMO-PF-GENERIC",
+            razons: "PERSONA FISICA GENERICA DEMO",
+          }],
+        },
+      };
+    }
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CFDI-EXISTS", UUID: "00000000-0000-4000-8000-000000000888" } } };
+    }
+    if (method === "GET" && requestPath === "/v4/cfdi/uid/UID-CFDI-EXISTS") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CFDI-EXISTS" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  assert.strictEqual(result.summary.successful, 1);
+  assert.strictEqual(result.summary.errors, 0);
+  assert.strictEqual(result.summary.client_create_errors, 1);
+  assert.strictEqual(result.summary.client_already_exists_detected, 1);
+  assert(result.summary.client_create_error_messages[0].includes("[REDACTED_RFC]"), result.summary.client_create_error_messages[0]);
+  assert(calls.some((call) => call.method === "GET" && call.path === "/v1/clients/XAXX010101000"), "debe hacer lookup por RFC tras cliente existente");
+  assert(calls.some((call) => call.method === "POST" && call.path === "/v4/cfdi40/create"), "debe continuar CFDI tras fallback UID");
+  const uidMap = JSON.parse(fs.readFileSync(path.join(runtimeDir, "client-uids.local.json"), "utf8"));
+  assert.strictEqual(uidMap["CLIENT-DEMO-PF-GENERIC"], "UID-CLIENT-EXISTS-LOOKUP");
+  return "exists fallback";
+});
+
+checkAsync("client_create_validation_error_no_intenta_cfdi", async () => {
+  const runtimeDir = path.join(tempRoot, "client-create-validation-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    if (method === "POST" && requestPath === "/v1/clients/create") {
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          response: "error",
+          message: "Validacion fallida: codigo postal requerido para RFC XAXX010101000",
+        },
+      };
+    }
+    if (method === "GET" && requestPath.startsWith("/v1/clients")) {
+      return { ok: true, status: 200, data: { data: [] } };
+    }
+    throw new Error(`CFDI no debe ejecutarse: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.summary.errors, 1);
+  assert.strictEqual(result.summary.client_create_errors, 1);
+  assert.strictEqual(result.summary.client_validation_error_detected, 1);
+  assert.strictEqual(attempt.status, "CLIENT_CREATE_FAILED");
+  assert.strictEqual(attempt.client_create_status, "CLIENT_CREATE_API_ERROR");
+  assert(!calls.some((call) => call.path === "/v4/cfdi40/create"), "validacion cliente no debe intentar CFDI");
+  assert(!fs.existsSync(path.join(runtimeDir, "client-uids.local.json")), "no debe persistir UID faltante");
+  return "validation cutoff";
 });
 
 checkAsync("create_api_error_http_200_no_hace_lookup_ni_identity_missing", async () => {

@@ -165,6 +165,16 @@ Si hay varios clientes con el mismo RFC y no se puede elegir por `client_id` o
 razon social, el smoke marca `CLIENT_UID_AMBIGUOUS`. Si no aparece UID, marca
 `CLIENT_UID_MISSING`. En ambos casos no intenta crear CFDI.
 
+Fase 6A.7F normaliza tambien fallos de `POST /v1/clients/create` antes de
+perseguir errores de CFDI. Si el transporte fue 2xx pero Factura.com responde
+`response/status=error`, el smoke marca `CLIENT_CREATE_API_ERROR`; si falla el
+transporte, marca `CLIENT_CREATE_HTTP_ERROR`. El mensaje se guarda solo como
+preview seguro. Cuando el error sugiere que el cliente ya existe, o cuando
+`FACTURACOM_SANDBOX_CREATE_CLIENTS=1`, el smoke intenta los dos lookups por RFC.
+Solo si encuentra un UID claro persiste `client-uids.local.json` y continua al
+`POST /v4/cfdi40/create`; si no, detiene el intento como `CLIENT_CREATE_FAILED`
+o estado de UID faltante/ambiguo.
+
 ## E. Errores
 
 La documentacion muestra respuestas de error JSON. Formas observadas:
@@ -209,6 +219,14 @@ Si `POST /v4/cfdi40/create` devuelve HTTP 200 con `response=error` o
 `status=error`, el smoke marca `CREATE_API_ERROR`, guarda request/response
 sanitizados y no intenta lookup, download ni cancel. `CREATE_OK_IDENTITY_MISSING`
 solo aplica despues de un exito semantico real sin identidad CFDI clara.
+
+Si `POST /v1/clients/create` devuelve HTTP 200 con `response=error` o
+`status=error`, el smoke marca el problema como cliente, no como CFDI:
+`CLIENT_CREATE_API_ERROR`. El analyzer reporta `client_create_errors`,
+`client_create_error_messages`, `client_already_exists_detected` y
+`client_validation_error_detected`. El inspector local puede revisar
+`CLIENT_CREATE_REQUEST`, `CLIENT_CREATE_RESPONSE` y `CLIENT_LOOKUP_RESPONSE` sin
+imprimir RFC completos, credenciales ni UID largos.
 
 Los mensajes de error pueden venir como texto plano, objeto JSON o HTML corto
 dentro de `message`. Para diagnostico local, 6A.7E convierte HTML simple

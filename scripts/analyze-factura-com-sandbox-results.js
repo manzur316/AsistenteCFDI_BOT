@@ -110,6 +110,37 @@ function collectHeaderIdentityCandidatesFromResponse(response = {}) {
   }];
 }
 
+function responseMessagePreview(response = {}) {
+  return safeApiMessagePreview(
+    response.api_message_summary
+      || response.api_error_fields?.message
+      || response.api_error_fields?.mensaje
+      || response.api_error_fields?.error
+      || response.data?.message
+      || response.data?.mensaje
+      || response.data?.error
+      || response.data?.errors
+      || response.rawText
+      || response.statusText,
+    {},
+    240,
+  );
+}
+
+function responseLooksLikeError(response = {}) {
+  if (response.ok === false || response.api_ok === false) return true;
+  const statusText = String(response.api_status || response.data?.response || response.data?.status || response.data?.estatus || "");
+  return /\berror\b/i.test(statusText);
+}
+
+function messageLooksLikeClientAlreadyExists(message) {
+  return /\b(existe|existente|registrad[oa]|duplicad[oa]|already|exists|duplicate)\b/i.test(String(message || ""));
+}
+
+function messageLooksLikeClientValidation(message) {
+  return /\b(validaci[oó]n|validacion|invalid[oa]|requerid[oa]|obligatori[oa]|campo|formato|c[oó]digo postal|regimen|rfc)\b/i.test(String(message || ""));
+}
+
 function findSensitiveText(filePath, content) {
   const findings = [];
   const patterns = [
@@ -180,6 +211,12 @@ function analyze(runtimeArg = process.argv[2]) {
   });
   const createRequestReceptorUidsByDraft = {};
   const createResponseShapesDetected = [];
+  const clientCreateResponseShapesDetected = [];
+  const clientLookupResponseShapesDetected = [];
+  const clientCreateArtifactMessages = [];
+  const clientLookupArtifactMessages = [];
+  let clientCreateArtifactErrors = 0;
+  let clientLookupArtifactErrors = 0;
   const headerIdentityCandidates = [];
   const forbiddenClientUidCandidatesDetected = [];
   for (const artifact of manifest.artifacts || []) {
@@ -218,6 +255,27 @@ function analyze(runtimeArg = process.argv[2]) {
         }
       }
     }
+    if (artifact.type === "CLIENT_CREATE_RESPONSE" || artifact.type === "CLIENT_LOOKUP_RESPONSE") {
+      const responseJson = readJsonIfPossible(abs);
+      if (responseJson) {
+        const shapeLines = collectShapeLines(responseJson).slice(0, 120);
+        const message = responseMessagePreview(responseJson);
+        const shapeRecord = {
+          client_id: artifact.client_id || null,
+          path_count: shapeLines.length,
+          paths: shapeLines,
+        };
+        if (artifact.type === "CLIENT_CREATE_RESPONSE") {
+          clientCreateResponseShapesDetected.push(shapeRecord);
+          if (message) clientCreateArtifactMessages.push(message);
+          if (responseLooksLikeError(responseJson)) clientCreateArtifactErrors += 1;
+        } else {
+          clientLookupResponseShapesDetected.push(shapeRecord);
+          if (message) clientLookupArtifactMessages.push(message);
+          if (responseLooksLikeError(responseJson)) clientLookupArtifactErrors += 1;
+        }
+      }
+    }
   }
   const possibleClientUidUsedAsCfdiUid = attempts
     .filter((attempt) => {
@@ -252,6 +310,20 @@ function analyze(runtimeArg = process.argv[2]) {
   const apiStatusUnknownAttempts = attempts.filter((attempt) => attempt.api_status_unknown === true);
   const businessSuccessfulAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK");
   const identityMissingAfterApiSuccessAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK_IDENTITY_MISSING");
+  const clientCreateErrorMessages = unique([
+    ...(Array.isArray(summary.client_create_error_messages) ? summary.client_create_error_messages : []),
+    ...clientCreateArtifactMessages,
+    ...attempts.map((attempt) => attempt.client_create_error?.message || attempt.client_create_error?.api_error?.api_message_summary),
+  ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
+  const clientLookupErrorMessages = unique([
+    ...(Array.isArray(summary.client_lookup_error_messages) ? summary.client_lookup_error_messages : []),
+    ...clientLookupArtifactMessages,
+  ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
+  const clientAlreadyExistsDetected = Number(summary.client_already_exists_detected || 0)
+    + clientCreateErrorMessages.filter(messageLooksLikeClientAlreadyExists).length
+    + clientLookupErrorMessages.filter(messageLooksLikeClientAlreadyExists).length;
+  const clientValidationErrorDetected = Number(summary.client_validation_error_detected || 0)
+    + clientCreateErrorMessages.filter(messageLooksLikeClientValidation).length;
   for (const attempt of attempts) {
     increment(documentsByDraftId, attempt.draft_id);
     increment(documentsByInvoiceId, attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id);
@@ -296,6 +368,8 @@ function analyze(runtimeArg = process.argv[2]) {
     sandbox_uuids: Array.isArray(summary.sandbox_uuids) && summary.sandbox_uuids.length ? summary.sandbox_uuids : attemptUuids,
     xml_uuids: attemptXmlUuids,
     create_response_shapes_detected: createResponseShapesDetected,
+    client_create_response_shapes_detected: clientCreateResponseShapesDetected,
+    client_lookup_response_shapes_detected: clientLookupResponseShapesDetected,
     header_identity_candidates: headerIdentityCandidates,
     forbidden_client_uid_candidates_detected: forbiddenClientUidCandidatesDetected,
     cfdi_identity_source: cfdiIdentitySource,
@@ -305,6 +379,12 @@ function analyze(runtimeArg = process.argv[2]) {
     api_status_unknown: Number(summary.api_status_unknown ?? apiStatusUnknownAttempts.length),
     create_api_errors: Number(summary.create_api_errors ?? createApiErrors.length),
     create_http_errors: Number(summary.create_http_errors ?? createHttpErrors.length),
+    client_create_errors: Number(summary.client_create_errors ?? clientCreateArtifactErrors),
+    client_lookup_errors: Number(summary.client_lookup_errors ?? clientLookupArtifactErrors),
+    client_create_error_messages: clientCreateErrorMessages,
+    client_lookup_error_messages: clientLookupErrorMessages,
+    client_already_exists_detected: clientAlreadyExistsDetected,
+    client_validation_error_detected: clientValidationErrorDetected,
     api_error_messages_detected: apiErrorMessagesDetected,
     create_api_error_message_previews: createApiErrorMessagePreviews,
     business_successful: Number(summary.business_successful ?? businessSuccessfulAttempts.length),
@@ -349,6 +429,8 @@ function printResult(result) {
   console.log(`XML UUID encontrados: ${result.xml_uuid_found}`);
   console.log(`Lookup identity encontrados: ${result.lookup_identity_found}`);
   console.log(`Create response shapes detectados: ${result.create_response_shapes_detected.length}`);
+  console.log(`Client create response shapes detectados: ${result.client_create_response_shapes_detected.length}`);
+  console.log(`Client lookup response shapes detectados: ${result.client_lookup_response_shapes_detected.length}`);
   console.log(`Header identity candidates: ${result.header_identity_candidates.length}`);
   console.log(`Forbidden client UID candidates: ${result.forbidden_client_uid_candidates_detected.length}`);
   console.log(`CFDI identity source: ${JSON.stringify(result.cfdi_identity_source)}`);
@@ -358,6 +440,12 @@ function printResult(result) {
   console.log(`API status unknown: ${result.api_status_unknown}`);
   console.log(`Create API errors: ${result.create_api_errors}`);
   console.log(`Create HTTP errors: ${result.create_http_errors}`);
+  console.log(`Client create errors: ${result.client_create_errors}`);
+  console.log(`Client lookup errors: ${result.client_lookup_errors}`);
+  console.log(`Client create error messages: ${result.client_create_error_messages.join(" | ") || "none"}`);
+  console.log(`Client lookup error messages: ${result.client_lookup_error_messages.join(" | ") || "none"}`);
+  console.log(`Client already exists detectado: ${result.client_already_exists_detected}`);
+  console.log(`Client validation error detectado: ${result.client_validation_error_detected}`);
   console.log(`API error messages detectados: ${result.api_error_messages_detected.join(" | ") || "none"}`);
   console.log(`API error message previews: ${result.api_error_messages_detected.join(" | ") || "none"}`);
   console.log(`Create API error message previews: ${result.create_api_error_message_previews.join(" | ") || "none"}`);

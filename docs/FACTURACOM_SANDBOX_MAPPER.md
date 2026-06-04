@@ -202,7 +202,8 @@ Los flags separados son:
 
 Cuando `FACTURACOM_SANDBOX_CREATE_CLIENTS=1`, el smoke puede crear clientes demo
 en sandbox y resolver `Receptor.UID` sin tocar datos reales. Si la respuesta de
-creacion no trae UID, busca por RFC en:
+creacion no trae UID, o si Factura.com devuelve HTTP 2xx con
+`response/status=error`, busca por RFC en:
 
 - `GET /v1/clients/{RFC}`
 - `GET /v1/clients?rfc={RFC}`
@@ -210,8 +211,8 @@ creacion no trae UID, busca por RFC en:
 El UID encontrado se guarda en `runtime/facturacom-sandbox/client-uids.local.json`.
 Ese archivo es local, contiene identificadores sandbox y no debe versionarse. Si
 el lookup no encuentra UID o encuentra multiples clientes indistinguibles, el
-intento queda detenido como `CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS`; no se
-manda `POST /v4/cfdi40/create`.
+intento queda detenido como `CLIENT_CREATE_FAILED`, `CLIENT_UID_MISSING` o
+`CLIENT_UID_AMBIGUOUS`; no se manda `POST /v4/cfdi40/create`.
 
 Ese UID se guarda como `client_uid`. No es identidad de factura, no debe usarse
 como `cfdi_uid` y no debe convertirse en `invoice_id` de Storage.
@@ -312,11 +313,19 @@ Desde 6A.7E, si `message` contiene HTML de error, el preview elimina tags
 simples, decodifica entidades HTML basicas y conserva texto util como
 `El campo X es requerido`. XML CFDI real y PDF real se mantienen redactados como
 `[REDACTED_XML_TEXT ...]` o `[REDACTED_PDF_TEXT ...]`.
+Desde 6A.7F, el inspector incluye tambien `CLIENT_CREATE_REQUEST`,
+`CLIENT_CREATE_RESPONSE` y `CLIENT_LOOKUP_RESPONSE`. Cada artifact muestra
+`endpoint_type: client_create|client_lookup|cfdi_create`, marca RFC como
+`REDACTED_RFC_VALUE` y detecta candidatos `client_uid_candidate` sin imprimir
+valores largos.
 
 El smoke distingue errores HTTP de errores API de Factura.com:
 
 - `CREATE_HTTP_ERROR`: el transporte no fue OK.
 - `CREATE_API_ERROR`: el transporte fue OK, pero el cuerpo trae
+  `response/status=error`.
+- `CLIENT_CREATE_HTTP_ERROR`: fallo de transporte al crear cliente sandbox.
+- `CLIENT_CREATE_API_ERROR`: transporte OK al crear cliente, pero cuerpo con
   `response/status=error`.
 - `CREATE_OK_IDENTITY_MISSING`: solo despues de `ok=true` semantico sin
   `cfdi_uid`, `uuid` ni `pac_invoice_id`.
@@ -324,6 +333,11 @@ El smoke distingue errores HTTP de errores API de Factura.com:
 `CREATE_API_ERROR` conserva artifacts de request/response, incrementa
 `api_errors`/`create_api_errors`, no ejecuta lookup/download/cancel y Storage lo
 clasifica como `ERROR` con `identity_status=MISSING`.
+
+`CLIENT_CREATE_API_ERROR` conserva artifacts de cliente, incrementa
+`client_create_errors`, reporta previews seguros en
+`client_create_error_messages`, detecta cliente existente o validacion, intenta
+fallback por RFC y solo continua a CFDI si obtiene `client_uid`.
 
 Los resultados viven solo en:
 

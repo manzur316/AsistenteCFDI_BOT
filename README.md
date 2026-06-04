@@ -297,10 +297,13 @@ en este orden:
 
 El mapa `client-uids.local.json` se persiste solo dentro de `runtime/` y no debe
 versionarse. Ese UID pertenece al cliente/receptor (`client_uid`) y nunca debe
-usarse como `cfdi_uid` ni como `invoice_id`. Si la creacion del cliente responde
-OK pero no se puede obtener un UID claro, el intento queda como
-`CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS` y no se intenta crear CFDI. Para
-reintentar despues de un smoke, revisa
+usarse como `cfdi_uid` ni como `invoice_id`. Si la creacion del cliente devuelve
+HTTP 2xx con `response/status=error`, el smoke lo clasifica como
+`CLIENT_CREATE_API_ERROR`; si falla el transporte, como
+`CLIENT_CREATE_HTTP_ERROR`. En ambos casos intenta resolver el cliente por RFC
+antes de crear CFDI. Si el fallback no encuentra un UID claro, el intento queda
+como `CLIENT_CREATE_FAILED`, `CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS` y no
+se intenta `POST /v4/cfdi40/create`. Para reintentar despues de un smoke, revisa
 `summary.json`, `manifest.json` y ejecuta:
 
 ```powershell
@@ -358,6 +361,16 @@ de error, el sistema quita tags simples, decodifica entidades HTML basicas y
 muestra texto plano truncado para diagnostico. CFDI XML real (`<?xml`,
 `<cfdi:Comprobante>`, `<tfd:TimbreFiscalDigital>`) y PDF real (`%PDF`) siguen
 redactados como marcadores seguros.
+
+Fase 6A.7F agrega diagnostico especifico para creacion/busqueda de clientes
+sandbox. El inspector ahora revisa `CLIENT_CREATE_REQUEST`,
+`CLIENT_CREATE_RESPONSE` y `CLIENT_LOOKUP_RESPONSE` ademas de respuestas CFDI,
+marca `endpoint_type: client_create|client_lookup`, redacta RFC completos e
+identifica candidatos UID sin imprimirlos. El analyzer reporta
+`client_create_errors`, `client_lookup_errors`, mensajes seguros,
+`client_already_exists_detected`, `client_validation_error_detected` y shapes
+de cliente. Si el error indica cliente existente, o si `CREATE_CLIENTS=1`, el
+smoke intenta lookup por RFC y solo continua a CFDI cuando obtiene `client_uid`.
 
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como
