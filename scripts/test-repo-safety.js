@@ -9,6 +9,7 @@ const safeFiles = [
   "README.md",
   ".env.example",
   ".env.local.example",
+  ".env.pac.sandbox.example",
   "data/concepts.normalized.json",
   "data/sat_official/README.md",
   "data/sat_official/imported_sat_catalog.normalized.json",
@@ -49,6 +50,7 @@ const forbiddenVersionedPaths = [
 const scanFiles = [
   ".env.example",
   ".env.local.example",
+  ".env.pac.sandbox.example",
   "README.md",
   ".gitignore",
   ...listFiles("runner"),
@@ -69,6 +71,8 @@ const tokenPatterns = [
   { name: "telegram_token_assignment", pattern: /TELEGRAM_BOT_TOKEN\s*=\s*(?!REEMPLAZAR|CHANGE|PLACEHOLDER)[^\s#]+/i },
   { name: "json_token_value", pattern: /["']token["']\s*:\s*["'](?!REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_|CAMBIAR)[^"']{12,}["']/i },
   { name: "postgres_real_password_hint", pattern: /POSTGRES_PASSWORD\s*=\s*(?!CAMBIAR|REEMPLAZAR|CHANGE|PLACEHOLDER)[^\s#]+/i },
+  { name: "facturacom_api_key_assignment", pattern: /FACTURACOM_SANDBOX_API_KEY\s*=\s*(?!["']?(?:REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_))["']?[^\s#]+/i },
+  { name: "facturacom_secret_key_assignment", pattern: /FACTURACOM_SANDBOX_SECRET_KEY\s*=\s*(?!["']?(?:REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_))["']?[^\s#]+/i },
 ];
 
 function toRepoPath(filePath) {
