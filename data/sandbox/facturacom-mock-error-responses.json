@@ -1,0 +1,47 @@
+[
+  {
+    "fixture_id": "ERROR-RECEIVER-INCOMPLETE",
+    "operation": "stampSandbox",
+    "status": "PAC_ERROR",
+    "code": "RECEIVER_INCOMPLETE",
+    "message": "Receptor demo incompleto para sandbox.",
+    "field": "receiver",
+    "retryable": false
+  },
+  {
+    "fixture_id": "ERROR-REQUIRED-FIELD-MISSING",
+    "operation": "stampSandbox",
+    "status": "PAC_ERROR",
+    "code": "REQUIRED_FIELD_MISSING",
+    "message": "Campo obligatorio demo faltante.",
+    "field": "concepts[0].clave_prod_serv",
+    "retryable": false
+  },
+  {
+    "fixture_id": "ERROR-TAX-TOTAL-MISMATCH",
+    "operation": "stampSandbox",
+    "status": "PAC_ERROR",
+    "code": "TAX_TOTAL_MISMATCH",
+    "message": "Impuestos o total demo no coinciden.",
+    "field": "totals",
+    "retryable": false
+  },
+  {
+    "fixture_id": "ERROR-GENERIC-PAC",
+    "operation": "stampSandbox",
+    "status": "PAC_ERROR",
+    "code": "GENERIC_SANDBOX_ERROR",
+    "message": "Error generico mock de proveedor sandbox.",
+    "retryable": true
+  },
+  {
+    "fixture_id": "CANCEL-SANDBOX-ERROR",
+    "operation": "cancelInvoice",
+    "status": "CANCEL_FAILED",
+    "code": "CANCEL_SANDBOX_ERROR",
+    "message": "Cancelacion sandbox mock fallida.",
+    "field": "invoice_ref",
+    "retryable": false,
+    "uuid": "00000000-0000-4000-8000-000000000007"
+  }
+]

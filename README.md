@@ -214,6 +214,16 @@ La fase 6A.4 agrega builders ejecutables para convertir previews/drafts actuales
 
 El Canonical Draft Builder transforma cliente, concepto, line items, impuestos y blockers en `CanonicalDraft`. El Canonical Invoice Builder promueve solo drafts confirmados explicitamente, sin blockers y con revision humana a `CanonicalInvoiceDocument` sandbox-ready y `CanonicalPacRequest` neutral. No llama PAC, no crea XML/PDF y no abre produccion. La siguiente fase tecnica es Factura.com Payload Mapper; cualquier smoke real debe mantener primero el enforcement privado ya aplicado en 6A.3B.
 
+La fase 6A.5 agrega el `Factura.com Sandbox Mapper` mock-only:
+
+- `scripts/lib/factura-com-payload-mapper.js`
+- `scripts/lib/factura-com-sandbox-adapter.js`
+- `data/sandbox/facturacom-mock-success-responses.json`
+- `data/sandbox/facturacom-mock-error-responses.json`
+- `docs/FACTURACOM_SANDBOX_MAPPER.md`
+
+Esta capa traduce contratos canonicos a un payload sandbox de proveedor marcado como `TODO_DOCS_REQUIRED`, normaliza respuestas mock a `CanonicalPacResult` y mantiene Factura.com aislado del nucleo. No hace llamadas live, no usa credenciales, no crea XML/PDF reales y no abre produccion. La siguiente fase recomendada es 6A.6: smoke sandbox controlado con `FACTURACOM_SANDBOX_LIVE=1`, credenciales locales no versionadas y seguridad 6A.3B activa.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

@@ -1,0 +1,79 @@
+[
+  {
+    "fixture_id": "SUCCESS-CCTV-SERVICE",
+    "draft_id": "DRAFT-DEMO-CCTV-SERVICE",
+    "operation": "stampSandbox",
+    "status": "SANDBOX_STAMPED",
+    "pac_invoice_id": "FACTURA-COM-MOCK-CCTV-SERVICE",
+    "uuid": "00000000-0000-4000-8000-000000000001",
+    "serie": "SANDBOX",
+    "folio": "DEMO-001",
+    "xml_available": false,
+    "pdf_available": false,
+    "warnings": ["DEMO_SANDBOX_MOCK_ONLY"]
+  },
+  {
+    "fixture_id": "SUCCESS-CCTV-PRODUCT",
+    "draft_id": "DRAFT-DEMO-CCTV-PRODUCT",
+    "operation": "stampSandbox",
+    "status": "SANDBOX_STAMPED",
+    "pac_invoice_id": "FACTURA-COM-MOCK-CCTV-PRODUCT",
+    "uuid": "00000000-0000-4000-8000-000000000002",
+    "serie": "SANDBOX",
+    "folio": "DEMO-002",
+    "xml_available": false,
+    "pdf_available": false,
+    "warnings": ["DEMO_SANDBOX_MOCK_ONLY"]
+  },
+  {
+    "fixture_id": "SUCCESS-ACCESS-INSTALL",
+    "draft_id": "DRAFT-DEMO-ACCESS-INSTALL",
+    "operation": "stampSandbox",
+    "status": "SANDBOX_STAMPED",
+    "pac_invoice_id": "FACTURA-COM-MOCK-ACCESS-INSTALL",
+    "uuid": "00000000-0000-4000-8000-000000000003",
+    "serie": "SANDBOX",
+    "folio": "DEMO-003",
+    "xml_available": false,
+    "pdf_available": false,
+    "warnings": ["DEMO_SANDBOX_MOCK_ONLY"]
+  },
+  {
+    "fixture_id": "SUCCESS-BARRIER-MAINTENANCE",
+    "draft_id": "DRAFT-DEMO-BARRIER-MAINTENANCE",
+    "operation": "stampSandbox",
+    "status": "SANDBOX_STAMPED",
+    "pac_invoice_id": "FACTURA-COM-MOCK-BARRIER-MAINTENANCE",
+    "uuid": "00000000-0000-4000-8000-000000000004",
+    "serie": "SANDBOX",
+    "folio": "DEMO-004",
+    "xml_available": false,
+    "pdf_available": false,
+    "warnings": ["DEMO_SANDBOX_MOCK_ONLY"]
+  },
+  {
+    "fixture_id": "SUCCESS-MULTILINE",
+    "draft_id": "DRAFT-DEMO-MULTILINE-MATERIAL-SERVICE",
+    "operation": "stampSandbox",
+    "status": "SANDBOX_STAMPED",
+    "pac_invoice_id": "FACTURA-COM-MOCK-MULTILINE",
+    "uuid": "00000000-0000-4000-8000-000000000005",
+    "serie": "SANDBOX",
+    "folio": "DEMO-005",
+    "xml_available": false,
+    "pdf_available": false,
+    "warnings": ["DEMO_SANDBOX_MOCK_ONLY"]
+  },
+  {
+    "fixture_id": "CANCEL-SANDBOX-OK",
+    "operation": "cancelInvoice",
+    "status": "SANDBOX_CANCELLED",
+    "pac_invoice_id": "FACTURA-COM-MOCK-CANCEL-OK",
+    "uuid": "00000000-0000-4000-8000-000000000006",
+    "serie": "SANDBOX",
+    "folio": "DEMO-CANCEL-OK",
+    "xml_available": false,
+    "pdf_available": false,
+    "warnings": ["DEMO_SANDBOX_MOCK_ONLY"]
+  }
+]
