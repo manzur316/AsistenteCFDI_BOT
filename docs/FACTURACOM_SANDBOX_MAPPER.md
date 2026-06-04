@@ -199,6 +199,20 @@ Los flags separados son:
 - `FACTURACOM_SANDBOX_DOWNLOAD_TEST=0|1`
 - `FACTURACOM_SANDBOX_CANCEL_TEST=0|1`
 - `FACTURACOM_SANDBOX_BATCH_SIZE=1|5`
+- `FACTURACOM_SKIP_AUTH_PREFLIGHT=1` solo para pruebas unitarias controladas.
+
+Preflight live local recomendado antes del smoke:
+
+```powershell
+node scripts/preflight-facturacom-auth.js
+```
+
+El preflight usa las mismas variables locales, llama solo
+`GET /v1/clients?per_page=1`, no crea clientes, no crea CFDI, no descarga
+XML/PDF y guarda `runtime/facturacom-sandbox/preflight-auth-response.json`
+sanitizado. Debe pasar como `AUTH_OK` antes de perseguir errores de payload CFDI.
+El error `La cuenta que intenta autenticarse no existe` indica autenticacion,
+cuenta o ambiente Factura.com; no debe contarse como cliente existente.
 
 Cuando `FACTURACOM_SANDBOX_CREATE_CLIENTS=1`, el smoke puede crear clientes demo
 en sandbox y resolver `Receptor.UID` sin tocar datos reales. Si la respuesta de
@@ -321,6 +335,14 @@ valores largos.
 
 El smoke distingue errores HTTP de errores API de Factura.com:
 
+- `PROVIDER_AUTH_FAILED`: auth preflight fallo antes de tocar clientes o CFDI.
+- `AUTH_ACCOUNT_NOT_FOUND`: cuenta sandbox no existe o keys no corresponden.
+- `AUTH_INVALID_KEYS`: credenciales invalidas.
+- `AUTH_ENVIRONMENT_MISMATCH`: keys/host de ambiente incorrecto.
+- `AUTH_PLAN_REQUIRED`: plan o API no habilitada.
+- `AUTH_IP_BLOCKED`: IP no autorizada.
+- `AUTH_UNKNOWN_API_ERROR`: error API no clasificado en preflight.
+- `AUTH_HTTP_ERROR`: fallo de transporte en preflight.
 - `CREATE_HTTP_ERROR`: el transporte no fue OK.
 - `CREATE_API_ERROR`: el transporte fue OK, pero el cuerpo trae
   `response/status=error`.
@@ -338,6 +360,12 @@ clasifica como `ERROR` con `identity_status=MISSING`.
 `client_create_errors`, reporta previews seguros en
 `client_create_error_messages`, detecta cliente existente o validacion, intenta
 fallback por RFC y solo continua a CFDI si obtiene `client_uid`.
+
+`PROVIDER_AUTH_FAILED` conserva `PREFLIGHT_AUTH_RESPONSE`, incrementa
+`provider_auth_errors`, reporta `provider_auth_status` y corta antes de
+`CLIENT_CREATE`, `CLIENT_LOOKUP` y `CFDI_CREATE`. Las keys sandbox deben venir
+del ambiente `https://sandbox.factura.com/api`; no uses produccion contra
+sandbox. `F-PLUGIN` sigue siendo requerido por Factura.com.
 
 Los resultados viven solo en:
 

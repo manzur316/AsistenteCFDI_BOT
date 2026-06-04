@@ -3,6 +3,7 @@ const path = require("path");
 const { buildCanonicalDraftFromBotPreview } = require("./lib/canonical-draft-builder");
 const { buildCanonicalPacRequest, promoteCanonicalDraftToInvoiceDocument } = require("./lib/canonical-invoice-builder");
 const { mapCanonicalInvoiceToFacturaComPayload } = require("./lib/factura-com-payload-mapper");
+const { runFacturaComAuthPreflight } = require("./preflight-facturacom-auth");
 const {
   assertFacturaComSandboxEnv,
   facturaComRequest,
@@ -115,6 +116,7 @@ function buildSmokeConfig(env = {}) {
     moneda: envValue(env, "FACTURACOM_SANDBOX_MONEDA") || "MXN",
     lugarExpedicion: envValue(env, "FACTURACOM_SANDBOX_LUGAR_EXPEDICION"),
     emitterRegimenFiscal: envValue(env, "FACTURACOM_SANDBOX_EMITTER_REGIMEN_FISCAL") || "626",
+    skipAuthPreflight: boolEnv(env.FACTURACOM_SKIP_AUTH_PREFLIGHT),
     postCreateSearchDocumented: false,
   };
   if (live) assertFacturaComSandboxEnv(env);
@@ -1046,7 +1048,10 @@ function clientErrorMessage(response = {}, env = {}) {
 
 function isClientAlreadyExistsMessage(message) {
   const normalized = normalizeComparable(message);
-  return /\b(EXISTE|EXISTENTE|REGISTRAD[OA]|DUPLICAD[OA]|ALREADY|EXISTS|DUPLICATE)\b/.test(normalized);
+  if (/\b(NO EXISTE|CUENTA NO EXISTE|NO EXISTE LA CUENTA|NOT EXIST|DOES NOT EXIST|ACCOUNT DOES NOT EXIST)\b/.test(normalized)) {
+    return false;
+  }
+  return /\b(CLIENTE YA EXISTE|RFC YA REGISTRAD[OA]|YA SE ENCUENTRA REGISTRAD[OA]|YA ESTA REGISTRAD[OA]|DUPLICATE CLIENT|CLIENT ALREADY EXISTS|ALREADY EXISTS)\b/.test(normalized);
 }
 
 function isClientValidationErrorMessage(message) {
@@ -1083,6 +1088,22 @@ function recordClientLookupFailure(summary, response = {}, env = {}) {
   };
 }
 
+function applyProviderAuthFailure(attempt, summary, authPreflightResult = {}) {
+  const status = authPreflightResult.status || "AUTH_UNKNOWN_API_ERROR";
+  const message = authPreflightResult.message || null;
+  attempt.status = "PROVIDER_AUTH_FAILED";
+  attempt.provider_auth_status = status;
+  attempt.provider_auth_message = message;
+  attempt.auth_preflight_ok = false;
+  attempt.warnings.push(`provider_auth_failed:${status}`);
+  summary.errors += 1;
+  summary.provider_auth_errors += 1;
+  summary.provider_auth_status = status;
+  summary.provider_auth_message = message;
+  summary.auth_preflight_ok = false;
+  summary.warnings.push(`provider_auth_failed:${status}`);
+}
+
 async function processDraft({
   fixture,
   client,
@@ -1094,6 +1115,7 @@ async function processDraft({
   requestFn = facturaComRequest,
   postCreateSearchFn = null,
   postCreateSearchDocumented = false,
+  authPreflightResult = null,
 }) {
   const attempt = {
     draft_id: fixture.draft_id,
@@ -1130,6 +1152,11 @@ async function processDraft({
     attempt.status = "CANONICAL_INVALID";
     attempt.warnings.push(...scenario.errors);
     summary.errors += 1;
+    return attempt;
+  }
+
+  if (authPreflightResult && authPreflightResult.ok === false) {
+    applyProviderAuthFailure(attempt, summary, authPreflightResult);
     return attempt;
   }
 
@@ -1294,6 +1321,7 @@ function buildManifest(config) {
       create_clients: config.createClients,
       download_test: config.downloadTest,
       cancel_test: config.cancelTest,
+      skip_auth_preflight: config.skipAuthPreflight,
     },
     production_blocked: true,
     artifacts: [],
@@ -1333,6 +1361,10 @@ function buildSummary(config) {
     api_status_unknown: 0,
     create_api_errors: 0,
     create_http_errors: 0,
+    provider_auth_errors: 0,
+    provider_auth_status: null,
+    provider_auth_message: null,
+    auth_preflight_ok: null,
     client_create_errors: 0,
     client_lookup_errors: 0,
     client_create_error_messages: [],
@@ -1364,8 +1396,26 @@ async function runSmoke(env = process.env, options = {}) {
   const runtimeDir = ensureRuntimeDir(config.runtimeDir);
   const manifest = buildManifest({ ...config, runtimeDir });
   const summary = buildSummary(config);
+  let authPreflightResult = null;
 
   try {
+    if (config.skipAuthPreflight) {
+      summary.auth_preflight_ok = null;
+      summary.provider_auth_status = "AUTH_PREFLIGHT_SKIPPED";
+    } else {
+      authPreflightResult = await runFacturaComAuthPreflight(env, { requestFn });
+      summary.auth_preflight_ok = authPreflightResult.ok === true;
+      summary.provider_auth_status = authPreflightResult.status || null;
+      summary.provider_auth_message = authPreflightResult.message || null;
+      if (authPreflightResult.artifact_path) {
+        manifest.artifacts.push({
+          type: "PREFLIGHT_AUTH_RESPONSE",
+          path: path.relative(root, authPreflightResult.artifact_path).replace(/\\/g, "/"),
+          ok: authPreflightResult.ok === true,
+          auth_status: authPreflightResult.status || null,
+        });
+      }
+    }
     const { drafts, clientById } = loadFixtures();
     const uidMap = loadLocalClientUidMap(runtimeDir, env);
     const batch = drafts.slice(0, config.batchSize);
@@ -1382,6 +1432,7 @@ async function runSmoke(env = process.env, options = {}) {
         requestFn,
         postCreateSearchFn,
         postCreateSearchDocumented,
+        authPreflightResult,
       });
     }
   } catch (error) {

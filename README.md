@@ -277,6 +277,7 @@ FACTURACOM_SANDBOX_BATCH_SIZE=1|5
 Ejecuta live sandbox solo despues de cargar variables localmente:
 
 ```powershell
+node scripts/preflight-facturacom-auth.js
 node scripts/smoke-factura-com-sandbox.js
 node scripts/analyze-factura-com-sandbox-results.js
 ```
@@ -371,6 +372,21 @@ identifica candidatos UID sin imprimirlos. El analyzer reporta
 `client_already_exists_detected`, `client_validation_error_detected` y shapes
 de cliente. Si el error indica cliente existente, o si `CREATE_CLIENTS=1`, el
 smoke intenta lookup por RFC y solo continua a CFDI cuando obtiene `client_uid`.
+
+Fase 6A.7G agrega un preflight de autenticacion Factura.com antes de cualquier
+`CLIENT_CREATE`, `CLIENT_LOOKUP` o `CFDI_CREATE`. El smoke llama
+`GET /v1/clients?per_page=1` y guarda `PREFLIGHT_AUTH_RESPONSE` sanitizado en
+`runtime/facturacom-sandbox/preflight-auth-response.json`. Si falla, el intento
+queda `PROVIDER_AUTH_FAILED`, `provider_auth_status` indica
+`AUTH_ACCOUNT_NOT_FOUND`, `AUTH_INVALID_KEYS`, `AUTH_ENVIRONMENT_MISMATCH`,
+`AUTH_PLAN_REQUIRED`, `AUTH_IP_BLOCKED`, `AUTH_UNKNOWN_API_ERROR` o
+`AUTH_HTTP_ERROR`, y no se intenta crear cliente ni CFDI. El mensaje
+`La cuenta que intenta autenticarse no existe` se trata como auth/cuenta/ambiente
+del proveedor, no como cliente existente ni error de payload CFDI. Las keys
+sandbox deben corresponder a `https://sandbox.factura.com/api`; no uses keys de
+produccion contra sandbox. `F-PLUGIN` sigue siendo requerido y universal para la
+cuenta. No avances contratos canonicos CFDI ni storage/reporting con live smoke
+hasta que el preflight marque `AUTH_OK`.
 
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como

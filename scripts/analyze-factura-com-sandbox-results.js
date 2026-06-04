@@ -134,7 +134,16 @@ function responseLooksLikeError(response = {}) {
 }
 
 function messageLooksLikeClientAlreadyExists(message) {
-  return /\b(existe|existente|registrad[oa]|duplicad[oa]|already|exists|duplicate)\b/i.test(String(message || ""));
+  const normalized = String(message || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (/\b(no existe|cuenta no existe|no existe la cuenta|not exist|does not exist|account does not exist)\b/.test(normalized)) {
+    return false;
+  }
+  return /\b(cliente ya existe|rfc ya registrad[oa]|ya se encuentra registrad[oa]|ya esta registrad[oa]|duplicate client|client already exists|already exists)\b/.test(normalized);
 }
 
 function messageLooksLikeClientValidation(message) {
@@ -215,6 +224,10 @@ function analyze(runtimeArg = process.argv[2]) {
   const clientLookupResponseShapesDetected = [];
   const clientCreateArtifactMessages = [];
   const clientLookupArtifactMessages = [];
+  const authPreflightResponseShape = [];
+  let authPreflightArtifactOk = null;
+  let authPreflightArtifactMessage = null;
+  let authPreflightArtifactStatus = null;
   let clientCreateArtifactErrors = 0;
   let clientLookupArtifactErrors = 0;
   const headerIdentityCandidates = [];
@@ -276,6 +289,19 @@ function analyze(runtimeArg = process.argv[2]) {
         }
       }
     }
+    if (artifact.type === "PREFLIGHT_AUTH_RESPONSE") {
+      const responseJson = readJsonIfPossible(abs);
+      if (responseJson) {
+        const shapeLines = collectShapeLines(responseJson).slice(0, 120);
+        authPreflightResponseShape.push({
+          path_count: shapeLines.length,
+          paths: shapeLines,
+        });
+        authPreflightArtifactOk = artifact.ok === true || responseJson.auth_ok === true;
+        authPreflightArtifactStatus = text(artifact.auth_status || responseJson.auth_status || responseJson.response?.auth_status);
+        authPreflightArtifactMessage = responseMessagePreview(responseJson.response || responseJson);
+      }
+    }
   }
   const possibleClientUidUsedAsCfdiUid = attempts
     .filter((attempt) => {
@@ -324,6 +350,11 @@ function analyze(runtimeArg = process.argv[2]) {
     + clientLookupErrorMessages.filter(messageLooksLikeClientAlreadyExists).length;
   const clientValidationErrorDetected = Number(summary.client_validation_error_detected || 0)
     + clientCreateErrorMessages.filter(messageLooksLikeClientValidation).length;
+  const providerAuthStatus = text(summary.provider_auth_status) || authPreflightArtifactStatus;
+  const providerAuthMessage = safeApiMessagePreview(summary.provider_auth_message || authPreflightArtifactMessage);
+  const authPreflightOk = typeof summary.auth_preflight_ok === "boolean"
+    ? summary.auth_preflight_ok
+    : authPreflightArtifactOk;
   for (const attempt of attempts) {
     increment(documentsByDraftId, attempt.draft_id);
     increment(documentsByInvoiceId, attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id);
@@ -379,6 +410,11 @@ function analyze(runtimeArg = process.argv[2]) {
     api_status_unknown: Number(summary.api_status_unknown ?? apiStatusUnknownAttempts.length),
     create_api_errors: Number(summary.create_api_errors ?? createApiErrors.length),
     create_http_errors: Number(summary.create_http_errors ?? createHttpErrors.length),
+    provider_auth_errors: Number(summary.provider_auth_errors || attempts.filter((attempt) => attempt.status === "PROVIDER_AUTH_FAILED").length),
+    provider_auth_status: providerAuthStatus,
+    provider_auth_message: providerAuthMessage,
+    auth_preflight_response_shape: authPreflightResponseShape,
+    auth_preflight_ok: authPreflightOk,
     client_create_errors: Number(summary.client_create_errors ?? clientCreateArtifactErrors),
     client_lookup_errors: Number(summary.client_lookup_errors ?? clientLookupArtifactErrors),
     client_create_error_messages: clientCreateErrorMessages,
@@ -429,6 +465,7 @@ function printResult(result) {
   console.log(`XML UUID encontrados: ${result.xml_uuid_found}`);
   console.log(`Lookup identity encontrados: ${result.lookup_identity_found}`);
   console.log(`Create response shapes detectados: ${result.create_response_shapes_detected.length}`);
+  console.log(`Auth preflight response shapes detectados: ${result.auth_preflight_response_shape.length}`);
   console.log(`Client create response shapes detectados: ${result.client_create_response_shapes_detected.length}`);
   console.log(`Client lookup response shapes detectados: ${result.client_lookup_response_shapes_detected.length}`);
   console.log(`Header identity candidates: ${result.header_identity_candidates.length}`);
@@ -440,6 +477,13 @@ function printResult(result) {
   console.log(`API status unknown: ${result.api_status_unknown}`);
   console.log(`Create API errors: ${result.create_api_errors}`);
   console.log(`Create HTTP errors: ${result.create_http_errors}`);
+  console.log(`Provider auth errors: ${result.provider_auth_errors}`);
+  console.log(`Provider auth status: ${result.provider_auth_status || "none"}`);
+  console.log(`Provider auth message: ${result.provider_auth_message || "none"}`);
+  console.log(`Auth preflight OK: ${result.auth_preflight_ok === true ? "true" : (result.auth_preflight_ok === false ? "false" : "unknown")}`);
+  if (result.provider_auth_errors > 0) {
+    console.log("Provider auth diagnosis: No es error de cliente ni CFDI; es autenticacion/ambiente/cuenta proveedor.");
+  }
   console.log(`Client create errors: ${result.client_create_errors}`);
   console.log(`Client lookup errors: ${result.client_lookup_errors}`);
   console.log(`Client create error messages: ${result.client_create_error_messages.join(" | ") || "none"}`);

@@ -5,8 +5,10 @@ const { execFileSync, spawnSync } = require("child_process");
 const {
   assertFacturaComSandboxEnv,
   buildFacturaComHeaders,
+  classifyFacturaComAuthError,
   extractFacturaComApiMessage,
   extractFacturaComApiStatus,
+  isFacturaComAuthErrorMessage,
   isFacturaComApiError,
   isFacturaComApiSuccess,
   normalizeFacturaComHttpResponse,
@@ -80,6 +82,7 @@ function validLiveEnv(overrides = {}) {
     FACTURACOM_SANDBOX_CANCEL_TEST: "0",
     FACTURACOM_SANDBOX_DOWNLOAD_TEST: "0",
     FACTURACOM_SANDBOX_BATCH_SIZE: "1",
+    FACTURACOM_SKIP_AUTH_PREFLIGHT: "1",
     ...overrides,
   };
 }
@@ -271,6 +274,62 @@ check("normaliza_success_y_estado_api_desconocido", () => {
   assert.strictEqual(unknown.api_status_unknown, true);
   assert.strictEqual(unknown.ok, true);
   return "success/unknown";
+});
+
+check("clasifica_auth_errors_facturacom", () => {
+  const cases = [
+    ["La cuenta que intenta autenticarse no existe", "AUTH_ACCOUNT_NOT_FOUND"],
+    ["API no activada para esta cuenta", "AUTH_PLAN_REQUIRED"],
+    ["plan requerido para usar esta funcion", "AUTH_PLAN_REQUIRED"],
+    ["funcion no incluida en el plan", "AUTH_PLAN_REQUIRED"],
+    ["IP no autorizada", "AUTH_IP_BLOCKED"],
+    ["credenciales invalidas", "AUTH_INVALID_KEYS"],
+    ["llaves de produccion usadas en ambiente sandbox", "AUTH_ENVIRONMENT_MISMATCH"],
+  ];
+  for (const [message, status] of cases) {
+    const response = normalizeFacturaComHttpResponse({
+      ok: true,
+      status: 200,
+      data: { response: "error", message },
+    }, validLiveEnv());
+    assert.strictEqual(classifyFacturaComAuthError(response).status, status, message);
+    assert.strictEqual(isFacturaComAuthErrorMessage(message), true, message);
+  }
+  const ok = normalizeFacturaComHttpResponse({ ok: true, status: 200, data: { response: "success", data: [] } }, validLiveEnv());
+  assert.strictEqual(classifyFacturaComAuthError(ok).status, "AUTH_OK");
+  return "auth states";
+});
+
+check("cliente_existente_no_confunde_cuenta_no_existe", () => {
+  const runtimeDir = path.join(tempRoot, "client-exists-detection-runtime");
+  function resultFor(message) {
+    const responsePath = path.join(runtimeDir, `${message.replace(/[^A-Za-z0-9]+/g, "_").slice(0, 40)}.json`);
+    writeJson(responsePath, {
+      ok: false,
+      http_ok: true,
+      api_ok: false,
+      api_status: "error",
+      data: { response: "error", message },
+    });
+    writeJson(path.join(runtimeDir, "manifest.json"), {
+      schema_version: "facturacom_sandbox_smoke.v1",
+      live: true,
+      base_url: "https://sandbox.factura.com/api",
+      artifacts: [{
+        type: "CLIENT_CREATE_RESPONSE",
+        client_id: "CLIENT-DEMO-PF-GENERIC",
+        path: path.relative(root, responsePath).replace(/\\/g, "/"),
+        ok: false,
+      }],
+      attempts: [],
+    });
+    writeJson(path.join(runtimeDir, "summary.json"), { total_attempts: 0, successful: 0, errors: 1, warnings: [] });
+    return analyze(runtimeDir);
+  }
+  assert.strictEqual(resultFor("La cuenta que intenta autenticarse no existe").client_already_exists_detected, 0);
+  assert.strictEqual(resultFor("cliente ya existe para RFC XAXX010101000").client_already_exists_detected > 0, true);
+  assert.strictEqual(resultFor("RFC ya registrado").client_already_exists_detected > 0, true);
+  return "no false positive";
 });
 
 check("smoke_no_escribe_fuera_de_runtime", () => {
@@ -559,6 +618,61 @@ check("analyzer_reporta_client_create_error_seguro", () => {
   return "client create";
 });
 
+check("analyzer_reporta_provider_auth_status", () => {
+  const runtimeDir = path.join(tempRoot, "provider-auth-runtime");
+  const responsePath = path.join(runtimeDir, "preflight-auth-response.json");
+  writeJson(responsePath, {
+    method: "GET",
+    path: "/v1/clients?per_page=1",
+    auth_status: "AUTH_ACCOUNT_NOT_FOUND",
+    auth_ok: false,
+    response: {
+      ok: false,
+      http_ok: true,
+      api_ok: false,
+      api_status: "error",
+      api_message_summary: "La cuenta que intenta autenticarse no existe",
+      data: {
+        response: "error",
+        message: "La cuenta que intenta autenticarse no existe",
+      },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [{
+      type: "PREFLIGHT_AUTH_RESPONSE",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+      ok: false,
+      auth_status: "AUTH_ACCOUNT_NOT_FOUND",
+    }],
+    attempts: [{ draft_id: "DRAFT-AUTH", status: "PROVIDER_AUTH_FAILED", provider_auth_status: "AUTH_ACCOUNT_NOT_FOUND" }],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 1,
+    successful: 0,
+    errors: 1,
+    provider_auth_errors: 1,
+    provider_auth_status: "AUTH_ACCOUNT_NOT_FOUND",
+    provider_auth_message: "La cuenta que intenta autenticarse no existe",
+    auth_preflight_ok: false,
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.provider_auth_errors, 1);
+  assert.strictEqual(result.provider_auth_status, "AUTH_ACCOUNT_NOT_FOUND");
+  assert.strictEqual(result.auth_preflight_ok, false);
+  assert.strictEqual(result.auth_preflight_response_shape.length, 1);
+  assert.strictEqual(result.client_already_exists_detected, 0);
+  const cli = runNode(["scripts/analyze-factura-com-sandbox-results.js", runtimeDir]);
+  assert.strictEqual(cli.status, 0, cli.stderr);
+  assert(cli.stdout.includes("Provider auth status: AUTH_ACCOUNT_NOT_FOUND"), cli.stdout);
+  assert(cli.stdout.includes("No es error de cliente ni CFDI"), cli.stdout);
+  return "provider auth";
+});
+
 check("analyzer_detecta_client_uid_como_cfdi_uid", () => {
   const runtimeDir = path.join(tempRoot, "client-uid-collision-runtime");
   const requestPath = path.join(runtimeDir, "DRAFT-DEMO-create-cfdi-request.json");
@@ -682,6 +796,48 @@ check("inspector_muestra_client_create_response_y_request_seguro", () => {
   assert(!output.includes("XAXX010101000"), output);
   assert(!output.includes("UID-CLIENT-SHAPE-SECRET"), output);
   return "client inspect";
+});
+
+check("inspector_muestra_preflight_auth_sin_secretos", () => {
+  const runtimeDir = path.join(tempRoot, "inspect-auth-runtime");
+  const responsePath = path.join(runtimeDir, "preflight-auth-response.json");
+  writeJson(responsePath, {
+    method: "GET",
+    path: "/v1/clients?per_page=1",
+    auth_status: "AUTH_INVALID_KEYS",
+    auth_ok: false,
+    response: {
+      ok: false,
+      http_ok: true,
+      api_ok: false,
+      api_status: "error",
+      api_message_summary: "credenciales invalidas F-Api-Key: LOCAL_FAKE_API_KEY_1234567890",
+      responseHeaders: {
+        "content-type": "application/json",
+        "F-Secret-Key": "LOCAL_FAKE_SECRET_KEY_1234567890",
+      },
+      data: {
+        response: "error",
+        message: "credenciales invalidas F-Api-Key: LOCAL_FAKE_API_KEY_1234567890",
+      },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    artifacts: [{
+      type: "PREFLIGHT_AUTH_RESPONSE",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+      ok: false,
+      auth_status: "AUTH_INVALID_KEYS",
+    }],
+    attempts: [],
+  });
+  const output = inspectRuntime(runtimeDir);
+  assert(output.includes("endpoint_type: auth_preflight"), output);
+  assert(output.includes("PREFLIGHT_AUTH_RESPONSE"), output);
+  assert(output.includes("credenciales invalidas"), output);
+  assert(!output.includes("LOCAL_FAKE_API_KEY_1234567890"), output);
+  assert(!output.includes("LOCAL_FAKE_SECRET_KEY_1234567890"), output);
+  return "auth inspect";
 });
 
 check("analyzer_reporta_shapes_headers_y_forbidden_sources", () => {
@@ -895,6 +1051,88 @@ check("live_no_se_ejecuta_en_tests", () => {
   assert.notStrictEqual(process.env.FACTURACOM_SANDBOX_LIVE, "1");
   return "no live";
 });
+
+async function expectProviderAuthGate(status, message) {
+  const runtimeDir = path.join(tempRoot, `auth-gate-${status.toLowerCase()}`);
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+    FACTURACOM_SKIP_AUTH_PREFLIGHT: "0",
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    if (method === "GET" && requestPath === "/v1/clients?per_page=1") {
+      return { ok: true, status: 200, data: { response: "error", message } };
+    }
+    throw new Error(`no debe llamar despues de auth failure: ${method} ${requestPath}`);
+  };
+  const result = await runSmoke(env, { requestFn });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.summary.errors, 1);
+  assert.strictEqual(result.summary.provider_auth_errors, 1);
+  assert.strictEqual(result.summary.provider_auth_status, status);
+  assert.strictEqual(result.summary.auth_preflight_ok, false);
+  assert.strictEqual(attempt.status, "PROVIDER_AUTH_FAILED");
+  assert.strictEqual(attempt.provider_auth_status, status);
+  assert.strictEqual(calls.length, 1);
+  assert(calls.every((call) => call.path === "/v1/clients?per_page=1"), JSON.stringify(calls));
+  assert(!calls.some((call) => call.path === "/v1/clients/create"), "no debe crear cliente");
+  assert(!calls.some((call) => call.path.startsWith("/v1/clients/") && call.path !== "/v1/clients?per_page=1"), "no debe buscar cliente");
+  assert(!calls.some((call) => call.path === "/v4/cfdi40/create"), "no debe crear CFDI");
+  assert(result.manifest.artifacts.some((artifact) => artifact.type === "PREFLIGHT_AUTH_RESPONSE" && artifact.ok === false), "debe guardar artifact preflight");
+  return status;
+}
+
+checkAsync("preflight_auth_ok_permite_continuar", async () => {
+  const runtimeDir = path.join(tempRoot, "auth-ok-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+    FACTURACOM_SKIP_AUTH_PREFLIGHT: "0",
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    if (method === "GET" && requestPath === "/v1/clients?per_page=1") {
+      return { ok: true, status: 200, data: { response: "success", data: [] } };
+    }
+    if (method === "POST" && requestPath === "/v1/clients/create") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CLIENT-AUTH-OK", rfc: "XAXX010101000" } } };
+    }
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CFDI-AUTH-OK", UUID: "00000000-0000-4000-8000-000000000889" } } };
+    }
+    if (method === "GET" && requestPath === "/v4/cfdi/uid/UID-CFDI-AUTH-OK") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CFDI-AUTH-OK" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+  const result = await runSmoke(env, { requestFn });
+  assert.strictEqual(result.summary.provider_auth_status, "AUTH_OK");
+  assert.strictEqual(result.summary.auth_preflight_ok, true);
+  assert.strictEqual(result.summary.successful, 1);
+  assert(calls.some((call) => call.path === "/v1/clients/create"), "debe crear cliente despues de AUTH_OK");
+  assert(calls.some((call) => call.path === "/v4/cfdi40/create"), "debe continuar CFDI despues de AUTH_OK");
+  return "auth ok";
+});
+
+checkAsync("preflight_auth_account_not_found_corta_antes_de_cliente", async () => (
+  expectProviderAuthGate("AUTH_ACCOUNT_NOT_FOUND", "La cuenta que intenta autenticarse no existe")
+));
+
+checkAsync("preflight_auth_plan_required_corta_antes_de_cliente", async () => (
+  expectProviderAuthGate("AUTH_PLAN_REQUIRED", "API no activada: plan requerido")
+));
+
+checkAsync("preflight_auth_ip_blocked_corta_antes_de_cliente", async () => (
+  expectProviderAuthGate("AUTH_IP_BLOCKED", "IP no autorizada")
+));
+
+checkAsync("preflight_auth_environment_mismatch_corta_antes_de_cliente", async () => (
+  expectProviderAuthGate("AUTH_ENVIRONMENT_MISMATCH", "credenciales de produccion usadas en ambiente sandbox")
+));
 
 checkAsync("create_ok_sin_uid_hace_lookup_y_continua_cfdi", async () => {
   const runtimeDir = path.join(tempRoot, "fallback-runtime");

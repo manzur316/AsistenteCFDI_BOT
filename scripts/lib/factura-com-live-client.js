@@ -312,6 +312,75 @@ function isFacturaComApiSuccess(data) {
     || /\b(success|ok|created)\b/i.test(status);
 }
 
+function normalizeAuthMessage(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function isFacturaComPlanGateMessage(message) {
+  const normalized = normalizeAuthMessage(message);
+  return /\b(plan requerido|requiere plan|api no activada|funcion no incluida|funcion no habilitada|servicio no incluido|modulo no incluido|plan required|feature not included|api not enabled)\b/.test(normalized);
+}
+
+function isFacturaComIpWhitelistMessage(message) {
+  const normalized = normalizeAuthMessage(message);
+  return /\b(ip no autorizada|ip no permitida|ip bloqueada|ip blocked|ip not allowed|unauthorized ip|whitelist)\b/.test(normalized);
+}
+
+function isFacturaComEnvironmentMismatchMessage(message) {
+  const normalized = normalizeAuthMessage(message);
+  return /\b(ambiente incorrecto|ambiente invalido|sandbox|produccion|production|environment mismatch|wrong environment|keys.*environment|credenciales.*ambiente|llaves.*ambiente)\b/.test(normalized);
+}
+
+function isFacturaComInvalidKeysMessage(message) {
+  const normalized = normalizeAuthMessage(message);
+  return /\b(credenciales invalidas|credenciales incorrectas|api key invalida|secret key invalida|plugin invalido|invalid credentials|invalid api key|invalid secret|invalid plugin|unauthorized|no autorizado|authentication failed)\b/.test(normalized);
+}
+
+function isFacturaComAccountNotFoundMessage(message) {
+  const normalized = normalizeAuthMessage(message);
+  return /\b(la cuenta que intenta autenticarse no existe|no existe la cuenta|cuenta no existe|cuenta inexistente|account does not exist|account not found|not exist account)\b/.test(normalized);
+}
+
+function isFacturaComAuthErrorMessage(message) {
+  return isFacturaComAccountNotFoundMessage(message)
+    || isFacturaComInvalidKeysMessage(message)
+    || isFacturaComEnvironmentMismatchMessage(message)
+    || isFacturaComPlanGateMessage(message)
+    || isFacturaComIpWhitelistMessage(message);
+}
+
+function classifyFacturaComAuthError(response = {}) {
+  const message = safeApiMessagePreview(
+    response.api_message_summary
+      || response.api_error_fields?.message
+      || response.api_error_fields?.mensaje
+      || response.api_error_fields?.error
+      || response.data?.message
+      || response.data?.mensaje
+      || response.data?.error
+      || response.data?.errors
+      || response.rawText
+      || response.statusText,
+    {},
+    240,
+  );
+  if (response.http_ok === false || response.ok === false && response.http_ok !== true) {
+    return { status: "AUTH_HTTP_ERROR", ok: false, message };
+  }
+  if (isFacturaComAccountNotFoundMessage(message)) return { status: "AUTH_ACCOUNT_NOT_FOUND", ok: false, message };
+  if (isFacturaComIpWhitelistMessage(message)) return { status: "AUTH_IP_BLOCKED", ok: false, message };
+  if (isFacturaComPlanGateMessage(message)) return { status: "AUTH_PLAN_REQUIRED", ok: false, message };
+  if (isFacturaComEnvironmentMismatchMessage(message)) return { status: "AUTH_ENVIRONMENT_MISMATCH", ok: false, message };
+  if (isFacturaComInvalidKeysMessage(message)) return { status: "AUTH_INVALID_KEYS", ok: false, message };
+  if (response.api_ok === false || isFacturaComApiError(response.data)) return { status: "AUTH_UNKNOWN_API_ERROR", ok: false, message };
+  return { status: "AUTH_OK", ok: true, message };
+}
+
 function collectApiErrorFields(data, env = {}) {
   const fields = {};
   for (const candidate of nestedObjectCandidates(data)) {
@@ -468,11 +537,16 @@ module.exports = {
   FacturaComLiveClientError,
   assertFacturaComSandboxEnv,
   buildFacturaComHeaders,
+  classifyFacturaComAuthError,
   extractFacturaComApiMessage,
   extractFacturaComApiStatus,
   facturaComRequest,
+  isFacturaComAuthErrorMessage,
   isFacturaComApiError,
   isFacturaComApiSuccess,
+  isFacturaComEnvironmentMismatchMessage,
+  isFacturaComIpWhitelistMessage,
+  isFacturaComPlanGateMessage,
   normalizeFacturaComHttpResponse,
   normalizeResponseHeaders,
   safeApiMessagePreview,

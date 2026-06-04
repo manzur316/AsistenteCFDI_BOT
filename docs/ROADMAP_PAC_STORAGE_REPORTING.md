@@ -129,6 +129,7 @@ Objetivos permitidos en sandbox:
 - Obtener XML/PDF sandbox si el proveedor lo permite.
 - Probar cancelacion sandbox si aplica.
 - Guardar evidencia tecnica para mejorar validaciones locales.
+- Ejecutar preflight de autenticacion antes de crear clientes o CFDI.
 
 Fuera de alcance:
 
@@ -136,6 +137,15 @@ Fuera de alcance:
 - Folios fiscales reales.
 - Produccion.
 - Automatizar decisiones fiscales por respuesta del PAC.
+
+Regla 6A.7G: cualquier adapter sandbox con credenciales debe validar primero el
+ambiente proveedor. Para Factura.com, el preflight usa
+`GET /v1/clients?per_page=1` contra `https://sandbox.factura.com/api`. Si devuelve
+`AUTH_ACCOUNT_NOT_FOUND`, `AUTH_INVALID_KEYS`, `AUTH_ENVIRONMENT_MISMATCH`,
+`AUTH_PLAN_REQUIRED`, `AUTH_IP_BLOCKED`, `AUTH_UNKNOWN_API_ERROR` o
+`AUTH_HTTP_ERROR`, el flujo no debe crear cliente, buscar cliente ni crear CFDI.
+El mensaje `La cuenta que intenta autenticarse no existe` es un problema de
+auth/cuenta/ambiente proveedor, no un error del contrato canonico CFDI.
 
 ## Storage Engine
 
@@ -281,6 +291,16 @@ El analyzer reporta `api_errors`, `http_errors`, `create_api_errors`,
 `create_http_errors`, `api_error_messages_detected`, `business_successful` e
 `identity_missing_after_api_success`. Reporting debe usar estos campos para no
 confundir error de negocio con CFDI creado sin identidad.
+
+### Factura.com Auth Preflight 6A.7G
+
+Antes de `CLIENT_CREATE`, `CLIENT_LOOKUP` o `CFDI_CREATE`, el smoke ejecuta
+`scripts/preflight-facturacom-auth.js` o la misma rutina interna. El resultado se
+guarda como `PREFLIGHT_AUTH_RESPONSE` sanitizado y el analyzer reporta
+`provider_auth_status`. Solo `AUTH_OK` permite continuar. Las credenciales deben
+ser del ambiente correcto: sandbox keys contra `https://sandbox.factura.com/api`;
+production keys quedan fuera de alcance y produccion sigue bloqueada. `F-PLUGIN`
+se mantiene como identificador requerido de la cuenta.
 
 ## Reporting Engine
 

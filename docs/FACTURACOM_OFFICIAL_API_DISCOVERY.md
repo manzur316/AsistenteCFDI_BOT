@@ -58,6 +58,12 @@ Politica local:
 - No se guarda token ni valor real de `F-PLUGIN` en esta fase.
 - Cualquier smoke futuro debe leer credenciales desde variables de entorno no
   versionadas.
+- Las keys sandbox deben usarse contra `https://sandbox.factura.com/api`.
+- Las keys de produccion no deben usarse contra sandbox, ni sandbox contra
+  produccion.
+- `F-PLUGIN` sigue siendo universal para la cuenta y tambien se lee desde env.
+- Antes de crear cliente, buscar cliente o crear CFDI, el smoke ejecuta auth
+  preflight con `GET /v1/clients?per_page=1`.
 
 ## C. Endpoints Oficiales
 
@@ -175,6 +181,16 @@ Solo si encuentra un UID claro persiste `client-uids.local.json` y continua al
 `POST /v4/cfdi40/create`; si no, detiene el intento como `CLIENT_CREATE_FAILED`
 o estado de UID faltante/ambiguo.
 
+Fase 6A.7G agrega un gate anterior a todo lo anterior: `PREFLIGHT_AUTH_RESPONSE`.
+El smoke llama `GET /v1/clients?per_page=1`, no crea datos y clasifica la
+respuesta como `AUTH_OK`, `AUTH_ACCOUNT_NOT_FOUND`, `AUTH_INVALID_KEYS`,
+`AUTH_ENVIRONMENT_MISMATCH`, `AUTH_PLAN_REQUIRED`, `AUTH_IP_BLOCKED`,
+`AUTH_UNKNOWN_API_ERROR` o `AUTH_HTTP_ERROR`. Si no hay `AUTH_OK`, el intento
+queda `PROVIDER_AUTH_FAILED` y no se ejecutan `CLIENT_CREATE`, `CLIENT_LOOKUP`
+ni `CFDI_CREATE`. El error `La cuenta que intenta autenticarse no existe` se
+clasifica como problema de autenticacion/cuenta/ambiente proveedor, no como
+cliente existente.
+
 ## E. Errores
 
 La documentacion muestra respuestas de error JSON. Formas observadas:
@@ -227,6 +243,11 @@ Si `POST /v1/clients/create` devuelve HTTP 200 con `response=error` o
 `client_validation_error_detected`. El inspector local puede revisar
 `CLIENT_CREATE_REQUEST`, `CLIENT_CREATE_RESPONSE` y `CLIENT_LOOKUP_RESPONSE` sin
 imprimir RFC completos, credenciales ni UID largos.
+
+Si el preflight de autenticacion falla, el analyzer reporta
+`provider_auth_errors`, `provider_auth_status`, `provider_auth_message`,
+`auth_preflight_ok` y `auth_preflight_response_shape`. En ese caso el diagnostico
+correcto es proveedor/cuenta/ambiente, no payload CFDI.
 
 Los mensajes de error pueden venir como texto plano, objeto JSON o HTML corto
 dentro de `message`. Para diagnostico local, 6A.7E convierte HTML simple

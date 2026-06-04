@@ -156,6 +156,7 @@ function endpointTypeForArtifact(artifact = {}) {
   const type = String(artifact.type || "");
   if (type.startsWith("CLIENT_CREATE")) return "client_create";
   if (type.startsWith("CLIENT_LOOKUP")) return "client_lookup";
+  if (type.startsWith("PREFLIGHT_AUTH")) return "auth_preflight";
   if (type.startsWith("CFDI_CREATE")) return "cfdi_create";
   if (type.startsWith("CFDI_LOOKUP")) return "cfdi_lookup";
   if (type.startsWith("CFDI_XML")) return "cfdi_xml";
@@ -171,6 +172,7 @@ function inspectRuntime(runtimeArg = DEFAULT_RUNTIME_DIR) {
     "CLIENT_CREATE_REQUEST",
     "CLIENT_CREATE_RESPONSE",
     "CLIENT_LOOKUP_RESPONSE",
+    "PREFLIGHT_AUTH_RESPONSE",
     "CFDI_CREATE_RESPONSE",
     "CFDI_LOOKUP_RESPONSE",
     "CFDI_XML",
