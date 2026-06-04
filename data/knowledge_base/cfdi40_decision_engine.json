@@ -1,0 +1,156 @@
+{
+  "schema_version": "cfdi40_decision_engine.v1",
+  "generated_at": "2026-06-04T03:59:26.711Z",
+  "decision_contract": {
+    "catalog_source_of_truth_for_concepts": "data/concepts.normalized.json",
+    "official_catalog_source_for_validation": "catCFDI_V_4_20260603.xls",
+    "never_invent": [
+      "concepto_factura",
+      "clave_prod_serv",
+      "clave_unidad",
+      "unidad",
+      "regimen",
+      "uso_cfdi"
+    ],
+    "requires_human_review": true,
+    "no_timbrado_no_pac": true
+  },
+  "stages": [
+    {
+      "order": 1,
+      "name": "message_safety",
+      "rule_ids": [
+        "CFDI40-022",
+        "CFDI40-026",
+        "CFDI40-027"
+      ]
+    },
+    {
+      "order": 2,
+      "name": "active_catalog_match",
+      "rule_ids": [
+        "CFDI40-006",
+        "CFDI40-007",
+        "CFDI40-023",
+        "CFDI40-024",
+        "CFDI40-025"
+      ]
+    },
+    {
+      "order": 3,
+      "name": "official_catalog_validation",
+      "rule_ids": [
+        "CFDI40-019",
+        "CFDI40-020"
+      ]
+    },
+    {
+      "order": 4,
+      "name": "tax_model_validation",
+      "rule_ids": [
+        "CFDI40-009",
+        "CFDI40-010",
+        "CFDI40-011",
+        "CFDI40-012",
+        "CFDI40-013"
+      ]
+    },
+    {
+      "order": 5,
+      "name": "receiver_and_payment_validation",
+      "rule_ids": [
+        "CFDI40-004",
+        "CFDI40-005",
+        "CFDI40-014",
+        "CFDI40-015",
+        "CFDI40-016"
+      ]
+    }
+  ],
+  "operation_type_policy": {
+    "venta": "PRODUCTO",
+    "revision_diagnostico_mantenimiento_configuracion": "SERVICIO",
+    "instalacion": "SERVICIO_INSTALACION",
+    "cambio_reemplazo_sustitucion": "SERVICIO_O_MIXTO"
+  },
+  "ambiguity_policy": {
+    "generic_terms": [
+      "sistema",
+      "equipo",
+      "caseta",
+      "servicio tecnico",
+      "general",
+      "falla",
+      "revision"
+    ],
+    "action": "PEDIR_ACLARACION",
+    "ready_to_copy": false
+  },
+  "resico_626_summary": {
+    "regimen_entry": {
+      "source_sheet": "c_RegimenFiscal",
+      "source_row": 25,
+      "clave": "626",
+      "descripcion": "Régimen Simplificado de Confianza",
+      "persona_fisica": "Sí",
+      "persona_moral": "Sí",
+      "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+      "fecha_fin_vigencia": ""
+    },
+    "allowed_uso_cfdi_when_receiver_is_626": [
+      {
+        "clave": "G01",
+        "descripcion": "Adquisición de mercancías."
+      },
+      {
+        "clave": "G02",
+        "descripcion": "Devoluciones, descuentos o bonificaciones."
+      },
+      {
+        "clave": "G03",
+        "descripcion": "Gastos en general."
+      },
+      {
+        "clave": "I01",
+        "descripcion": "Construcciones."
+      },
+      {
+        "clave": "I02",
+        "descripcion": "Mobiliario y equipo de oficina por inversiones."
+      },
+      {
+        "clave": "I03",
+        "descripcion": "Equipo de transporte."
+      },
+      {
+        "clave": "I04",
+        "descripcion": "Equipo de computo y accesorios."
+      },
+      {
+        "clave": "I05",
+        "descripcion": "Dados, troqueles, moldes, matrices y herramental."
+      },
+      {
+        "clave": "I06",
+        "descripcion": "Comunicaciones telefónicas."
+      },
+      {
+        "clave": "I07",
+        "descripcion": "Comunicaciones satelitales."
+      },
+      {
+        "clave": "I08",
+        "descripcion": "Otra maquinaria y equipo."
+      },
+      {
+        "clave": "S01",
+        "descripcion": "Sin efectos fiscales."
+      },
+      {
+        "clave": "CP01",
+        "descripcion": "Pagos"
+      }
+    ],
+    "current_mvp_limit": "Solo sugerencia de conceptos para captura manual; no calcula retenciones ni timbra."
+  }
+}

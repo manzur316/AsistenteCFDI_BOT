@@ -1,0 +1,4184 @@
+{
+  "schema_version": "cfdi40_master_knowledge.v1",
+  "generated_at": "2026-06-04T03:59:26.711Z",
+  "sources": {
+    "official_filling_guide_pdf": "C:/Users/Juandi Gamer/Desktop/CATALOGOS SAT BD ORIGINAL/Anexo_20_Guia_de_llenado_CFDI .pdf",
+    "official_master_catalog_xls": "C:/Users/Juandi Gamer/Desktop/CATALOGOS SAT BD ORIGINAL/catCFDI_V_4_20260603.xls",
+    "active_personal_catalog": "data/concepts.normalized.json"
+  },
+  "sheet_inventory": [
+    {
+      "name": "c_Aduana",
+      "raw_rows_in_sheet": 55,
+      "first_visible_rows": [
+        [
+          "Catálogo de aduanas (tomado del anexo 22, apéndice I de la RGCE 2017).",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "2.0",
+          "0",
+          "13/01/2023",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Aduana",
+          "Descripción",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "ACAPULCO, ACAPULCO DE JUAREZ, GUERRERO.",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "02",
+          "AGUA PRIETA, AGUA PRIETA, SONORA.",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_ClaveProdServ",
+      "raw_rows_in_sheet": 52518,
+      "first_visible_rows": [
+        [
+          "Catálogo de Claves de Productos y Servicios.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "2.0",
+          "2",
+          "31/12/2025",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_ClaveProdServ",
+          "Descripción",
+          "Incluir IVA trasladado",
+          "Incluir IEPS trasladado",
+          "Complemento que debe incluir",
+          "FechaInicioVigencia",
+          "FechaFinVigencia",
+          "Estímulo Franja Fronteriza"
+        ],
+        [
+          "01010101",
+          "No existe en el catálogo",
+          "Opcional",
+          "Opcional",
+          "",
+          "01/01/2022",
+          "",
+          "0"
+        ],
+        [
+          "10101500",
+          "Animales vivos de granja",
+          "Opcional",
+          "Opcional",
+          "",
+          "01/01/2022",
+          "",
+          "1"
+        ]
+      ],
+      "classification": "CRITICO_CONCEPTO_IMPUESTO"
+    },
+    {
+      "name": "c_ClaveUnidad",
+      "raw_rows_in_sheet": 2423,
+      "first_visible_rows": [
+        [
+          "Catálogo de unidades de medida para los conceptos en el CFDI.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_ClaveUnidad",
+          "Nombre",
+          "Descripción",
+          "Nota",
+          "Fecha de inicio de vigencia",
+          "Fecha de fin de vigencia",
+          "Símbolo",
+          ""
+        ],
+        [
+          "18",
+          "Tambor de cincuenta y cinco galones (EUA)",
+          "",
+          "Las unidades marcadas como borradas en el catálogo internacional de UNECE, serán retenidas indefinidamente en las listas de códigos. En su caso, estas unidades podrán ser reinstalado a través del proceso de mantenimiento.",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "19",
+          "Camión cisterna",
+          "",
+          "Las unidades marcadas como borradas en el catálogo internacional de UNECE, serán retenidas indefinidamente en las listas de códigos. En su caso, estas unidades podrán ser reinstalado a través del proceso de mantenimiento.",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_CONCEPTO_IMPUESTO"
+    },
+    {
+      "name": "c_CodigoPostal_Parte_1",
+      "raw_rows_in_sheet": 60094,
+      "first_visible_rows": [
+        [
+          "Catálogo de códigos postales.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "8",
+          "22/01/2026",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_CodigoPostal",
+          "c_Estado",
+          "c_Municipio",
+          "c_Localidad",
+          "Estímulo Franja Fronteriza",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "Referencias del Huso Horario"
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Descripción del Huso Horario"
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "c_CodigoPostal_Parte_2",
+      "raw_rows_in_sheet": 35680,
+      "first_visible_rows": [
+        [
+          "Catálogo de códigos postales.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "8",
+          "22/01/2026",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_CodigoPostal",
+          "c_Estado",
+          "c_Municipio",
+          "c_Localidad",
+          "Estímulo Franja Fronteriza",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "Referencias del Huso Horario"
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Descripción del Huso Horario"
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "C_Colonia_1",
+      "raw_rows_in_sheet": 60105,
+      "first_visible_rows": [
+        [
+          "Catálogo de colonias.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Colonia",
+          "c_CodigoPostal",
+          "Nombre del asentamiento",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "0001",
+          "01000",
+          "San Ángel",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "0001",
+          "16514",
+          "Tetitla la Gallera",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "C_Colonia_2",
+      "raw_rows_in_sheet": 60105,
+      "first_visible_rows": [
+        [
+          "Catálogo de colonias.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Colonia",
+          "c_CodigoPostal",
+          "Nombre del asentamiento",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "1803",
+          "69792",
+          "Santiago Tilapa",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "1803",
+          "74691",
+          "Agua de Santa Ana",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "C_Colonia_3",
+      "raw_rows_in_sheet": 25171,
+      "first_visible_rows": [
+        [
+          "Catálogo de colonias.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Colonia",
+          "c_CodigoPostal",
+          "Nombre del asentamiento",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "5791",
+          "70504",
+          "Los Ranchos",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "5791",
+          "72014",
+          "El Conde",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "c_Estado",
+      "raw_rows_in_sheet": 101,
+      "first_visible_rows": [
+        [
+          "Catálogo de estados.",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo"
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Estado",
+          "c_Pais",
+          "Nombre del estado",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          ""
+        ],
+        [
+          "AGU",
+          "MEX",
+          "Aguascalientes",
+          "01/01/2022",
+          "",
+          ""
+        ],
+        [
+          "BCN",
+          "MEX",
+          "Baja California",
+          "01/01/2022",
+          "",
+          ""
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "c_Exportacion",
+      "raw_rows_in_sheet": 23,
+      "first_visible_rows": [
+        [
+          "Catálogo exportación.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "2.0",
+          "1",
+          "24/02/2022",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Exportacion",
+          "Descripción",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "No aplica",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "02",
+          "Definitiva con clave A1",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_FormaPago",
+      "raw_rows_in_sheet": 36,
+      "first_visible_rows": [
+        [
+          "Catálogo de formas de pago.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_FormaPago",
+          "Descripción",
+          "Bancarizado",
+          "Número de operación",
+          "RFC del Emisor de la cuenta ordenante",
+          "Cuenta Ordenante",
+          "Patrón para cuenta ordenante",
+          "RFC del Emisor Cuenta de Beneficiario"
+        ],
+        [
+          "01",
+          "Efectivo",
+          "No",
+          "Opcional",
+          "No",
+          "No",
+          "No",
+          "No"
+        ],
+        [
+          "02",
+          "Cheque nominativo",
+          "Sí",
+          "Opcional",
+          "Opcional",
+          "Opcional",
+          "[0-9]{11}|[0-9]{18}",
+          "Opcional"
+        ]
+      ],
+      "classification": "CRITICO_LLENADO"
+    },
+    {
+      "name": "c_Impuesto",
+      "raw_rows_in_sheet": 8,
+      "first_visible_rows": [
+        [
+          "Catálogo de impuestos.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Impuesto",
+          "Descripción",
+          "Retención",
+          "Traslado",
+          "Local o federal",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          ""
+        ],
+        [
+          "001",
+          "ISR",
+          "Si",
+          "No",
+          "Federal",
+          "01/01/2022",
+          "",
+          ""
+        ],
+        [
+          "002",
+          "IVA",
+          "Si",
+          "Si",
+          "Federal",
+          "01/01/2022",
+          "",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_CONCEPTO_IMPUESTO"
+    },
+    {
+      "name": "C_Localidad",
+      "raw_rows_in_sheet": 669,
+      "first_visible_rows": [
+        [
+          "Catálogo de localidades.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Localidad",
+          "c_Estado",
+          "Descripción",
+          "Fecha de inicio de vigencia",
+          "Fecha de fin de vigencia",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "AGU",
+          "Aguascalientes",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "BCN",
+          "Ensenada",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_Meses",
+      "raw_rows_in_sheet": 23,
+      "first_visible_rows": [
+        [
+          "Catálogo meses.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Meses",
+          "Descripción",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "Enero",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "02",
+          "Febrero",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_MetodoPago",
+      "raw_rows_in_sheet": 7,
+      "first_visible_rows": [
+        [
+          "Catálogo de Método de Pago.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_MetodoPago",
+          "Descripción",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "PUE",
+          "Pago en una sola exhibición",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "PPD",
+          "Pago en parcialidades o diferido",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_LLENADO"
+    },
+    {
+      "name": "c_Moneda",
+      "raw_rows_in_sheet": 188,
+      "first_visible_rows": [
+        [
+          "Catálogo de moneda.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "1",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Moneda",
+          "Descripción",
+          "Decimales",
+          "Porcentaje variación",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          ""
+        ],
+        [
+          "AED",
+          "Dirham de EAU",
+          "2",
+          "500%",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "AFN",
+          "Afghani",
+          "2",
+          "500%",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "C_Municipio",
+      "raw_rows_in_sheet": 2483,
+      "first_visible_rows": [
+        [
+          "Catálogo de municipios.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "1",
+          "22/01/2026",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Municipio",
+          "c_Estado",
+          "Descripción",
+          "Fecha de inicio de vigencia",
+          "Fecha de fin de vigencia",
+          "",
+          "",
+          ""
+        ],
+        [
+          "001",
+          "AGU",
+          "Aguascalientes",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "001",
+          "BCN",
+          "Ensenada",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "c_NumPedimentoAduana",
+      "raw_rows_in_sheet": 59044,
+      "first_visible_rows": [
+        [
+          "Catálogo de números de pedimento operados por aduana y ejercicio.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "114.0",
+          "0",
+          "03/06/2026",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Aduana",
+          "Patente",
+          "Ejercicio",
+          "Cantidad",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "3173",
+          "2007",
+          "999999",
+          "01/01/2017",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "3173",
+          "2008",
+          "999999",
+          "01/01/2017",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_ObjetoImp",
+      "raw_rows_in_sheet": 23,
+      "first_visible_rows": [
+        [
+          "Catálogo Objeto impuesto.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "4.0",
+          "0",
+          "13/12/2024",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_ObjetoImp",
+          "Descripción",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "No objeto de impuesto.",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "02",
+          "Sí objeto de impuesto.",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_CONCEPTO_IMPUESTO"
+    },
+    {
+      "name": "c_Pais",
+      "raw_rows_in_sheet": 257,
+      "first_visible_rows": [
+        [
+          "Catálogo de países.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Pais",
+          "Descripción",
+          "Formato de código postal",
+          "Formato de Registro de Identidad Tributaria",
+          "Validación del Registro de Identidad Tributaria",
+          "Agrupaciones",
+          "",
+          ""
+        ],
+        [
+          "AFG",
+          "Afganistán",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ALA",
+          "Islas Åland",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "GEOGRAFICO"
+    },
+    {
+      "name": "c_PatenteAduanal",
+      "raw_rows_in_sheet": 3408,
+      "first_visible_rows": [
+        [
+          "Catálogo de patentes aduanales",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          ""
+        ],
+        [
+          "4.0",
+          "44.0",
+          "0",
+          "21/05/2026",
+          "01/01/2022",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "C_PatenteAduanal",
+          "Inicio de vigencia de la patente",
+          "Fin de vigencia de la patente",
+          "",
+          "",
+          ""
+        ],
+        [
+          "0000",
+          "01/01/2000",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "0074",
+          "03/07/2001",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_Periodicidad",
+      "raw_rows_in_sheet": 10,
+      "first_visible_rows": [
+        [
+          "Catálogo periodicidad.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_Periodicidad",
+          "Descripción",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "Diario",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "02",
+          "Semanal",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_RegimenFiscal",
+      "raw_rows_in_sheet": 25,
+      "first_visible_rows": [
+        [
+          "Catálogo de Régimen Fiscal.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "Aplica para tipo persona",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_RegimenFiscal",
+          "Descripción",
+          "Física",
+          "Moral",
+          "Fecha de inicio de vigencia",
+          "Fecha de fin de vigencia",
+          "",
+          ""
+        ],
+        [
+          "601",
+          "General de Ley Personas Morales",
+          "No",
+          "Sí",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_LLENADO"
+    },
+    {
+      "name": "c_TasaOCuota",
+      "raw_rows_in_sheet": 26,
+      "first_visible_rows": [
+        [
+          "Catálogo de tasas o cuotas de impuestos.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "4.0",
+          "0",
+          "31/12/2025",
+          "02/01/2026",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Rango o Fijo",
+          "c_TasaOCuota",
+          "",
+          "Impuesto",
+          "Factor",
+          "Traslado",
+          "Retención",
+          "Fecha inicio de vigencia"
+        ],
+        [
+          "",
+          "Valor mínimo",
+          "Valor máximo",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Fijo",
+          "",
+          "0.000000",
+          "IVA",
+          "Tasa",
+          "Sí",
+          "No",
+          "01/01/2022"
+        ]
+      ],
+      "classification": "CRITICO_CONCEPTO_IMPUESTO"
+    },
+    {
+      "name": "c_TipoDeComprobante",
+      "raw_rows_in_sheet": 11,
+      "first_visible_rows": [
+        [
+          "Catálogo de tipos de comprobante.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_TipoDeComprobante",
+          "Descripción",
+          "Valor máximo",
+          "",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          ""
+        ],
+        [
+          "I",
+          "Ingreso",
+          "999999999999999999.999999",
+          "",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "E",
+          "Egreso",
+          "999999999999999999.999999",
+          "",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_LLENADO"
+    },
+    {
+      "name": "c_TipoFactor",
+      "raw_rows_in_sheet": 8,
+      "first_visible_rows": [
+        [
+          "Catálogo tipo factor.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_TipoFactor",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Tasa",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Cuota",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_LLENADO"
+    },
+    {
+      "name": "c_TipoRelacion",
+      "raw_rows_in_sheet": 12,
+      "first_visible_rows": [
+        [
+          "Catálogo de tipos de relación entre CFDI.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "1.0",
+          "0",
+          "0",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_TipoRelacion",
+          "Descripción",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "01",
+          "Nota de crédito de los documentos relacionados",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "02",
+          "Nota de débito de los documentos relacionados",
+          "01/01/2022",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "classification": "SECUNDARIO"
+    },
+    {
+      "name": "c_UsoCFDI",
+      "raw_rows_in_sheet": 124,
+      "first_visible_rows": [
+        [
+          "Catálogo de uso de comprobantes.",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versión CFDI",
+          "Versión catálogo",
+          "Revisión catálogo",
+          "Fecha publicación de catálogo",
+          "Fecha  inicio de vigencia del catálogo",
+          "Fecha fin de vigencia del catálogo",
+          "",
+          ""
+        ],
+        [
+          "4.0",
+          "2.0",
+          "0",
+          "22/04/2023",
+          "01/01/2022",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "c_UsoCFDI",
+          "Descripción",
+          "Aplica para tipo persona",
+          "",
+          "Fecha inicio de vigencia",
+          "Fecha fin de vigencia",
+          "Régimen Fiscal Receptor",
+          ""
+        ],
+        [
+          "",
+          "",
+          "Física",
+          "Moral",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "G01",
+          "Adquisición de mercancías.",
+          "Sí",
+          "Sí",
+          "01/01/2022",
+          "",
+          "601, 603, 606, 612, 620, 621, 622, 623, 624, 625,626",
+          ""
+        ]
+      ],
+      "classification": "CRITICO_LLENADO"
+    }
+  ],
+  "row_counts": {
+    "clave_prod_serv_all": 52513,
+    "clave_prod_serv_relevant": 3543,
+    "clave_unidad_all": 2419,
+    "regimen_fiscal": 19,
+    "uso_cfdi": 24,
+    "objeto_imp": 8,
+    "impuesto": 3,
+    "tasa_o_cuota": 19,
+    "metodo_pago": 3,
+    "forma_pago": 23,
+    "tipo_comprobante": 5,
+    "tipo_factor": 3
+  },
+  "guide_summary": {
+    "page_count": 123,
+    "term_pages": {
+      "FormaPago": [
+        6,
+        7,
+        11,
+        69,
+        71,
+        72,
+        73,
+        74,
+        75,
+        84,
+        86,
+        96
+      ],
+      "MetodoPago": [
+        11,
+        12,
+        71,
+        72,
+        73,
+        75,
+        80
+      ],
+      "TipoDeComprobante": [
+        8,
+        10,
+        11,
+        71,
+        73,
+        74,
+        75
+      ],
+      "RegimenFiscal": [
+        16,
+        19,
+        30,
+        46,
+        123
+      ],
+      "UsoCFDI": [
+        19,
+        20,
+        77
+      ],
+      "ClaveProdServ": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "ClaveUnidad": [
+        22,
+        32,
+        66,
+        67,
+        68,
+        71,
+        73,
+        75,
+        83,
+        85,
+        116,
+        117
+      ],
+      "ObjetoImp": [
+        25
+      ],
+      "Impuestos": [
+        8,
+        10,
+        11,
+        25,
+        27,
+        35,
+        36,
+        37,
+        38,
+        40,
+        53,
+        56,
+        57,
+        72,
+        74,
+        75
+      ],
+      "Exportacion": [
+        11
+      ]
+    },
+    "first_page_excerpt": "1 / 123 Anexo 20 Gu�a de llenado de los comprobantes fiscales digitales por Internet"
+  },
+  "official_catalogs": {
+    "regimen_fiscal": [
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 7,
+        "clave": "601",
+        "descripcion": "General de Ley Personas Morales",
+        "persona_fisica": "No",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 8,
+        "clave": "603",
+        "descripcion": "Personas Morales con Fines no Lucrativos",
+        "persona_fisica": "No",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 9,
+        "clave": "605",
+        "descripcion": "Sueldos y Salarios e Ingresos Asimilados a Salarios",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 10,
+        "clave": "606",
+        "descripcion": "Arrendamiento",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 11,
+        "clave": "607",
+        "descripcion": "Régimen de Enajenación o Adquisición de Bienes",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 12,
+        "clave": "608",
+        "descripcion": "Demás ingresos",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 13,
+        "clave": "610",
+        "descripcion": "Residentes en el Extranjero sin Establecimiento Permanente en México",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 14,
+        "clave": "611",
+        "descripcion": "Ingresos por Dividendos (socios y accionistas)",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 15,
+        "clave": "612",
+        "descripcion": "Personas Físicas con Actividades Empresariales y Profesionales",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 16,
+        "clave": "614",
+        "descripcion": "Ingresos por intereses",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 17,
+        "clave": "615",
+        "descripcion": "Régimen de los ingresos por obtención de premios",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 18,
+        "clave": "616",
+        "descripcion": "Sin obligaciones fiscales",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 19,
+        "clave": "620",
+        "descripcion": "Sociedades Cooperativas de Producción que optan por diferir sus ingresos",
+        "persona_fisica": "No",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 20,
+        "clave": "621",
+        "descripcion": "Incorporación Fiscal",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 21,
+        "clave": "622",
+        "descripcion": "Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras",
+        "persona_fisica": "No",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 22,
+        "clave": "623",
+        "descripcion": "Opcional para Grupos de Sociedades",
+        "persona_fisica": "No",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 23,
+        "clave": "624",
+        "descripcion": "Coordinados",
+        "persona_fisica": "No",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 24,
+        "clave": "625",
+        "descripcion": "Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_RegimenFiscal",
+        "source_row": 25,
+        "clave": "626",
+        "descripcion": "Régimen Simplificado de Confianza",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      }
+    ],
+    "uso_cfdi": [
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 7,
+        "clave": "G01",
+        "descripcion": "Adquisición de mercancías.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625,626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 8,
+        "clave": "G02",
+        "descripcion": "Devoluciones, descuentos o bonificaciones.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 616, 620, 621, 622, 623, 624, 625,626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 9,
+        "clave": "G03",
+        "descripcion": "Gastos en general.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 10,
+        "clave": "I01",
+        "descripcion": "Construcciones.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 11,
+        "clave": "I02",
+        "descripcion": "Mobiliario y equipo de oficina por inversiones.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 12,
+        "clave": "I03",
+        "descripcion": "Equipo de transporte.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 13,
+        "clave": "I04",
+        "descripcion": "Equipo de computo y accesorios.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 14,
+        "clave": "I05",
+        "descripcion": "Dados, troqueles, moldes, matrices y herramental.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 15,
+        "clave": "I06",
+        "descripcion": "Comunicaciones telefónicas.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 16,
+        "clave": "I07",
+        "descripcion": "Comunicaciones satelitales.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 17,
+        "clave": "I08",
+        "descripcion": "Otra maquinaria y equipo.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 606, 612, 620, 621, 622, 623, 624, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 18,
+        "clave": "D01",
+        "descripcion": "Honorarios médicos, dentales y gastos hospitalarios.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 19,
+        "clave": "D02",
+        "descripcion": "Gastos médicos por incapacidad o discapacidad.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 20,
+        "clave": "D03",
+        "descripcion": "Gastos funerales.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 21,
+        "clave": "D04",
+        "descripcion": "Donativos.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 22,
+        "clave": "D05",
+        "descripcion": "Intereses reales efectivamente pagados por créditos hipotecarios (casa habitación).",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 23,
+        "clave": "D06",
+        "descripcion": "Aportaciones voluntarias al SAR.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 24,
+        "clave": "D07",
+        "descripcion": "Primas por seguros de gastos médicos.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 25,
+        "clave": "D08",
+        "descripcion": "Gastos de transportación escolar obligatoria.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 26,
+        "clave": "D09",
+        "descripcion": "Depósitos en cuentas para el ahorro, primas que tengan como base planes de pensiones.",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 27,
+        "clave": "D10",
+        "descripcion": "Pagos por servicios educativos (colegiaturas).",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605, 606, 608, 611, 612, 614, 607, 615, 625"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 28,
+        "clave": "S01",
+        "descripcion": "Sin efectos fiscales.",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 605, 606, 608, 610, 611, 612, 614, 616, 620, 621, 622, 623, 624, 607, 615, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 29,
+        "clave": "CP01",
+        "descripcion": "Pagos",
+        "persona_fisica": "Sí",
+        "persona_moral": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "601, 603, 605, 606, 608, 610, 611, 612, 614, 616, 620, 621, 622, 623, 624, 607, 615, 625, 626"
+      },
+      {
+        "source_sheet": "c_UsoCFDI",
+        "source_row": 30,
+        "clave": "CN01",
+        "descripcion": "Nómina",
+        "persona_fisica": "Sí",
+        "persona_moral": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": "",
+        "regimenes_fiscales_receptor": "605"
+      }
+    ],
+    "objeto_imp": [
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 6,
+        "clave": "01",
+        "descripcion": "No objeto de impuesto.",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 7,
+        "clave": "02",
+        "descripcion": "Sí objeto de impuesto.",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 8,
+        "clave": "03",
+        "descripcion": "Sí objeto del impuesto y no obligado al desglose.",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 9,
+        "clave": "04",
+        "descripcion": "Sí objeto del impuesto y no causa impuesto.",
+        "fecha_inicio_vigencia": "10/07/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 10,
+        "clave": "05",
+        "descripcion": "Sí objeto del impuesto, IVA crédito PODEBI.",
+        "fecha_inicio_vigencia": "12/06/2023 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 11,
+        "clave": "06",
+        "descripcion": "Sí objeto del IVA, No traslado IVA.",
+        "fecha_inicio_vigencia": "12/13/2024 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 12,
+        "clave": "07",
+        "descripcion": "No traslado del IVA, Sí desglose IEPS.",
+        "fecha_inicio_vigencia": "12/13/2024 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_ObjetoImp",
+        "source_row": 13,
+        "clave": "08",
+        "descripcion": "No traslado del IVA, No desglose IEPS.",
+        "fecha_inicio_vigencia": "12/13/2024 00:00:00",
+        "fecha_fin_vigencia": ""
+      }
+    ],
+    "impuesto": [
+      {
+        "source_sheet": "c_Impuesto",
+        "source_row": 6,
+        "clave": "001",
+        "descripcion": "ISR",
+        "retencion": "Si",
+        "traslado": "No",
+        "local_o_federal": "Federal",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_Impuesto",
+        "source_row": 7,
+        "clave": "002",
+        "descripcion": "IVA",
+        "retencion": "Si",
+        "traslado": "Si",
+        "local_o_federal": "Federal",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_Impuesto",
+        "source_row": 8,
+        "clave": "003",
+        "descripcion": "IEPS",
+        "retencion": "Si",
+        "traslado": "Si",
+        "local_o_federal": "Federal",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      }
+    ],
+    "tasa_o_cuota": [
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 7,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0",
+        "impuesto": "IVA",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 8,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.16",
+        "impuesto": "IVA",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 9,
+        "rango_o_fijo": "Rango",
+        "valor_minimo": "0",
+        "valor_maximo": "0.16",
+        "impuesto": "IVA",
+        "factor": "Tasa",
+        "traslado": "No",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 10,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.08",
+        "impuesto": "IVA Crédito aplicado del 50%",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 11,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.265",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 12,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.3",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 13,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.53",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 14,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.5",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 15,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "1.6",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 16,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.304",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 17,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.25",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 18,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.09",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 19,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.08",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 20,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.07",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 21,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.06",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 22,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0.03",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 23,
+        "rango_o_fijo": "Fijo",
+        "valor_minimo": "",
+        "valor_maximo": "0",
+        "impuesto": "IEPS",
+        "factor": "Tasa",
+        "traslado": "Sí",
+        "retencion": "No",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 24,
+        "rango_o_fijo": "Rango",
+        "valor_minimo": "0",
+        "valor_maximo": "72.1605",
+        "impuesto": "IEPS",
+        "factor": "Cuota",
+        "traslado": "Sí",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2026 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TasaOCuota",
+        "source_row": 25,
+        "rango_o_fijo": "Rango",
+        "valor_minimo": "0",
+        "valor_maximo": "0.35",
+        "impuesto": "ISR",
+        "factor": "Tasa",
+        "traslado": "No",
+        "retencion": "Sí",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      }
+    ],
+    "metodo_pago": [
+      {
+        "source_sheet": "c_MetodoPago",
+        "source_row": 6,
+        "clave": "c_MetodoPago",
+        "descripcion": "Descripción",
+        "fecha_inicio_vigencia": "Fecha inicio de vigencia",
+        "fecha_fin_vigencia": "Fecha fin de vigencia"
+      },
+      {
+        "source_sheet": "c_MetodoPago",
+        "source_row": 7,
+        "clave": "PUE",
+        "descripcion": "Pago en una sola exhibición",
+        "fecha_inicio_vigencia": "01/01/2022",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_MetodoPago",
+        "source_row": 8,
+        "clave": "PPD",
+        "descripcion": "Pago en parcialidades o diferido",
+        "fecha_inicio_vigencia": "01/01/2022",
+        "fecha_fin_vigencia": ""
+      }
+    ],
+    "forma_pago": [
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 6,
+        "clave": "c_FormaPago",
+        "descripcion": "Descripción",
+        "bancarizado": "Bancarizado",
+        "numero_operacion": "Número de operación",
+        "rfc_emisor_cuenta_ordenante": "RFC del Emisor de la cuenta ordenante",
+        "cuenta_ordenante": "Cuenta Ordenante",
+        "patron_cuenta_ordenante": "Patrón para cuenta ordenante",
+        "rfc_emisor_cuenta_beneficiario": "RFC del Emisor Cuenta de Beneficiario",
+        "cuenta_beneficiario": "Cuenta de Benenficiario",
+        "patron_cuenta_beneficiaria": "Patrón para cuenta Beneficiaria"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 7,
+        "clave": "01",
+        "descripcion": "Efectivo",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 8,
+        "clave": "02",
+        "descripcion": "Cheque nominativo",
+        "bancarizado": "Sí",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "[0-9]{11}|[0-9]{18}",
+        "rfc_emisor_cuenta_beneficiario": "Opcional",
+        "cuenta_beneficiario": "Opcional",
+        "patron_cuenta_beneficiaria": "[0-9]{10,11}|[0-9]{15,16}|[0-9]{18}|[A-Z0-9_]{10,50}"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 9,
+        "clave": "03",
+        "descripcion": "Transferencia electrónica de fondos",
+        "bancarizado": "Sí",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "[0-9]{10}|[0-9]{16}|[0-9]{18}",
+        "rfc_emisor_cuenta_beneficiario": "Opcional",
+        "cuenta_beneficiario": "Opcional",
+        "patron_cuenta_beneficiaria": "[0-9]{10}|[0-9]{18}"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 10,
+        "clave": "04",
+        "descripcion": "Tarjeta de crédito",
+        "bancarizado": "Sí",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "[0-9]{16}",
+        "rfc_emisor_cuenta_beneficiario": "Opcional",
+        "cuenta_beneficiario": "Opcional",
+        "patron_cuenta_beneficiaria": "[0-9]{10,11}|[0-9]{15,16}|[0-9]{18}|[A-Z0-9_]{10,50}"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 11,
+        "clave": "05",
+        "descripcion": "Monedero electrónico",
+        "bancarizado": "Sí",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "[0-9]{10,11}|[0-9]{15,16}|[0-9]{18}|[A-Z0-9_]{10,50}",
+        "rfc_emisor_cuenta_beneficiario": "Opcional",
+        "cuenta_beneficiario": "Opcional",
+        "patron_cuenta_beneficiaria": "[0-9]{10,11}|[0-9]{15,16}|[0-9]{18}|[A-Z0-9_]{10,50}"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 12,
+        "clave": "06",
+        "descripcion": "Dinero electrónico",
+        "bancarizado": "Sí",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "[0-9]{10}",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 13,
+        "clave": "08",
+        "descripcion": "Vales de despensa",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 14,
+        "clave": "12",
+        "descripcion": "Dación en pago",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 15,
+        "clave": "13",
+        "descripcion": "Pago por subrogación",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 16,
+        "clave": "14",
+        "descripcion": "Pago por consignación",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 17,
+        "clave": "15",
+        "descripcion": "Condonación",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 18,
+        "clave": "17",
+        "descripcion": "Compensación",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 19,
+        "clave": "23",
+        "descripcion": "Novación",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 20,
+        "clave": "24",
+        "descripcion": "Confusión",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 21,
+        "clave": "25",
+        "descripcion": "Remisión de deuda",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 22,
+        "clave": "26",
+        "descripcion": "Prescripción o caducidad",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 23,
+        "clave": "27",
+        "descripcion": "A satisfacción del acreedor",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 24,
+        "clave": "28",
+        "descripcion": "Tarjeta de débito",
+        "bancarizado": "Sí",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "[0-9]{16}",
+        "rfc_emisor_cuenta_beneficiario": "Opcional",
+        "cuenta_beneficiario": "Opcional",
+        "patron_cuenta_beneficiaria": "[0-9]{10,11}|[0-9]{15,16}|[0-9]{18}|[A-Z0-9_]{10,50}"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 25,
+        "clave": "29",
+        "descripcion": "Tarjeta de servicios",
+        "bancarizado": "Sí",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "[0-9]{15,16}",
+        "rfc_emisor_cuenta_beneficiario": "Opcional",
+        "cuenta_beneficiario": "Opcional",
+        "patron_cuenta_beneficiaria": "[0-9]{10,11}|[0-9]{15,16}|[0-9]{18}|[A-Z0-9_]{10,50}"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 26,
+        "clave": "30",
+        "descripcion": "Aplicación de anticipos",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 27,
+        "clave": "31",
+        "descripcion": "Intermediario pagos",
+        "bancarizado": "No",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "No",
+        "cuenta_ordenante": "No",
+        "patron_cuenta_ordenante": "No",
+        "rfc_emisor_cuenta_beneficiario": "No",
+        "cuenta_beneficiario": "No",
+        "patron_cuenta_beneficiaria": "No"
+      },
+      {
+        "source_sheet": "c_FormaPago",
+        "source_row": 28,
+        "clave": "99",
+        "descripcion": "Por definir",
+        "bancarizado": "Opcional",
+        "numero_operacion": "Opcional",
+        "rfc_emisor_cuenta_ordenante": "Opcional",
+        "cuenta_ordenante": "Opcional",
+        "patron_cuenta_ordenante": "Opcional",
+        "rfc_emisor_cuenta_beneficiario": "Opcional",
+        "cuenta_beneficiario": "Opcional",
+        "patron_cuenta_beneficiaria": "Opcional"
+      }
+    ],
+    "tipo_comprobante": [
+      {
+        "source_sheet": "c_TipoDeComprobante",
+        "source_row": 6,
+        "clave": "I",
+        "descripcion": "Ingreso",
+        "valor_maximo": "999999999999999999.999999",
+        "valor_maximo_extra": "",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TipoDeComprobante",
+        "source_row": 7,
+        "clave": "E",
+        "descripcion": "Egreso",
+        "valor_maximo": "999999999999999999.999999",
+        "valor_maximo_extra": "",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TipoDeComprobante",
+        "source_row": 8,
+        "clave": "T",
+        "descripcion": "Traslado",
+        "valor_maximo": "0",
+        "valor_maximo_extra": "",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TipoDeComprobante",
+        "source_row": 9,
+        "clave": "N",
+        "descripcion": "Nómina",
+        "valor_maximo": "NS",
+        "valor_maximo_extra": "NdS",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TipoDeComprobante",
+        "source_row": 11,
+        "clave": "P",
+        "descripcion": "Pago",
+        "valor_maximo": "999999999999999999.999999",
+        "valor_maximo_extra": "",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      }
+    ],
+    "tipo_factor": [
+      {
+        "source_sheet": "c_TipoFactor",
+        "source_row": 6,
+        "clave": "Tasa",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TipoFactor",
+        "source_row": 7,
+        "clave": "Cuota",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      },
+      {
+        "source_sheet": "c_TipoFactor",
+        "source_row": 8,
+        "clave": "Exento",
+        "fecha_inicio_vigencia": "01/01/2022 00:00:00",
+        "fecha_fin_vigencia": ""
+      }
+    ]
+  },
+  "product_index_file": "data/knowledge_base/cfdi40_claveprodserv_index.json",
+  "unit_index_file": "data/knowledge_base/cfdi40_claveunidad_index.json",
+  "active_catalog_facts": {
+    "source": {
+      "requested_path": "data/base_cfdi_resico_n8n_emberhub_2026.xlsx",
+      "workbook_path_used": "base_cfdi_resico_n8n_emberhub_2026.xlsx",
+      "workbook_filename": "base_cfdi_resico_n8n_emberhub_2026.xlsx",
+      "truth_source": true,
+      "original_not_modified": true
+    },
+    "concept_count": 84,
+    "active_product_keys": [
+      "26121606",
+      "26121607",
+      "26121609",
+      "39121004",
+      "39121011",
+      "39121446",
+      "43191500",
+      "43191600",
+      "43201800",
+      "43202222",
+      "43211500",
+      "43211600",
+      "43211710",
+      "43211902",
+      "43222600",
+      "43222609",
+      "43222612",
+      "43222640",
+      "45121500",
+      "45121600",
+      "46171619",
+      "46171621",
+      "46171622",
+      "72101510",
+      "72111100",
+      "72151604",
+      "72151605",
+      "72151701",
+      "72151702",
+      "72151704",
+      "81111500",
+      "81111803",
+      "81111809",
+      "81111810",
+      "81111811",
+      "81111812",
+      "81112103",
+      "82101800",
+      "84111500",
+      "90101500"
+    ],
+    "active_unit_keys": [
+      "E48",
+      "H87"
+    ],
+    "product_key_usage": {
+      "26121606": [
+        {
+          "id": "PROD-CCTV-006",
+          "family": "CCTV / videovigilancia",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "26121607": [
+        {
+          "id": "PROD-RED-007",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "26121609": [
+        {
+          "id": "PROD-RED-005",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "39121004": [
+        {
+          "id": "PROD-CCTV-007",
+          "family": "CCTV / videovigilancia",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "39121011": [
+        {
+          "id": "PROD-RED-008",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "39121446": [
+        {
+          "id": "PROD-RED-006",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43191500": [
+        {
+          "id": "PROD-AC-005",
+          "family": "Control de acceso",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43191600": [
+        {
+          "id": "PROD-AC-003",
+          "family": "Control de acceso",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43201800": [
+        {
+          "id": "PROD-CCTV-005",
+          "family": "CCTV / videovigilancia",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "PROD-PC-004",
+          "family": "Cómputo / hardware",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43202222": [
+        {
+          "id": "PROD-RED-009",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43211500": [
+        {
+          "id": "PROD-PC-001",
+          "family": "Cómputo / hardware",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43211600": [
+        {
+          "id": "PROD-PC-002",
+          "family": "Cómputo / hardware",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "PROD-PC-005",
+          "family": "Cómputo / hardware",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43211710": [
+        {
+          "id": "PROD-AC-002",
+          "family": "Control de acceso",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43211902": [
+        {
+          "id": "PROD-PC-003",
+          "family": "Cómputo / hardware",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43222600": [
+        {
+          "id": "PROD-RED-004",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43222609": [
+        {
+          "id": "PROD-RED-001",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43222612": [
+        {
+          "id": "PROD-RED-002",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "43222640": [
+        {
+          "id": "PROD-RED-003",
+          "family": "Redes / comunicación",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "45121500": [
+        {
+          "id": "PROD-CCTV-001",
+          "family": "CCTV / videovigilancia",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "45121600": [
+        {
+          "id": "PROD-CCTV-004",
+          "family": "CCTV / videovigilancia",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "46171619": [
+        {
+          "id": "PROD-AC-001",
+          "family": "Control de acceso",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "PROD-AC-004",
+          "family": "Control de acceso",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "PROD-AC-006",
+          "family": "Acceso vehicular",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "46171621": [
+        {
+          "id": "PROD-CCTV-002",
+          "family": "CCTV / videovigilancia",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "46171622": [
+        {
+          "id": "PROD-CCTV-003",
+          "family": "CCTV / videovigilancia",
+          "type": "Producto",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "72101510": [
+        {
+          "id": "BLOCK-004",
+          "family": "Plomería / baño",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ],
+      "72111100": [
+        {
+          "id": "BLOCK-005",
+          "family": "Obra civil / construcción general",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ],
+      "72151604": [
+        {
+          "id": "SVC-AC-013",
+          "family": "Videoportero / interfon",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "72151605": [
+        {
+          "id": "SVC-RED-003",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-005",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-006",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-010",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "MIX-003",
+          "family": "Red + CCTV",
+          "type": "Mixto",
+          "action_n8n": "PEDIR_ACLARACION"
+        }
+      ],
+      "72151701": [
+        {
+          "id": "SVC-AC-003",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-008",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "72151702": [
+        {
+          "id": "SVC-CCTV-002",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "72151704": [
+        {
+          "id": "SVC-AC-005",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-006",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-007",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-012",
+          "family": "Acceso vehicular",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-004",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-005",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-007",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "81111500": [
+        {
+          "id": "BLOCK-001",
+          "family": "Software / apps / IA",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ],
+      "81111803": [
+        {
+          "id": "SVC-RED-001",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-002",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-004",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-007",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-008",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-RED-009",
+          "family": "Redes / comunicación",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "81111809": [
+        {
+          "id": "SVC-AC-004",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-003",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "81111810": [
+        {
+          "id": "BLOCK-002",
+          "family": "Codificación / programación",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ],
+      "81111811": [
+        {
+          "id": "SVC-AC-001",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-002",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-009",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-010",
+          "family": "Control de acceso",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-011",
+          "family": "Acceso vehicular",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-AC-014",
+          "family": "Videoportero / interfon",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-001",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-006",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-009",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-CCTV-010",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-004",
+          "family": "Cómputo / soporte",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-005",
+          "family": "Cómputo / soporte",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-007",
+          "family": "Cómputo / soporte",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-008",
+          "family": "Cómputo / soporte",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-009",
+          "family": "Cómputo / soporte",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-010",
+          "family": "Cómputo / soporte",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "MIX-001",
+          "family": "Producto + servicio",
+          "type": "Mixto",
+          "action_n8n": "PEDIR_ACLARACION"
+        },
+        {
+          "id": "MIX-002",
+          "family": "Diagnóstico + reparación",
+          "type": "Mixto",
+          "action_n8n": "PEDIR_ACLARACION"
+        },
+        {
+          "id": "MIX-004",
+          "family": "Control de acceso + usuarios",
+          "type": "Mixto",
+          "action_n8n": "PEDIR_ACLARACION"
+        },
+        {
+          "id": "MIX-005",
+          "family": "Servidor / sistemas",
+          "type": "Mixto",
+          "action_n8n": "PEDIR_ACLARACION"
+        }
+      ],
+      "81111812": [
+        {
+          "id": "SVC-CCTV-008",
+          "family": "CCTV / videovigilancia",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-001",
+          "family": "Cómputo / hardware",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-002",
+          "family": "Cómputo / hardware",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-003",
+          "family": "Cómputo / hardware",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        },
+        {
+          "id": "SVC-PC-006",
+          "family": "Cómputo / hardware",
+          "type": "Servicio",
+          "action_n8n": "SUGERIR"
+        }
+      ],
+      "81112103": [
+        {
+          "id": "BLOCK-003",
+          "family": "Páginas web",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ],
+      "82101800": [
+        {
+          "id": "BLOCK-007",
+          "family": "Marketing / contenido",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ],
+      "84111500": [
+        {
+          "id": "BLOCK-006",
+          "family": "Gestoría / contabilidad / legal",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ],
+      "90101500": [
+        {
+          "id": "BLOCK-008",
+          "family": "Comida / viáticos personales",
+          "type": "Servicio",
+          "action_n8n": "BLOQUEAR"
+        }
+      ]
+    },
+    "unit_key_usage": {
+      "E48": [
+        "SVC-AC-001",
+        "SVC-AC-002",
+        "SVC-AC-003",
+        "SVC-AC-004",
+        "SVC-AC-005",
+        "SVC-AC-006",
+        "SVC-AC-007",
+        "SVC-AC-008",
+        "SVC-AC-009",
+        "SVC-AC-010",
+        "SVC-AC-011",
+        "SVC-AC-012",
+        "SVC-AC-013",
+        "SVC-AC-014",
+        "SVC-CCTV-001",
+        "SVC-CCTV-002",
+        "SVC-CCTV-003",
+        "SVC-CCTV-004",
+        "SVC-CCTV-005",
+        "SVC-CCTV-006"
+      ],
+      "H87": [
+        "PROD-AC-001",
+        "PROD-AC-002",
+        "PROD-AC-003",
+        "PROD-AC-004",
+        "PROD-AC-005",
+        "PROD-AC-006",
+        "PROD-CCTV-001",
+        "PROD-CCTV-002",
+        "PROD-CCTV-003",
+        "PROD-CCTV-004",
+        "PROD-CCTV-005",
+        "PROD-CCTV-006",
+        "PROD-CCTV-007",
+        "PROD-RED-001",
+        "PROD-RED-002",
+        "PROD-RED-003",
+        "PROD-RED-004",
+        "PROD-RED-005",
+        "PROD-RED-006",
+        "PROD-RED-007"
+      ]
+    }
+  }
+}

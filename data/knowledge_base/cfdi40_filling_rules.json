@@ -1,0 +1,796 @@
+{
+  "schema_version": "cfdi40_filling_rules.v1",
+  "generated_at": "2026-06-04T03:59:26.711Z",
+  "sources": {
+    "official_filling_guide_pdf": "C:/Users/Juandi Gamer/Desktop/CATALOGOS SAT BD ORIGINAL/Anexo_20_Guia_de_llenado_CFDI .pdf",
+    "official_master_catalog_xls": "C:/Users/Juandi Gamer/Desktop/CATALOGOS SAT BD ORIGINAL/catCFDI_V_4_20260603.xls",
+    "active_personal_catalog": "data/concepts.normalized.json"
+  },
+  "guide_page_count": 123,
+  "guide_term_pages": {
+    "FormaPago": [
+      6,
+      7,
+      11,
+      69,
+      71,
+      72,
+      73,
+      74,
+      75,
+      84,
+      86,
+      96
+    ],
+    "MetodoPago": [
+      11,
+      12,
+      71,
+      72,
+      73,
+      75,
+      80
+    ],
+    "TipoDeComprobante": [
+      8,
+      10,
+      11,
+      71,
+      73,
+      74,
+      75
+    ],
+    "RegimenFiscal": [
+      16,
+      19,
+      30,
+      46,
+      123
+    ],
+    "UsoCFDI": [
+      19,
+      20,
+      77
+    ],
+    "ClaveProdServ": [
+      20,
+      21,
+      32,
+      33,
+      62,
+      65,
+      67,
+      68,
+      71,
+      73,
+      75,
+      78,
+      110,
+      118,
+      119,
+      120
+    ],
+    "ClaveUnidad": [
+      22,
+      32,
+      66,
+      67,
+      68,
+      71,
+      73,
+      75,
+      83,
+      85,
+      116,
+      117
+    ],
+    "ObjetoImp": [
+      25
+    ],
+    "Impuestos": [
+      8,
+      10,
+      11,
+      25,
+      27,
+      35,
+      36,
+      37,
+      38,
+      40,
+      53,
+      56,
+      57,
+      72,
+      74,
+      75
+    ],
+    "Exportacion": [
+      11
+    ]
+  },
+  "rules": [
+    {
+      "rule_id": "CFDI40-001",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Comprobante",
+      "condition": "TipoDeComprobante=I",
+      "domain": "Comprobante",
+      "field": "TipoDeComprobante=I",
+      "expected_behavior": "Para ingresos de servicios/productos Emberhub usar comprobante de Ingreso antes de cualquier captura manual.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Comprobante",
+        "TipoDeComprobante=I"
+      ],
+      "source_pages": [
+        8,
+        10,
+        11,
+        71,
+        73,
+        74,
+        75
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-002",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Comprobante",
+      "condition": "Exportacion",
+      "domain": "Comprobante",
+      "field": "Exportacion",
+      "expected_behavior": "Definir Exportacion con clave vigente del catalogo; para operaciones locales comunes se requiere revisar que sea la clave aplicable antes de emitir.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Comprobante",
+        "Exportacion"
+      ],
+      "source_pages": [
+        11
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-003",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Emisor",
+      "condition": "RegimenFiscal",
+      "domain": "Emisor",
+      "field": "RegimenFiscal",
+      "expected_behavior": "El regimen emisor debe existir en c_RegimenFiscal y corresponder al certificado/CSD. Para este MVP se modela RESICO persona fisica 626 como matriz de decision, no como timbrado.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Emisor",
+        "RegimenFiscal"
+      ],
+      "source_pages": [
+        16,
+        19,
+        30,
+        46,
+        123
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-004",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Receptor",
+      "condition": "RegimenFiscalReceptor",
+      "domain": "Receptor",
+      "field": "RegimenFiscalReceptor",
+      "expected_behavior": "El regimen receptor debe existir en c_RegimenFiscal y ser compatible con el RFC/tipo persona del receptor.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Receptor",
+        "RegimenFiscalReceptor"
+      ],
+      "source_pages": [
+        16,
+        19,
+        30,
+        46,
+        123
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-005",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Receptor",
+      "condition": "UsoCFDI",
+      "domain": "Receptor",
+      "field": "UsoCFDI",
+      "expected_behavior": "UsoCFDI debe existir en c_UsoCFDI y ser compatible con RegimenFiscalReceptor segun la columna Regimen Fiscal Receptor.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Receptor",
+        "UsoCFDI"
+      ],
+      "source_pages": [
+        19,
+        20,
+        77
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-006",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Concepto",
+      "condition": "ClaveProdServ",
+      "domain": "Concepto",
+      "field": "ClaveProdServ",
+      "expected_behavior": "ClaveProdServ debe provenir del catalogo oficial c_ClaveProdServ y del catalogo activo validado; no se inventan claves.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Concepto",
+        "ClaveProdServ"
+      ],
+      "source_pages": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-007",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Concepto",
+      "condition": "ClaveUnidad",
+      "domain": "Concepto",
+      "field": "ClaveUnidad",
+      "expected_behavior": "ClaveUnidad debe existir en c_ClaveUnidad. Para servicios tecnicos se prefiere E48 si la base activa lo indica; para productos H87 u otra unidad solo si esta en la base.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Concepto",
+        "ClaveUnidad"
+      ],
+      "source_pages": [
+        22,
+        32,
+        66,
+        67,
+        68,
+        71,
+        73,
+        75,
+        83,
+        85,
+        116,
+        117
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-008",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Concepto",
+      "condition": "Descripcion",
+      "domain": "Concepto",
+      "field": "Descripcion",
+      "expected_behavior": "La descripcion capturada debe describir el bien o servicio real sin usar texto ambiguo como 'servicio general' cuando falte equipo/sistema.",
+      "severity": "WARNING",
+      "applies_to": [
+        "Concepto",
+        "Descripcion"
+      ],
+      "source_pages": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-009",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Concepto",
+      "condition": "ObjetoImp=02",
+      "domain": "Concepto",
+      "field": "ObjetoImp=02",
+      "expected_behavior": "Si ObjetoImp es 02, el concepto es objeto de impuesto y debe tener desglose de impuestos aplicable.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Concepto",
+        "ObjetoImp=02"
+      ],
+      "source_pages": [
+        25
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-010",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Concepto",
+      "condition": "ObjetoImp=01",
+      "domain": "Concepto",
+      "field": "ObjetoImp=01",
+      "expected_behavior": "Si ObjetoImp es 01, no se deben capturar traslados del concepto.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Concepto",
+        "ObjetoImp=01"
+      ],
+      "source_pages": [
+        25
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-011",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Concepto",
+      "condition": "ObjetoImp=03",
+      "domain": "Concepto",
+      "field": "ObjetoImp=03",
+      "expected_behavior": "Si ObjetoImp es 03, el concepto puede ser objeto de impuesto sin obligar al desglose; requiere revision humana por caso.",
+      "severity": "WARNING",
+      "applies_to": [
+        "Concepto",
+        "ObjetoImp=03"
+      ],
+      "source_pages": [
+        25
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-012",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Impuestos",
+      "condition": "IVA traslado",
+      "domain": "Impuestos",
+      "field": "IVA traslado",
+      "expected_behavior": "IVA debe usar c_Impuesto=002, TipoFactor=Tasa/Exento segun corresponda y tasa vigente de c_TasaOCuota.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Impuestos",
+        "IVA traslado"
+      ],
+      "source_pages": [
+        8,
+        10,
+        11,
+        25,
+        27,
+        35,
+        36,
+        37,
+        38,
+        40,
+        53,
+        56,
+        57,
+        72,
+        74,
+        75
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-013",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Impuestos",
+      "condition": "ISR retencion",
+      "domain": "Impuestos",
+      "field": "ISR retencion",
+      "expected_behavior": "ISR c_Impuesto=001 es retencion, no traslado; para RESICO se evalua solo como regla fiscal futura, no se automatiza timbrado.",
+      "severity": "WARNING",
+      "applies_to": [
+        "Impuestos",
+        "ISR retencion"
+      ],
+      "source_pages": [
+        8,
+        10,
+        11,
+        25,
+        27,
+        35,
+        36,
+        37,
+        38,
+        40,
+        53,
+        56,
+        57,
+        72,
+        74,
+        75
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-014",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Pago",
+      "condition": "MetodoPago=PUE",
+      "domain": "Pago",
+      "field": "MetodoPago=PUE",
+      "expected_behavior": "PUE se usa cuando el pago ocurre en una sola exhibicion; FormaPago debe reflejar el medio real si se conoce.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Pago",
+        "MetodoPago=PUE"
+      ],
+      "source_pages": [
+        11,
+        12,
+        71,
+        72,
+        73,
+        75,
+        80
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-015",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Pago",
+      "condition": "MetodoPago=PPD",
+      "domain": "Pago",
+      "field": "MetodoPago=PPD",
+      "expected_behavior": "PPD indica pago diferido/parcialidades; en captura manual se debe revisar FormaPago y complemento de pago futuro.",
+      "severity": "WARNING",
+      "applies_to": [
+        "Pago",
+        "MetodoPago=PPD"
+      ],
+      "source_pages": [
+        11,
+        12,
+        71,
+        72,
+        73,
+        75,
+        80
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-016",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Pago",
+      "condition": "FormaPago",
+      "domain": "Pago",
+      "field": "FormaPago",
+      "expected_behavior": "FormaPago debe existir en c_FormaPago y respetar restricciones bancarizadas cuando aplique.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Pago",
+        "FormaPago"
+      ],
+      "source_pages": [
+        6,
+        7,
+        11,
+        69,
+        71,
+        72,
+        73,
+        74,
+        75,
+        84,
+        86,
+        96
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-017",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Totales",
+      "condition": "Subtotal/Total",
+      "domain": "Totales",
+      "field": "Subtotal/Total",
+      "expected_behavior": "SubTotal, descuentos, impuestos y Total deben cuadrar aritmeticamente; este bot no calcula ni timbra totales finales.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Totales",
+        "Subtotal/Total"
+      ],
+      "source_pages": [
+        8,
+        10,
+        11,
+        25,
+        27,
+        35,
+        36,
+        37,
+        38,
+        40,
+        53,
+        56,
+        57,
+        72,
+        74,
+        75
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-018",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Moneda",
+      "condition": "TipoCambio",
+      "domain": "Moneda",
+      "field": "TipoCambio",
+      "expected_behavior": "Si la moneda no es MXN, validar moneda vigente y tipo de cambio antes de captura/timbrado.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Moneda",
+        "TipoCambio"
+      ],
+      "source_pages": [],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-019",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Catalogos",
+      "condition": "Vigencia",
+      "domain": "Catalogos",
+      "field": "Vigencia",
+      "expected_behavior": "Toda clave debe estar vigente para la fecha del comprobante segun fechas de inicio/fin del catalogo maestro.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Catalogos",
+        "Vigencia"
+      ],
+      "source_pages": [],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-020",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Catalogos",
+      "condition": "Complemento requerido",
+      "domain": "Catalogos",
+      "field": "Complemento requerido",
+      "expected_behavior": "Si c_ClaveProdServ indica complemento obligatorio, no usar esa clave en el MVP sin flujo especifico.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Catalogos",
+        "Complemento requerido"
+      ],
+      "source_pages": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-021",
+      "source": "ANEXO20_OFICIAL",
+      "category": "RESICO",
+      "condition": "626",
+      "domain": "RESICO",
+      "field": "626",
+      "expected_behavior": "El regimen 626 se considera actividad actual solo si la base activa marca current_activity_ok/resico_626_ok.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "RESICO",
+        "626"
+      ],
+      "source_pages": [
+        16,
+        19,
+        30,
+        46,
+        123
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-022",
+      "source": "ANEXO20_OFICIAL",
+      "category": "RESICO",
+      "condition": "software/apps/web/IA",
+      "domain": "RESICO",
+      "field": "software/apps/web/IA",
+      "expected_behavior": "Software, apps, IA, web, SaaS y automatizacion digital requieren actividad o bloqueo segun base; no se reclasifican como soporte tecnico.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "RESICO",
+        "software/apps/web/IA"
+      ],
+      "source_pages": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-023",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Operacion",
+      "condition": "venta",
+      "domain": "Operacion",
+      "field": "venta",
+      "expected_behavior": "Si el mensaje dice venta, priorizar tipo PRODUCTO en base activa y validar ClaveProdServ/ClaveUnidad del producto.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Operacion",
+        "venta"
+      ],
+      "source_pages": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-024",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Operacion",
+      "condition": "servicio",
+      "domain": "Operacion",
+      "field": "servicio",
+      "expected_behavior": "Revision, diagnostico, mantenimiento y configuracion priorizan SERVICIO; no sugerir producto puro sin evidencia de venta.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Operacion",
+        "servicio"
+      ],
+      "source_pages": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-025",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Operacion",
+      "condition": "instalacion/cambio",
+      "domain": "Operacion",
+      "field": "instalacion/cambio",
+      "expected_behavior": "Instalacion, cambio, sustitucion o reemplazo se tratan como servicio o mixto; si incluye material, pedir desglose o validar concepto mixto.",
+      "severity": "WARNING",
+      "applies_to": [
+        "Operacion",
+        "instalacion/cambio"
+      ],
+      "source_pages": [
+        20,
+        21,
+        32,
+        33,
+        62,
+        65,
+        67,
+        68,
+        71,
+        73,
+        75,
+        78,
+        110,
+        118,
+        119,
+        120
+      ],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-026",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Seguridad",
+      "condition": "revision humana",
+      "domain": "Seguridad",
+      "field": "revision humana",
+      "expected_behavior": "Todos los resultados del bot son sugerencias para captura manual; requires_human_review debe permanecer verdadero.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Seguridad",
+        "revision humana"
+      ],
+      "source_pages": [],
+      "implementation_status": "knowledge_base_only"
+    },
+    {
+      "rule_id": "CFDI40-027",
+      "source": "ANEXO20_OFICIAL",
+      "category": "Limite",
+      "condition": "no PAC",
+      "domain": "Limite",
+      "field": "no PAC",
+      "expected_behavior": "La knowledge base no autoriza timbrado, PAC, WhatsApp ni envio fiscal automatico.",
+      "severity": "BLOCKER",
+      "applies_to": [
+        "Limite",
+        "no PAC"
+      ],
+      "source_pages": [],
+      "implementation_status": "knowledge_base_only"
+    }
+  ]
+}

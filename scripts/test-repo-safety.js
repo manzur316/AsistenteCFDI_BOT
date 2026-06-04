@@ -14,6 +14,11 @@ const safeFiles = [
   "data/sat_official/imported_sat_catalog.normalized.json",
   "data/catalog_expansion/proposed_concepts.resico_626.json",
   "data/catalog_expansion/concepts.normalized.candidate.json",
+  "data/knowledge_base/cfdi40_filling_rules.json",
+  "data/knowledge_base/cfdi40_decision_engine.json",
+  "data/knowledge_base/cfdi40_claveprodserv_index.json",
+  "data/knowledge_base/cfdi40_claveunidad_index.json",
+  "data/knowledge_base/cfdi40_master_knowledge.json",
   "runtime/.gitkeep",
   "runner/README.md",
   "runner/telegram-local-runner.js",
@@ -54,6 +59,7 @@ const scanFiles = [
   "data/sat_official/imported_sat_catalog.normalized.json",
   "data/catalog_expansion/proposed_concepts.resico_626.json",
   "data/catalog_expansion/concepts.normalized.candidate.json",
+  ...listFiles("data/knowledge_base"),
 ];
 
 const tokenPatterns = [
