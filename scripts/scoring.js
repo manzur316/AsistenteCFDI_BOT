@@ -602,6 +602,45 @@ function buildReason(action, context, selected, blockInfo, ambiguous) {
   return base.length ? base.join("; ") : "sin_razon_clara";
 }
 
+function activityScopeShadowEnabled() {
+  return typeof process !== "undefined" &&
+    process.env &&
+    String(process.env.CFDI_ACTIVITY_SCOPE_SHADOW || "").trim() === "1";
+}
+
+function attachShadowActivityScope(result, message) {
+  if (!activityScopeShadowEnabled()) return result;
+  try {
+    const {
+      buildShadowActivityScopeReport,
+      writeShadowActivityScopeLog,
+    } = require("./lib/emitter-activity-shadow-logger");
+    const shadowReport = buildShadowActivityScopeReport(message, result, { enabled: true });
+    writeShadowActivityScopeLog(shadowReport);
+    return {
+      ...result,
+      shadow_activity_scope: shadowReport,
+    };
+  } catch (error) {
+    return {
+      ...result,
+      shadow_activity_scope: {
+        enabled: true,
+        non_productive: true,
+        current_action: result?.accion_n8n || null,
+        current_concept_id: result?.concepto_id || result?.matched_id || null,
+        activity_scope_result: null,
+        detected_activity_ids: [],
+        requires_clarification: null,
+        blocked_scope_matches: [],
+        semantic_flags: [],
+        divergence_type: "NEEDS_POLICY_REVIEW",
+        reasons: [`shadow_error:${error.message}`],
+      },
+    };
+  }
+}
+
 function classifyMessage(message, catalog = DEFAULT_CATALOG) {
   const concepts = Array.isArray(catalog?.concepts) ? catalog.concepts : [];
   const context = extractContext(message);
@@ -655,7 +694,7 @@ function classifyMessage(message, catalog = DEFAULT_CATALOG) {
   const selectedFamily = selected ? selected.family : null;
   const conceptType = selected ? selected.conceptType : null;
 
-  return {
+  const result = {
     accion_n8n: action,
     matched_id: isBillable ? selected?.id || null : null,
     concepto_id: isBillable ? selected?.id || null : null,
@@ -684,6 +723,8 @@ function classifyMessage(message, catalog = DEFAULT_CATALOG) {
     reason: buildReason(action, context, topScored, blockInfo, ambiguous),
     blocked_terms: blockInfo,
   };
+
+  return attachShadowActivityScope(result, message);
 }
 
 function formatTelegramMessage(result) {

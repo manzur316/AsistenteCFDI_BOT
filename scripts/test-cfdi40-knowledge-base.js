@@ -23,7 +23,6 @@ const files = {
 const protectedPaths = [
   "data/concepts.normalized.json",
   "data/base_cfdi_resico_n8n_emberhub_2026.xlsx",
-  "scripts/scoring.js",
   "workflow/cfdi_manual_test.n8n.json",
   "workflow/cfdi_telegram_postgres_polling.n8n.json",
   "workflow/cfdi_telegram_local_ingest.n8n.json",
