@@ -175,6 +175,33 @@ const cases = [
     expected_concept_prefix: ["PROD-CCTV-"],
   },
   {
+    message: "venta de camara CCTV",
+    expected: ["SUGERIR"],
+    expected_family: ["CCTV"],
+    expected_type: ["PRODUCTO"],
+    expected_concept_prefix: ["PROD-CCTV-001"],
+    forbidden_concept_prefix: ["PROD-CCTV-002"],
+    forbidden_concept_contains: ["DVR", "NVR", "GRABADOR", "DISCO", "ALMACENAMIENTO"],
+  },
+  {
+    message: "venta de DVR",
+    expected: ["SUGERIR"],
+    expected_family: ["CCTV"],
+    expected_type: ["PRODUCTO"],
+    expected_concept_prefix: ["PROD-CCTV-002"],
+  },
+  {
+    message: "venta de NVR",
+    expected: ["SUGERIR"],
+    expected_family: ["CCTV"],
+    expected_type: ["PRODUCTO"],
+    expected_concept_prefix: ["PROD-CCTV-002"],
+  },
+  {
+    message: "renta de equipo",
+    expected: ["BLOQUEAR", "AGREGAR_ACTIVIDAD"],
+  },
+  {
     message: "revisión general en privada",
     expected: ["PEDIR_ACLARACION"],
   },

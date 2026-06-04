@@ -158,6 +158,16 @@ const DVR_NVR_DISK_MARKERS = [
   "ssd",
 ];
 
+const RENTAL_BLOCK_MARKERS = [
+  "renta",
+  "rentar",
+  "rente",
+  "alquiler",
+  "alquilar",
+  "arrendamiento",
+  "arrendar",
+];
+
 const AMBIGUOUS_MARKERS = [
   "sistema",
   "equipo",
@@ -377,14 +387,24 @@ function scoreConcept(message, concept, _catalog = DEFAULT_CATALOG) {
   const excludeKeywords = conceptExclusionKeywords(concept);
   const conceptHasStorageSignal = includeKeywords.some((term) => STORAGE_MARKERS.some((marker) => term === normalizeText(marker)));
   const conceptLabel = normalizeText(concept?.invoice_concept || concept?.concepto_factura_recomendado || concept?.concepto_factura || "");
-  const conceptHasPowerSignal = includesAnyMarker(conceptLabel, POWER_PRODUCT_MARKERS) || includesAnyMarker(includeKeywords.join(" "), POWER_PRODUCT_MARKERS);
+  const conceptLabelHasPowerSignal = includesAnyMarker(conceptLabel, POWER_PRODUCT_MARKERS);
+  const conceptHasPowerSignal = conceptLabelHasPowerSignal || includesAnyMarker(includeKeywords.join(" "), POWER_PRODUCT_MARKERS);
+  const conceptLabelHasDvrNvrDiskSignal = includesAnyMarker(conceptLabel, DVR_NVR_DISK_MARKERS);
   const conceptHasDvrNvrDiskSignal =
-    includesAnyMarker(conceptLabel, DVR_NVR_DISK_MARKERS) ||
+    conceptLabelHasDvrNvrDiskSignal ||
     includeKeywords.some((term) => {
       const normalized = normalizeText(term);
       return includesAnyMarker(normalized, DVR_NVR_DISK_MARKERS);
     });
   const hasPowerStorageRestriction = context.hasPowerSource && context.hasCctvMention && !context.hasStorageMention;
+  const hasDvrNvrLabelWithoutExplicitMention =
+    context.hasCctvMention &&
+    !context.hasExplicitDvrNvrStorageMention &&
+    conceptLabelHasDvrNvrDiskSignal;
+  const hasPowerLabelWithoutPowerMention =
+    context.hasCctvMention &&
+    !context.hasPowerSource &&
+    conceptLabelHasPowerSignal;
 
   const matchedInclude = [];
   const matchedExclude = [];
@@ -440,6 +460,18 @@ function scoreConcept(message, concept, _catalog = DEFAULT_CATALOG) {
       matchedExclude.push("fuente_contexto_no_aplica_dispositivo");
     }
   }
+  if (hasDvrNvrLabelWithoutExplicitMention) {
+    confidence -= 70;
+    if (!matchedExclude.includes("dvr_nvr_requiere_mencion_explicita")) {
+      matchedExclude.push("dvr_nvr_requiere_mencion_explicita");
+    }
+  }
+  if (hasPowerLabelWithoutPowerMention) {
+    confidence -= 70;
+    if (!matchedExclude.includes("fuente_requiere_mencion_explicita")) {
+      matchedExclude.push("fuente_requiere_mencion_explicita");
+    }
+  }
 
   if (!context.hasAnyFamily && context.hasSale) {
     confidence += 6;
@@ -492,7 +524,9 @@ function scoreConcept(message, concept, _catalog = DEFAULT_CATALOG) {
 function detectBlockedTerms(message, catalog) {
   const concepts = Array.isArray(catalog?.concepts) ? catalog.concepts : [];
   const context = extractContext(message);
-  const blockedMarkers = context ? [] : [];
+  const rentalMatches = RENTAL_BLOCK_MARKERS
+    .map(normalizeText)
+    .filter((term) => termMatches(context.text, context.tokens, term));
 
   const scoredBlocked = concepts
     .filter((concept) => getConceptAction(concept) === "BLOQUEAR")
@@ -501,12 +535,19 @@ function detectBlockedTerms(message, catalog) {
     .sort((a, b) => b.confidence - a.confidence);
 
   const hardTerms = scoredBlocked.flatMap((item) => item.matched_include || []);
-
-  return {
-    is_blocked: scoredBlocked.length > 0,
-    is_hard_block: scoredBlocked.length > 0,
-    hard_terms: hardTerms.slice(0, 8),
-    matched_block_concepts: scoredBlocked.slice(0, 5).map((item) => ({
+  const syntheticRentalBlock = rentalMatches.length > 0
+    ? [{
+        id: "BLOCK-RENTAL",
+        action: "BLOQUEAR",
+        confidence: 100,
+        score: 100,
+        concept_id: "BLOCK-RENTAL",
+        concept_name: "NO FACTURAR CON ACTIVIDADES ACTUALES: RENTA, ALQUILER O ARRENDAMIENTO DE EQUIPO",
+      }]
+    : [];
+  const matchedBlockConcepts = [
+    ...syntheticRentalBlock,
+    ...scoredBlocked.slice(0, 5).map((item) => ({
       id: item.id,
       action: item.action,
       confidence: item.confidence,
@@ -514,6 +555,13 @@ function detectBlockedTerms(message, catalog) {
       concept_id: item.id,
       concept_name: item.concept?.invoice_concept || null,
     })),
+  ].slice(0, 5);
+
+  return {
+    is_blocked: scoredBlocked.length > 0 || rentalMatches.length > 0,
+    is_hard_block: scoredBlocked.length > 0 || rentalMatches.length > 0,
+    hard_terms: [...rentalMatches, ...hardTerms].slice(0, 8),
+    matched_block_concepts: matchedBlockConcepts,
     selected_block: scoredBlocked[0]?.concept || null,
     blocked_candidates: scoredBlocked,
     context,
