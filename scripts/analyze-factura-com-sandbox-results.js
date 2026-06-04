@@ -48,6 +48,18 @@ function countAttempts(summary = {}, manifest = {}) {
   return Number(summary.total_attempts ?? attempts.length ?? 0);
 }
 
+function unique(values = []) {
+  return Array.from(new Set(values.map(text).filter(Boolean)));
+}
+
+function attemptIdentityCompleteness(attempt = {}) {
+  const hasUid = Boolean(text(attempt.cfdi_uid || attempt.uid));
+  const hasUuid = Boolean(text(attempt.uuid));
+  if (hasUid && hasUuid) return "complete";
+  if (hasUid || hasUuid || attempt.pac_invoice_id || attempt.serie || attempt.folio) return "partial";
+  return "missing";
+}
+
 function findSensitiveText(filePath, content) {
   const findings = [];
   const patterns = [
@@ -100,6 +112,12 @@ function analyze(runtimeArg = process.argv[2]) {
   const summary = readJson(summaryPath);
   const scan = scanRuntime(runtimeDir);
   const clientUidMapPath = path.join(runtimeDir, "client-uids.local.json");
+  const attempts = Array.isArray(manifest.attempts) ? manifest.attempts : [];
+  const attemptCfdiUids = unique(attempts.map((attempt) => attempt.cfdi_uid || attempt.uid));
+  const attemptUuids = unique(attempts.map((attempt) => attempt.uuid));
+  const attemptPacInvoiceIds = unique(attempts.map((attempt) => attempt.pac_invoice_id));
+  const attemptXmlUuids = unique(attempts.map((attempt) => attempt.xml_uuid));
+  const attemptCompleteness = attempts.map(attemptIdentityCompleteness);
   const artifactPaths = (manifest.artifacts || []).map((artifact) => text(artifact.path)).filter(Boolean);
   const outsideArtifacts = artifactPaths.filter((artifactPath) => {
     const abs = path.resolve(root, artifactPath);
@@ -124,7 +142,18 @@ function analyze(runtimeArg = process.argv[2]) {
     client_uid_missing: Number(summary.client_uid_missing || 0),
     ambiguous_clients: Number(summary.ambiguous_clients || 0),
     client_uid_map_exists: fs.existsSync(clientUidMapPath),
-    sandbox_uuids: Array.isArray(summary.sandbox_uuids) ? summary.sandbox_uuids : [],
+    cfdi_uids_found: Number(summary.cfdi_uids_found ?? attemptCfdiUids.length),
+    uuids_found: Number(summary.uuids_found ?? attemptUuids.length),
+    pac_invoice_ids_found: Number(summary.pac_invoice_ids_found ?? attemptPacInvoiceIds.length),
+    identities_complete: Number(summary.identities_complete ?? attemptCompleteness.filter((value) => value === "complete").length),
+    identities_partial: Number(summary.identities_partial ?? attemptCompleteness.filter((value) => value === "partial").length),
+    identity_missing: Number(summary.identity_missing ?? attemptCompleteness.filter((value) => value === "missing").length),
+    xml_uuid_found: Number(summary.xml_uuid_found ?? attemptXmlUuids.length),
+    lookup_identity_found: Number(summary.lookup_identity_found || 0),
+    cfdi_uids: Array.isArray(summary.cfdi_uids) && summary.cfdi_uids.length ? summary.cfdi_uids : attemptCfdiUids,
+    pac_invoice_ids: Array.isArray(summary.pac_invoice_ids) && summary.pac_invoice_ids.length ? summary.pac_invoice_ids : attemptPacInvoiceIds,
+    sandbox_uuids: Array.isArray(summary.sandbox_uuids) && summary.sandbox_uuids.length ? summary.sandbox_uuids : attemptUuids,
+    xml_uuids: attemptXmlUuids,
     warnings: Array.isArray(summary.warnings) ? summary.warnings : [],
     artifact_files: scan.files.map(rel),
     sensitive_findings: errors,
@@ -148,6 +177,16 @@ function printResult(result) {
   console.log(`UIDs cliente faltantes: ${result.client_uid_missing}`);
   console.log(`Clientes ambiguos: ${result.ambiguous_clients}`);
   console.log(`client-uids.local.json existe: ${result.client_uid_map_exists ? "si" : "no"}`);
+  console.log(`CFDI UIDs encontrados: ${result.cfdi_uids_found}`);
+  console.log(`UUIDs encontrados: ${result.uuids_found}`);
+  console.log(`PAC invoice IDs encontrados: ${result.pac_invoice_ids_found}`);
+  console.log(`Identidades completas: ${result.identities_complete}`);
+  console.log(`Identidades parciales: ${result.identities_partial}`);
+  console.log(`Identidades faltantes: ${result.identity_missing}`);
+  console.log(`XML UUID encontrados: ${result.xml_uuid_found}`);
+  console.log(`Lookup identity encontrados: ${result.lookup_identity_found}`);
+  console.log(`CFDI UIDs: ${result.cfdi_uids.join(", ") || "none"}`);
+  console.log(`PAC invoice IDs: ${result.pac_invoice_ids.join(", ") || "none"}`);
   console.log(`UUIDs demo/sandbox: ${result.sandbox_uuids.join(", ") || "none"}`);
   console.log(`Warnings: ${result.warnings.join(" | ") || "none"}`);
   console.log(`Artifacts revisados: ${result.artifact_files.length}`);

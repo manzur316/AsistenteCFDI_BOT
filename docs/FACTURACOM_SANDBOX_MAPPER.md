@@ -213,6 +213,20 @@ el lookup no encuentra UID o encuentra multiples clientes indistinguibles, el
 intento queda detenido como `CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS`; no se
 manda `POST /v4/cfdi40/create`.
 
+Fase 6A.6C agrega normalizacion de identidad CFDI/PAC para preparar Storage
+Engine. Los smoke live sandbox ya validaron crear CFDI, descargar XML/PDF,
+cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:
+
+- `cfdi_uid` / `uid`.
+- `uuid` fiscal si aparece en create, lookup o XML.
+- `pac_invoice_id`, `serie`, `folio` y `status` si Factura.com los devuelve.
+- `lookup_status`, `cancel_status` y `cancel_response_identity`.
+- `identity_completeness`: `complete`, `partial` o `missing`.
+
+El UUID puede no venir en create response. El smoke busca en `Data`, `data`,
+`response`, `respuestaapi`, `TimbreFiscalDigital`, `Comprobante` y XML descargado.
+No usa XML/PDF para produccion y no versiona runtime.
+
 Los resultados viven solo en:
 
 ```text

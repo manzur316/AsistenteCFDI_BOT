@@ -232,6 +232,25 @@ GET /v4/cfdi40/{cfdi_uid}/xml
 La documentacion indica que `cfdi_uid` puede ser UID o UUID. Esta fase no
 descarga archivos y no versiona XML/PDF.
 
+## H. Identidad CFDI/PAC Sandbox
+
+Los smoke live sandbox locales ya validaron create, descarga XML/PDF,
+cancelacion sandbox y batch de 5 CFDI sin findings sensibles. El pendiente para
+Storage Engine no es timbrado productivo, sino normalizar identidad:
+
+- `cfdi_uid` / `uid` del proveedor.
+- `uuid` fiscal.
+- `pac_invoice_id` cuando exista.
+- `serie` y `folio`.
+- `status` / `lookup_status`.
+- `cancel_status` y posible identidad dentro de la respuesta de cancelacion.
+- referencias runtime de XML/PDF.
+
+El UUID puede no venir en la respuesta de `POST /v4/cfdi40/create`. El smoke lo
+busca en estructuras anidadas de create, lookup, `respuestaapi`, timbre fiscal y
+XML descargado. El extractor solo acepta UUID con forma valida y no interpreta
+RFC como UUID.
+
 ## Campos Confirmados En Mapper
 
 El mapper conserva el payload interno mock y agrega `official_request` con:
@@ -331,6 +350,7 @@ Archivos esperados:
 - request/response JSON sanitizados
 - `client-uids.local.json` solo si se encontro UID de cliente sandbox demo
 - XML/PDF sandbox solo si `FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`
+- campos normalizados de identidad CFDI en `manifest.attempts[]`
 
 El analizador:
 
@@ -340,6 +360,8 @@ node scripts/analyze-factura-com-sandbox-results.js
 
 falla si detecta credenciales, produccion, RFC no permitido o artifacts fuera de
 `runtime/`. Tambien reporta clientes creados, UIDs encontrados, UIDs faltantes,
-clientes ambiguos y si existe `client-uids.local.json`.
+clientes ambiguos, si existe `client-uids.local.json`, CFDI UIDs, UUIDs,
+`pac_invoice_id`, identidades completas/parciales/faltantes y UUID encontrado en
+XML. La falta de UUID se reporta como observabilidad, no como error de seguridad.
 
 Produccion sigue bloqueada aunque el host oficial este documentado.

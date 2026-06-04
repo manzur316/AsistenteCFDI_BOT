@@ -305,6 +305,21 @@ no se intenta crear CFDI. Para reintentar despues de un smoke, revisa
 node scripts/analyze-factura-com-sandbox-results.js
 ```
 
+Fase 6A.6C normaliza identidad CFDI/PAC despues de los smoke live sandbox
+validados localmente: create, download XML/PDF, cancelacion sandbox y batch de 5
+CFDI. Antes del Storage Engine, cada intento puede registrar:
+
+- `cfdi_uid` / `uid` del proveedor.
+- `uuid` fiscal cuando venga en create, lookup o XML.
+- `pac_invoice_id` si el proveedor lo entrega.
+- `serie`, `folio`, `status`, `lookup_status` y `cancel_status`.
+- referencias runtime de XML/PDF sin versionarlas.
+
+Factura.com puede no devolver UUID en `POST /v4/cfdi40/create`; el smoke vuelve
+a intentar desde `GET /v4/cfdi/uid/{UID}` y desde el XML descargado cuando
+`FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`. El analizador reporta identidades
+completas, parciales o faltantes sin fallar solo porque falte UUID.
+
 No subas `.env.pac.sandbox.local`, credenciales, XML/PDF, responses, manifests,
 runtime, estados de cuenta ni clientes reales. Produccion sigue bloqueada por
 codigo; `https://api.factura.com` no es aceptado por el cliente live.

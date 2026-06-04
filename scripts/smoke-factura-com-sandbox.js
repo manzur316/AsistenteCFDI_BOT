@@ -13,6 +13,8 @@ const {
 const root = path.resolve(__dirname, "..");
 const DEFAULT_RUNTIME_DIR = path.join(root, "runtime", "facturacom-sandbox");
 const SCHEMA_VERSION = "facturacom_sandbox_smoke.v1";
+const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
+const RFC_PATTERN = /^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/i;
 
 function text(value) {
   const cleaned = String(value ?? "").trim();
@@ -304,6 +306,140 @@ function extractUid(response = {}) {
   return pickBestUidCandidate(collectUidCandidates(response));
 }
 
+function isCfdiLikeObject(object = {}, pathLabel = "") {
+  if (!object || typeof object !== "object" || Array.isArray(object)) return false;
+  const pathText = normalizeComparable(pathLabel).replace(/\./g, " ");
+  const cfdiPath = /\b(CFDI|CFDI40|COMPROBANTE|TIMBRE|FACTURA|INVOICE|RESPUESTAAPI|UUID)\b/.test(pathText);
+  if (cfdiPath) return true;
+  return Boolean(objectValue(object, [
+    "UUID",
+    "uuid",
+    "Uuid",
+    "FolioFiscal",
+    "folio_fiscal",
+    "TimbreFiscalDigital",
+    "Comprobante",
+    "Conceptos",
+    "Emisor",
+    "Receptor",
+    "Total",
+    "Subtotal",
+  ]));
+}
+
+function collectFieldCandidates(response = {}, wantedKeys = []) {
+  const wanted = new Set(wantedKeys.map((key) => String(key).toLowerCase()));
+  const candidates = [];
+  const seenObjects = new Set();
+
+  function visit(value, pathParts = [], depth = 0) {
+    if (value === null || value === undefined || depth > 14) return;
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, [...pathParts, String(index)], depth + 1));
+      return;
+    }
+    if (typeof value !== "object") return;
+    if (seenObjects.has(value)) return;
+    seenObjects.add(value);
+
+    for (const [key, child] of Object.entries(value)) {
+      const pathLabel = [...pathParts, key].join(".");
+      if (wanted.has(String(key).toLowerCase())) {
+        const cleaned = text(child);
+        if (cleaned) {
+          candidates.push({
+            value: cleaned,
+            key,
+            object: value,
+            path: pathLabel,
+            depth,
+            clientLike: isClientLikeObject(value),
+            cfdiLike: isCfdiLikeObject(value, pathLabel),
+          });
+        }
+      }
+      visit(child, [...pathParts, key], depth + 1);
+    }
+  }
+
+  visit(response);
+  return candidates;
+}
+
+function collectStrings(response = {}) {
+  const strings = [];
+  const seenObjects = new Set();
+
+  function visit(value, pathParts = [], depth = 0) {
+    if (value === null || value === undefined || depth > 14) return;
+    if (typeof value === "string") {
+      const cleaned = text(value);
+      if (cleaned) strings.push({ value: cleaned, path: pathParts.join("."), depth });
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, [...pathParts, String(index)], depth + 1));
+      return;
+    }
+    if (typeof value !== "object") return;
+    if (seenObjects.has(value)) return;
+    seenObjects.add(value);
+    for (const [key, child] of Object.entries(value)) visit(child, [...pathParts, key], depth + 1);
+  }
+
+  visit(response);
+  return strings;
+}
+
+function validUuid(value) {
+  const cleaned = text(value);
+  if (!cleaned || RFC_PATTERN.test(cleaned)) return null;
+  const match = cleaned.match(UUID_PATTERN);
+  return match ? match[0] : null;
+}
+
+function extractUuidFromXmlText(value) {
+  const cleaned = text(value);
+  if (!cleaned || !/[<][^>]+[>]/.test(cleaned)) return null;
+  const preferred = cleaned.match(/TimbreFiscalDigital\b[^>]*\bUUID=["']([^"']+)["']/i);
+  const fallback = cleaned.match(/\bUUID=["']([^"']+)["']/i);
+  return validUuid(preferred?.[1] || fallback?.[1]);
+}
+
+function pickBestFieldCandidate(candidates = [], scoreFn = () => 0, validateFn = text) {
+  const scored = candidates
+    .map((candidate, index) => {
+      const value = validateFn(candidate.value);
+      if (!value) return null;
+      return {
+        ...candidate,
+        value,
+        index,
+        score: scoreFn(candidate) - candidate.depth,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || a.depth - b.depth || a.index - b.index);
+  return scored[0]?.value || null;
+}
+
+function extractCfdiUid(response = {}) {
+  const candidates = collectFieldCandidates(response, ["UID", "uid", "Uid", "cfdi_uid", "CFDI_UID"]);
+  return pickBestFieldCandidate(candidates, (candidate) => {
+    const key = String(candidate.key).toLowerCase();
+    const pathText = String(candidate.path || "").toLowerCase();
+    return (key.includes("cfdi") ? 140 : 60)
+      + (candidate.cfdiLike ? 80 : 0)
+      + (pathText.includes("cfdi") || pathText.includes("factura") || pathText.includes("respuestaapi") ? 50 : 0)
+      + (pathText.includes("data") || pathText.includes("response") ? 10 : 0)
+      - (candidate.clientLike ? 120 : 0);
+  }, (value) => {
+    const cleaned = text(value);
+    if (!cleaned || RFC_PATTERN.test(cleaned)) return null;
+    return cleaned;
+  });
+}
+
 function clientMatchScore(candidate = {}, expectedClient = {}) {
   const object = candidate.object || {};
   let score = candidate.clientLike ? 5 : 0;
@@ -366,8 +502,174 @@ function findClientUidInResponse(response = {}, expectedClient = {}) {
 }
 
 function extractUuid(response = {}) {
-  const data = response.data || response.Data || response;
-  return text(data.UUID || data.uuid || data.Uuid);
+  const candidates = collectFieldCandidates(response, [
+    "UUID",
+    "uuid",
+    "Uuid",
+    "FolioFiscal",
+    "folio_fiscal",
+  ]);
+  const fromFields = pickBestFieldCandidate(candidates, (candidate) => {
+    const key = String(candidate.key).toLowerCase();
+    const pathText = String(candidate.path || "").toLowerCase();
+    return (key === "uuid" || key === "foliofiscal" || key === "folio_fiscal" ? 120 : 60)
+      + (candidate.cfdiLike ? 80 : 0)
+      + (pathText.includes("timbrefiscaldigital") ? 80 : 0)
+      + (pathText.includes("comprobante") || pathText.includes("respuestaapi") ? 40 : 0)
+      - (candidate.clientLike ? 120 : 0);
+  }, validUuid);
+  if (fromFields) return fromFields;
+
+  for (const item of collectStrings(response)) {
+    const fromXml = extractUuidFromXmlText(item.value);
+    if (fromXml) return fromXml;
+  }
+  return null;
+}
+
+function extractSerie(response = {}) {
+  return pickBestFieldCandidate(collectFieldCandidates(response, ["Serie", "serie"]), (candidate) => {
+    const pathText = String(candidate.path || "").toLowerCase();
+    return 80 + (candidate.cfdiLike ? 50 : 0) + (pathText.includes("comprobante") ? 30 : 0) - (candidate.clientLike ? 80 : 0);
+  }, (value) => text(value));
+}
+
+function extractFolio(response = {}) {
+  return pickBestFieldCandidate(collectFieldCandidates(response, ["Folio", "folio"]), (candidate) => {
+    const pathText = String(candidate.path || "").toLowerCase();
+    return 80 + (candidate.cfdiLike ? 50 : 0) + (pathText.includes("comprobante") ? 30 : 0) - (candidate.clientLike ? 80 : 0);
+  }, (value) => {
+    const cleaned = text(value);
+    if (!cleaned || validUuid(cleaned) || RFC_PATTERN.test(cleaned)) return null;
+    return cleaned;
+  });
+}
+
+function extractPacInvoiceId(response = {}) {
+  return pickBestFieldCandidate(collectFieldCandidates(response, [
+    "id",
+    "ID",
+    "Id",
+    "invoice_id",
+    "InvoiceId",
+    "invoiceId",
+    "factura_id",
+    "FacturaId",
+    "cfdi_id",
+    "CFDI_ID",
+  ]), (candidate) => {
+    const key = String(candidate.key).toLowerCase();
+    const pathText = String(candidate.path || "").toLowerCase();
+    return (key.includes("invoice") || key.includes("factura") || key.includes("cfdi") ? 120 : 40)
+      + (candidate.cfdiLike ? 70 : 0)
+      + (pathText.includes("cfdi") || pathText.includes("factura") ? 40 : 0)
+      - (candidate.clientLike ? 120 : 0);
+  }, (value) => {
+    const cleaned = text(value);
+    if (!cleaned || RFC_PATTERN.test(cleaned)) return null;
+    return cleaned;
+  });
+}
+
+function extractStatus(response = {}) {
+  return pickBestFieldCandidate(collectFieldCandidates(response, [
+    "status",
+    "Status",
+    "estado",
+    "Estado",
+    "response",
+    "Response",
+    "estatus",
+    "Estatus",
+  ]), (candidate) => 60 + (candidate.cfdiLike ? 30 : 0), (value) => text(value));
+}
+
+function extractCfdiIdentity(response = {}) {
+  return {
+    cfdi_uid: extractCfdiUid(response),
+    uuid: extractUuid(response),
+    pac_invoice_id: extractPacInvoiceId(response),
+    serie: extractSerie(response),
+    folio: extractFolio(response),
+    status: extractStatus(response),
+  };
+}
+
+function mergeAttemptIdentity(attempt, identity = {}, source = "unknown") {
+  if (!identity || typeof identity !== "object") return false;
+  const before = JSON.stringify({
+    cfdi_uid: attempt.cfdi_uid,
+    uuid: attempt.uuid,
+    pac_invoice_id: attempt.pac_invoice_id,
+    serie: attempt.serie,
+    folio: attempt.folio,
+  });
+
+  if (!attempt.cfdi_uid && identity.cfdi_uid) attempt.cfdi_uid = identity.cfdi_uid;
+  if (!attempt.uid && identity.cfdi_uid) attempt.uid = identity.cfdi_uid;
+  if (!attempt.uuid && identity.uuid) attempt.uuid = identity.uuid;
+  if (!attempt.pac_invoice_id && identity.pac_invoice_id) attempt.pac_invoice_id = identity.pac_invoice_id;
+  if (!attempt.serie && identity.serie) attempt.serie = identity.serie;
+  if (!attempt.folio && identity.folio) attempt.folio = identity.folio;
+  if (identity.status) attempt.identity_status = identity.status;
+
+  const after = JSON.stringify({
+    cfdi_uid: attempt.cfdi_uid,
+    uuid: attempt.uuid,
+    pac_invoice_id: attempt.pac_invoice_id,
+    serie: attempt.serie,
+    folio: attempt.folio,
+  });
+  const changed = before !== after;
+  if (changed) {
+    attempt.identity_sources = Array.from(new Set([...(attempt.identity_sources || []), source]));
+  }
+  attempt.identity = {
+    cfdi_uid: attempt.cfdi_uid || null,
+    uuid: attempt.uuid || null,
+    pac_invoice_id: attempt.pac_invoice_id || null,
+    serie: attempt.serie || null,
+    folio: attempt.folio || null,
+    status: attempt.identity_status || null,
+    sources: attempt.identity_sources || [],
+  };
+  return changed;
+}
+
+function identityCompleteness(attempt = {}) {
+  const hasUid = Boolean(attempt.cfdi_uid || attempt.uid);
+  const hasUuid = Boolean(attempt.uuid);
+  if (hasUid && hasUuid) return "complete";
+  if (hasUid || hasUuid || attempt.pac_invoice_id || attempt.serie || attempt.folio) return "partial";
+  return "missing";
+}
+
+function addUnique(list, value) {
+  const cleaned = text(value);
+  if (cleaned && !list.includes(cleaned)) list.push(cleaned);
+}
+
+function finalizeAttemptIdentity(attempt, summary) {
+  if (!attempt.identity_attempted || attempt.identity_finalized) return;
+  mergeAttemptIdentity(attempt, {}, "finalize");
+  const completeness = identityCompleteness(attempt);
+  attempt.identity_completeness = completeness;
+  if (attempt.cfdi_uid || attempt.uid) {
+    summary.cfdi_uids_found += 1;
+    addUnique(summary.cfdi_uids, attempt.cfdi_uid || attempt.uid);
+  }
+  if (attempt.uuid) {
+    summary.uuids_found += 1;
+    addUnique(summary.sandbox_uuids, attempt.uuid);
+  }
+  if (attempt.pac_invoice_id) {
+    summary.pac_invoice_ids_found += 1;
+    addUnique(summary.pac_invoice_ids, attempt.pac_invoice_id);
+  }
+  if (completeness === "complete") summary.identities_complete += 1;
+  else if (completeness === "partial") summary.identities_partial += 1;
+  else summary.identity_missing += 1;
+  attempt.identity_finalized = true;
 }
 
 async function lookupClientUidAfterCreate({ client, config, env, requestFn, manifest, summary }) {
@@ -456,7 +758,19 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     status: "STARTED",
     artifacts: [],
     uid: null,
+    cfdi_uid: null,
     uuid: null,
+    pac_invoice_id: null,
+    serie: null,
+    folio: null,
+    lookup_status: null,
+    cancel_status: null,
+    cancel_response_identity: null,
+    xml_uuid: null,
+    identity: null,
+    identity_completeness: null,
+    identity_sources: [],
+    identity_attempted: false,
     warnings: [],
   };
   manifest.attempts.push(attempt);
@@ -505,9 +819,9 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     return attempt;
   }
 
-  attempt.uid = extractUid(createResponse);
-  attempt.uuid = extractUuid(createResponse);
-  if (attempt.uuid) summary.sandbox_uuids.push(attempt.uuid);
+  attempt.identity_attempted = true;
+  const createIdentity = extractCfdiIdentity(createResponse);
+  mergeAttemptIdentity(attempt, createIdentity, "create");
   if (!attempt.uid) {
     attempt.status = "CREATE_OK_UID_MISSING";
     summary.warnings.push(`create_ok_uid_missing:${fixture.draft_id}`);
@@ -521,6 +835,11 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     const lookupFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-lookup-response.json`, lookupResponse, env);
     attempt.artifacts.push(path.relative(root, lookupFile).replace(/\\/g, "/"));
     manifest.artifacts.push({ type: "CFDI_LOOKUP_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, lookupFile).replace(/\\/g, "/"), ok: lookupResponse.ok });
+    attempt.lookup_status = lookupResponse.ok ? "OK" : "ERROR";
+    if (lookupResponse.ok) {
+      const lookupIdentity = extractCfdiIdentity(lookupResponse);
+      if (mergeAttemptIdentity(attempt, lookupIdentity, "lookup")) summary.lookup_identity_found += 1;
+    }
   }
 
   if (config.downloadTest && attempt.uid) {
@@ -530,7 +849,15 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
       const artifact = writeText(config.runtimeDir, fileName, downloadResponse.rawText || JSON.stringify(downloadResponse.data));
       attempt.artifacts.push(path.relative(root, artifact).replace(/\\/g, "/"));
       manifest.artifacts.push({ type: `CFDI_${format.toUpperCase()}`, draft_id: fixture.draft_id, path: path.relative(root, artifact).replace(/\\/g, "/"), ok: downloadResponse.ok });
-      if (format === "xml" && downloadResponse.ok) summary.xml_downloaded += 1;
+      if (format === "xml" && downloadResponse.ok) {
+        summary.xml_downloaded += 1;
+        const xmlUuid = extractUuid(downloadResponse);
+        if (xmlUuid) {
+          attempt.xml_uuid = xmlUuid;
+          if (!attempt.uuid) mergeAttemptIdentity(attempt, { uuid: xmlUuid }, "xml");
+          summary.xml_uuid_found += 1;
+        }
+      }
       if (format === "pdf" && downloadResponse.ok) summary.pdf_downloaded += 1;
     }
   }
@@ -545,10 +872,14 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     const cancelFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-cancel-response.json`, cancelResponse, env);
     attempt.artifacts.push(path.relative(root, cancelFile).replace(/\\/g, "/"));
     manifest.artifacts.push({ type: "CFDI_CANCEL_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, cancelFile).replace(/\\/g, "/"), ok: cancelResponse.ok });
+    attempt.cancel_status = cancelResponse.ok ? "OK" : "ERROR";
+    attempt.cancel_response_identity = extractCfdiIdentity(cancelResponse);
+    mergeAttemptIdentity(attempt, attempt.cancel_response_identity, "cancel");
     if (cancelResponse.ok) summary.cancel_ok += 1;
     else summary.cancel_error += 1;
   }
 
+  finalizeAttemptIdentity(attempt, summary);
   return attempt;
 }
 
@@ -587,6 +918,16 @@ function buildSummary(config) {
     client_uids_found: 0,
     client_uid_missing: 0,
     ambiguous_clients: 0,
+    cfdi_uids_found: 0,
+    uuids_found: 0,
+    pac_invoice_ids_found: 0,
+    identities_complete: 0,
+    identities_partial: 0,
+    identity_missing: 0,
+    xml_uuid_found: 0,
+    lookup_identity_found: 0,
+    cfdi_uids: [],
+    pac_invoice_ids: [],
     sandbox_uuids: [],
     warnings: [],
     live: config.live,
@@ -637,7 +978,12 @@ if (require.main === module) {
 
 module.exports = {
   buildSmokeConfig,
+  extractCfdiIdentity,
+  extractCfdiUid,
+  extractFolio,
+  extractSerie,
   extractUid,
+  extractUuid,
   findClientUidInResponse,
   runSmoke,
 };
