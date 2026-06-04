@@ -320,6 +320,35 @@ a intentar desde `GET /v4/cfdi/uid/{UID}` y desde el XML descargado cuando
 `FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`. El analizador reporta identidades
 completas, parciales o faltantes sin fallar solo porque falte UUID.
 
+Fase 6A.7 agrega el Storage Engine sandbox local. Despues de un smoke sandbox,
+organiza artifacts ya existentes sin llamar Factura.com:
+
+```powershell
+node scripts/store-facturacom-sandbox-artifacts.js
+node scripts/analyze-storage-sandbox.js
+```
+
+La salida queda solo en runtime:
+
+```text
+runtime/storage-sandbox/
+  emitters/EMITTER-DEMO/2026/06/clients/CLIENT-DEMO-PF-GENERIC/invoices/<cfdi_uid_o_id>/
+    manifest.json
+    canonical-summary.json
+    request/
+    response/
+    xml/
+    pdf/
+    cancel/
+  reports/storage-index.json
+  reports/storage-summary.json
+```
+
+En sandbox, `cfdi_uid` es la identidad principal del proveedor. `uuid` es
+nullable; si hay `cfdi_uid` sin UUID, la identidad queda como
+`PARTIAL_PROVIDER_UID`, valida para organizar Storage Engine sandbox pero no
+como folio fiscal real.
+
 No subas `.env.pac.sandbox.local`, credenciales, XML/PDF, responses, manifests,
 runtime, estados de cuenta ni clientes reales. Produccion sigue bloqueada por
 codigo; `https://api.factura.com` no es aceptado por el cliente live.

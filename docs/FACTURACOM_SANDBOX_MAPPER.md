@@ -227,6 +227,39 @@ El UUID puede no venir en create response. El smoke busca en `Data`, `data`,
 `response`, `respuestaapi`, `TimbreFiscalDigital`, `Comprobante` y XML descargado.
 No usa XML/PDF para produccion y no versiona runtime.
 
+## Storage Engine Sandbox 6A.7
+
+El Storage Engine sandbox toma artifacts ya generados por el smoke y los copia
+dentro de `runtime/storage-sandbox/`. No llama Factura.com, no hace HTTP, no
+genera XML/PDF nuevo y no toca workflows.
+
+Comandos locales:
+
+```powershell
+node scripts/store-facturacom-sandbox-artifacts.js
+node scripts/analyze-storage-sandbox.js
+```
+
+Estructura:
+
+```text
+runtime/storage-sandbox/
+  emitters/EMITTER-DEMO/<yyyy>/<mm>/clients/<client_id>/invoices/<cfdi_uid_o_id>/
+    manifest.json
+    canonical-summary.json
+    request/
+    response/
+    xml/
+    pdf/
+    cancel/
+  reports/storage-index.json
+  reports/storage-summary.json
+```
+
+Para sandbox, `cfdi_uid` funciona como identidad principal del proveedor. `uuid`
+es nullable porque Factura.com sandbox puede no devolverlo en el analyzer. Una
+factura con `cfdi_uid` y sin `uuid` queda como `PARTIAL_PROVIDER_UID`.
+
 Los resultados viven solo en:
 
 ```text

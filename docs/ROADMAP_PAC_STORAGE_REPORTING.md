@@ -194,6 +194,43 @@ Metadatos minimos por documento:
 - `source_message_id`
 - `requires_human_review`
 
+### Sandbox Storage Engine 6A.7
+
+Los smoke live sandbox de Factura.com ya validaron creacion, descarga XML/PDF,
+cancelacion sandbox y batch de 5 CFDI sin findings sensibles. La fase 6A.7
+agrega un Storage Engine local que solo copia artifacts ya existentes desde:
+
+```text
+runtime/facturacom-sandbox/
+```
+
+hacia:
+
+```text
+runtime/storage-sandbox/
+  emitters/EMITTER-DEMO/<yyyy>/<mm>/clients/<client_id>/invoices/<cfdi_uid_o_id>/
+    manifest.json
+    canonical-summary.json
+    request/
+    response/
+    xml/
+    pdf/
+    cancel/
+  reports/storage-index.json
+  reports/storage-summary.json
+```
+
+Reglas especificas sandbox:
+
+- No llama Factura.com.
+- No crea XML/PDF nuevo.
+- No toca workflows productivos.
+- No versiona runtime.
+- `cfdi_uid` es la identidad principal del proveedor en sandbox.
+- `uuid` es nullable.
+- Si hay `cfdi_uid` sin `uuid`, la identidad queda `PARTIAL_PROVIDER_UID`.
+- Todo documento conserva `BORRADOR SUJETO A REVISION HUMANA`.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del
@@ -338,6 +375,8 @@ Criterio de salida: sandbox probado sin folios reales ni produccion.
 - Definir layout local o compatible con storage futuro.
 - Guardar JSON payload, draft original y respuestas sandbox.
 - Separar `SANDBOX` de `PRODUCTION`.
+- En 6A.7, organizar artifacts sandbox locales por emisor, cliente, periodo,
+  estatus y documento usando `cfdi_uid` como identidad principal sandbox.
 
 Criterio de salida: todo documento queda trazable por emisor, cliente, periodo,
 estatus y proveedor.
