@@ -270,6 +270,48 @@ Responsabilidades:
 
 ## Fases Propuestas
 
+### Fase 6A.3 - Security Boundary
+
+- Definir modelo privado de acceso y roles.
+- Crear tablas `cfdi_authorized_users`, `cfdi_security_events` y bitacora de
+  acciones sensibles.
+- Clasificar acciones sensibles antes de PAC real, storage sensible o miniapp.
+- Mantener credenciales, estados de cuenta, XML/PDF y clientes reales fuera de
+  Git.
+- Preparar enforcement en workflow local ingest como fase 6A.3B.
+
+Criterio de salida: existe barrera privada versionada sin tocar workflows
+productivos ni llamar ningun PAC.
+
+### Fase 6A.4 - Canonical Draft/Invoice Builders
+
+- Construir builders desde draft conversacional hacia contratos canonicos.
+- Validar cliente, line items, impuestos estimados y warnings fiscales.
+- Mantener `BORRADOR SUJETO A REVISION HUMANA`.
+- No depender de formato Factura.com ni de otro PAC.
+
+Criterio de salida: draft e invoice internos se generan con contrato canonico
+estable.
+
+### Fase 6A.5 - Factura.com Sandbox Mapper
+
+- Mapear contrato canonico a payload Factura.com sandbox.
+- Normalizar respuesta sandbox hacia `CanonicalPacResult`.
+- No llamar produccion.
+- No filtrar detalles Factura.com hacia Telegram, reporting ni storage.
+
+Criterio de salida: mapper sandbox probado con fixtures y mocks, sin PAC real.
+
+### Fase 6A.6 - Sandbox Smoke Tests
+
+- Ejecutar smoke sandbox solo con `FACTURACOM_SANDBOX_LIVE=1`.
+- Guardar resultados sanitizados como artifacts locales no versionados.
+- Verificar errores, XML/PDF sandbox si aplica y cancelacion sandbox si aplica.
+- Confirmar que produccion sigue deshabilitada.
+
+Criterio de salida: smoke sandbox controlado y documentado, sin folios reales ni
+datos reales en Git.
+
 ### Fase 6A - PAC Adapter Hub Contract
 
 - Definir tipos internos de payload CFDI.

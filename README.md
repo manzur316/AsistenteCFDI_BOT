@@ -27,6 +27,20 @@ No se deben subir:
 
 Usa `.env.example` solo como plantilla de variables.
 
+## Seguridad privada
+
+AsistenteCFDI_BOT es privado por defecto. Antes de operar PAC, estados de cuenta, XML/PDF, reportes con montos o acciones fiscales sensibles, el sistema debe validar usuarios autorizados y roles.
+
+Base de seguridad:
+
+- `docs/SECURITY_PRIVATE_ACCESS_MODEL.md`
+- `sql/005_security_access_control.sql`
+- `scripts/lib/security-access-control.js`
+
+Para preparar PostgreSQL local, ejecuta el SQL `sql/005_security_access_control.sql` despues de las migraciones base. El SQL solo crea schema; no inserta usuarios reales. No subas credenciales, estados de cuenta, XML/PDF, runtime ni clientes reales al repositorio.
+
+PAC real, produccion, estados de cuenta y storage sensible quedan bloqueados hasta que exista enforcement activo en el workflow local ingest. La siguiente fase recomendada es 6A.3B: validar `telegram_chat_id` + `telegram_user_id`, registrar `cfdi_security_events` y cortar el flujo con `Acceso no autorizado` antes de comandos, scoring, drafts o tokens.
+
 ## Pruebas del motor
 
 ```bash
