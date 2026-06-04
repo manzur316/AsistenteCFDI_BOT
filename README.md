@@ -170,18 +170,32 @@ El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cua
 
 Si el cliente parece tener typo, por ejemplo `Privada Riviera` o `Privada Riveira`, el bot no crea cliente automatico. Primero pregunta si quisiste decir `Privada Rivera` y ofrece usar ese cliente, crear uno nuevo, continuar sin cliente o cancelar.
 
-### Politica de clientes 4.8
+### Politica de clientes 5D
 
-La busqueda de clientes usa coincidencia exacta normalizada, contains, overlap de tokens y distancia fuzzy. Typos como `Privada ricrsa`, `Privada Riveira`, `Privada Riviera`, `privada river` o `p riviera` sugieren `Privada Rivera` sin crear cliente automatico.
+La busqueda de clientes usa coincidencia exacta normalizada, contains, overlap de tokens distintivos y distancia fuzzy. Palabras genericas como `privada`, `residencial`, `cliente`, `sociedad`, `sa` o `ac` no generan match fuerte por si solas.
+
+Ejemplos esperados:
+
+- `Ariatza`, `Areatza` o `Privada Ariatza` sugieren `Privada Areatza`.
+- `Rivera` sugiere `Privada Rivera`.
+- `Privada ricrsa` no debe sugerir `Privada Rivera` solo por compartir `privada`.
 
 En `NEEDS_CLIENT_DECISION`, escribir otro nombre de cliente vuelve a buscar desde cero y actualiza `client_query`; ya no queda anclado al intento anterior. Responder `?`, `ayuda`, `que hago` o `que necesitas` muestra ayuda contextual del estado.
 
-Durante un preview puedes responder `editar` o `/editar`. En modo edicion acepta plantilla o lineas numeradas como:
+Durante un preview puedes responder `editar` o `/editar`. En modo edicion acepta plantilla, lineas numeradas o conceptos separados por coma con montos propios como:
 
 ```text
 1.instalacion de camaras 800 + IVA
 2.- venta de camara CCTV 700 + IVA
 ```
+
+Tambien acepta mensajes rapidos con varias partidas claras:
+
+```text
+Ariatza, instalacion de camara CCTV 800 + IVA, servicio de mantenimiento Equipo CCTV 500 + IVA
+```
+
+En ese caso el bot conserva las partidas como line items separados. Cada linea se scorea contra `data/concepts.normalized.json`, usa su propia clave SAT/unidad, calcula impuestos por linea y muestra un preview `BORRADOR CFDI MULTILINEA`. No crea `cfdi_drafts` ni `cfdi_draft_line_items` hasta que respondas `confirmar`.
 
 Comandos utiles durante edicion:
 

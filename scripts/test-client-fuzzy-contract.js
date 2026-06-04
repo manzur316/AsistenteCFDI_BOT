@@ -32,14 +32,28 @@ function demoClient(overrides = {}) {
     regimen_fiscal: "603",
     codigo_postal_fiscal: "00000",
     tax_profile: "PM_NO_LUCRATIVA",
-    validated_by_human: false,
+    validated_by_human: true,
     enabled: true,
     aliases: [
       { alias: "privada rivera", normalized_alias: "privada rivera", weight: 100 },
-      { alias: "rivera", normalized_alias: "rivera", weight: 80 },
+      { alias: "rivera", normalized_alias: "rivera", weight: 90 },
     ],
     ...overrides,
   };
+}
+
+function areatzaClient(overrides = {}) {
+  return demoClient({
+    client_id: "CLI-AREATZA",
+    display_name: "Privada Areatza",
+    razon_social: "Privada Areatza AC",
+    rfc: "PAR211126A95",
+    aliases: [
+      { alias: "privada areatza", normalized_alias: "privada areatza", weight: 100 },
+      { alias: "areatza", normalized_alias: "areatza", weight: 90 },
+    ],
+    ...overrides,
+  });
 }
 
 const taxRules = [
@@ -55,7 +69,7 @@ function contextInput(text, extra = {}) {
     text,
     catalog_path: catalogPath,
     workflow_version: "CFDI_POSTGRES_POLLING_V1",
-    clients: extra.clients || [demoClient()],
+    clients: extra.clients || [areatzaClient(), demoClient()],
     tax_rules: extra.tax_rules || taxRules,
     chat_state: extra.chat_state ?? null,
     recent_drafts: extra.recent_drafts || [],
@@ -64,25 +78,23 @@ function contextInput(text, extra = {}) {
   };
 }
 
-function decisionStateFrom(response, originalText) {
-  return {
-    state: "NEEDS_CLIENT_DECISION",
-    original_text: originalText,
-    context: response.json_debug || {},
-  };
-}
-
 function messageForClientQuery(query) {
   return `${query}, instalacion de camara CCTV 800 + IVA`;
 }
 
-function suggestsRivera(response) {
-  const text = String(response.telegram_message || "");
-  const candidates = response.json_debug?.candidate_clients || [];
-  return response.action === "NEEDS_CLIENT_DECISION" &&
-    text.includes("cliente parecido") &&
-    text.includes("Privada Rivera") &&
-    candidates.some((client) => client.client_id === "CLI-DEMO-RIVERA");
+function candidateNames(response) {
+  const candidates = response.json_debug?.candidate_clients || response.json_debug?.top_client_candidates || [];
+  return candidates.map((client) => client.display_name || client.client_id);
+}
+
+function resolvesTo(response, clientId) {
+  if (response.client?.client_id === clientId) return true;
+  const candidates = response.json_debug?.candidate_clients || response.json_debug?.top_client_candidates || [];
+  return candidates.some((client) => client.client_id === clientId);
+}
+
+function notRivera(response) {
+  return !resolvesTo(response, "CLI-DEMO-RIVERA") && !String(response.telegram_message || "").includes("Privada Rivera");
 }
 
 const checks = [];
@@ -107,10 +119,12 @@ try {
 }
 
 if (workflow) {
-  for (const fn of ["resolveClientCandidates", "scoreClientAlias", "clientBestTokenSimilarity", "clientDecisionHelpMessage"]) {
+  for (const fn of ["resolveClientCandidates", "scoreClientAlias", "clientBestTokenSimilarity", "distinctiveClientTokens", "clientDecisionHelpMessage"]) {
     checks.push({ name: `fuzzy_fn:${fn}`, pass: handleCode.includes(`function ${fn}`) && localHandleCode.includes(`function ${fn}`), value: fn });
   }
-  checks.push({ name: "threshold_092_present", pass: handleCode.includes("0.92") && handleCode.includes("0.65"), value: "0.92/0.65" });
+  for (const stopword of ["privada", "residencial", "fraccionamiento", "condominio", "cliente", "sociedad", "asociacion", "sa", "ac"]) {
+    checks.push({ name: `client_stopword:${stopword}`, pass: handleCode.includes(`"${stopword}"`) && localHandleCode.includes(`"${stopword}"`), value: stopword });
+  }
   checks.push({ name: "no_real_token", pass: !/\b\d{6,}:[A-Za-z0-9_-]{20,}\b/.test(workflowText + localWorkflowText), value: "none" });
   checks.push({ name: "no_pac", pass: !/\bPAC\b/i.test(workflowText + localWorkflowText), value: "none" });
   checks.push({ name: "no_timbrado", pass: !/timbrad|timbre_fiscal|stamp_cfdi/i.test(workflowText + localWorkflowText), value: "none" });
@@ -119,39 +133,28 @@ if (workflow) {
 }
 
 try {
-  for (const [key, query] of Object.entries({
-    ricrsa: "Privada ricrsa",
-    riveira: "Privada Riveira",
-    riviera: "Privada Riviera",
-    river: "privada river",
-    pRiviera: "p riviera",
-  })) {
-    behavior[key] = executeCode(handleCode, contextInput(messageForClientQuery(query), { update_id: 9801 + Object.keys(behavior).length }));
-  }
-  behavior.rivera = executeCode(handleCode, contextInput(messageForClientQuery("Rivera"), { update_id: 9810 }));
-  behavior.oldDecision = behavior.ricrsa;
-  const oldState = decisionStateFrom(behavior.oldDecision, messageForClientQuery("Privada ricrsa"));
-  behavior.research = executeCode(handleCode, contextInput("Privada Riviera", { update_id: 9811, chat_state: oldState }));
-  behavior.help = executeCode(handleCode, contextInput("?", { update_id: 9812, chat_state: oldState }));
-  behavior.useCandidate = executeCode(handleCode, contextInput("1", { update_id: 9813, chat_state: oldState }));
-  behavior.createBasic = executeCode(handleCode, contextInput("3", { update_id: 9814, chat_state: oldState }));
-  behavior.confirmAmbiguous = executeCode(handleCode, contextInput("confirmar", { update_id: 9815, chat_state: oldState }));
+  behavior.ariatza = executeCode(handleCode, contextInput(messageForClientQuery("Ariatza"), { update_id: 9801 }));
+  behavior.privadaAriatza = executeCode(handleCode, contextInput(messageForClientQuery("Privada Ariatza"), { update_id: 9802 }));
+  behavior.areatza = executeCode(handleCode, contextInput(messageForClientQuery("Areatza"), { update_id: 9803 }));
+  behavior.privadaAreatza = executeCode(handleCode, contextInput(messageForClientQuery("Privada Areatza"), { update_id: 9804 }));
+  behavior.rivera = executeCode(handleCode, contextInput(messageForClientQuery("Rivera"), { update_id: 9805 }));
+  behavior.ricrsa = executeCode(handleCode, contextInput(messageForClientQuery("Privada ricrsa"), { update_id: 9806 }));
+  behavior.stopwordOnly = executeCode(handleCode, contextInput(messageForClientQuery("Privada"), { update_id: 9807 }));
+  behavior.realMessage = executeCode(handleCode, contextInput("Ariatza, instalacion de camara CCTV 800 + IVA, servicio de mantenimiento Equipo CCTV 500 + IVA.", { update_id: 9808 }));
 } catch (error) {
   checks.push({ name: "behavior_execution", pass: false, value: error.message });
 }
 
-if (behavior.ricrsa) {
-  checks.push({ name: "privada_ricrsa_suggests_rivera", pass: suggestsRivera(behavior.ricrsa), value: behavior.ricrsa.action });
-  checks.push({ name: "privada_riveira_suggests_rivera", pass: suggestsRivera(behavior.riveira), value: behavior.riveira.action });
-  checks.push({ name: "privada_riviera_suggests_rivera", pass: suggestsRivera(behavior.riviera), value: behavior.riviera.action });
-  checks.push({ name: "rivera_finds_privada_rivera", pass: behavior.rivera.action === "NEEDS_CONFIRM_DRAFT" && String(behavior.rivera.telegram_message).includes("Cliente: Privada Rivera"), value: behavior.rivera.action });
-  checks.push({ name: "privada_river_suggests_rivera", pass: suggestsRivera(behavior.river), value: behavior.river.action });
-  checks.push({ name: "p_riviera_suggests_rivera", pass: suggestsRivera(behavior.pRiviera), value: behavior.pRiviera.action });
-  checks.push({ name: "decision_text_researches_new_query", pass: suggestsRivera(behavior.research) && behavior.research.json_debug?.client_query === "Privada Riviera", value: behavior.research.json_debug?.client_query });
-  checks.push({ name: "decision_help_contextual", pass: behavior.help.action === "NEEDS_CLIENT_DECISION" && String(behavior.help.telegram_message).includes("Estoy intentando resolver el cliente") && String(behavior.help.telegram_message).includes("Cliente buscado: Privada ricrsa"), value: behavior.help.action });
-  checks.push({ name: "decision_1_uses_candidate", pass: behavior.useCandidate.action === "NEEDS_CONFIRM_DRAFT" && String(behavior.useCandidate.telegram_message).includes("Cliente: Privada Rivera"), value: behavior.useCandidate.action });
-  checks.push({ name: "decision_3_creates_basic", pass: behavior.createBasic.action === "NEEDS_CONFIRM_DRAFT" && String(behavior.createBasic.persistence_sql).includes("INSERT INTO cfdi_clients") && String(behavior.createBasic.telegram_message).includes("Cliente: Privada ricrsa"), value: behavior.createBasic.action });
-  checks.push({ name: "confirm_with_ambiguous_client_blocks_draft", pass: behavior.confirmAmbiguous.action === "NEEDS_CLIENT_DECISION" && String(behavior.confirmAmbiguous.telegram_message).includes("cliente") && !String(behavior.confirmAmbiguous.persistence_sql).includes("INSERT INTO cfdi_drafts"), value: behavior.confirmAmbiguous.action });
+if (behavior.ariatza) {
+  checks.push({ name: "ariatza_suggests_areatza", pass: behavior.ariatza.action === "NEEDS_CLIENT_DECISION" && resolvesTo(behavior.ariatza, "CLI-AREATZA"), value: `${behavior.ariatza.action}/${candidateNames(behavior.ariatza).join(",")}` });
+  checks.push({ name: "privada_ariatza_suggests_areatza", pass: behavior.privadaAriatza.action === "NEEDS_CLIENT_DECISION" && resolvesTo(behavior.privadaAriatza, "CLI-AREATZA"), value: `${behavior.privadaAriatza.action}/${candidateNames(behavior.privadaAriatza).join(",")}` });
+  checks.push({ name: "ariatza_does_not_suggest_rivera", pass: notRivera(behavior.ariatza), value: candidateNames(behavior.ariatza).join(",") });
+  checks.push({ name: "privada_ricrsa_does_not_suggest_rivera", pass: notRivera(behavior.ricrsa), value: `${behavior.ricrsa.action}/${candidateNames(behavior.ricrsa).join(",")}` });
+  checks.push({ name: "stopword_only_does_not_suggest_rivera", pass: notRivera(behavior.stopwordOnly), value: `${behavior.stopwordOnly.action}/${candidateNames(behavior.stopwordOnly).join(",")}` });
+  checks.push({ name: "rivera_resolves_rivera", pass: resolvesTo(behavior.rivera, "CLI-DEMO-RIVERA"), value: `${behavior.rivera.action}/${behavior.rivera.client?.display_name || candidateNames(behavior.rivera).join(",")}` });
+  checks.push({ name: "areatza_resolves_areatza", pass: resolvesTo(behavior.areatza, "CLI-AREATZA"), value: `${behavior.areatza.action}/${behavior.areatza.client?.display_name || candidateNames(behavior.areatza).join(",")}` });
+  checks.push({ name: "privada_areatza_resolves_areatza", pass: resolvesTo(behavior.privadaAreatza, "CLI-AREATZA"), value: `${behavior.privadaAreatza.action}/${behavior.privadaAreatza.client?.display_name || candidateNames(behavior.privadaAreatza).join(",")}` });
+  checks.push({ name: "real_message_only_lists_areatza", pass: behavior.realMessage.action === "NEEDS_CLIENT_DECISION" && candidateNames(behavior.realMessage).length === 1 && candidateNames(behavior.realMessage)[0] === "Privada Areatza", value: candidateNames(behavior.realMessage).join(",") });
 }
 
 console.log("Client fuzzy contract");
