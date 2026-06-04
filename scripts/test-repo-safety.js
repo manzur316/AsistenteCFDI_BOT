@@ -188,7 +188,7 @@ checks.push({
 
 let gitignore = "";
 if (exists(".gitignore")) gitignore = readText(".gitignore");
-for (const required of [".env", ".env.local", ".env.pac.sandbox.local", "runtime/*.jsonl", "runtime/*.json", "runtime/runner-offset.json", "runner/*.log", "logs/", "data/base_cfdi_resico_n8n_emberhub_2026.xlsx"]) {
+for (const required of [".env", ".env.local", ".env.pac.sandbox.local", "runtime/**", "runtime/*.jsonl", "runtime/*.json", "runtime/runner-offset.json", "runner/*.log", "logs/", "data/base_cfdi_resico_n8n_emberhub_2026.xlsx"]) {
   checks.push({
     name: `gitignore_contains:${required}`,
     pass: gitignore.includes(required),

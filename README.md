@@ -287,6 +287,24 @@ Los artifacts quedan en:
 runtime/facturacom-sandbox/
 ```
 
+Si `FACTURACOM_SANDBOX_CREATE_CLIENTS=1`, el smoke resuelve el `Receptor.UID`
+en este orden:
+
+- UID existente desde variables locales o `runtime/facturacom-sandbox/client-uids.local.json`.
+- Respuesta de `POST /v1/clients/create`.
+- Fallback `GET /v1/clients/{RFC}`.
+- Fallback `GET /v1/clients?rfc={RFC}`.
+
+El mapa `client-uids.local.json` se persiste solo dentro de `runtime/` y no debe
+versionarse. Si la creacion del cliente responde OK pero no se puede obtener un
+UID claro, el intento queda como `CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS` y
+no se intenta crear CFDI. Para reintentar despues de un smoke, revisa
+`summary.json`, `manifest.json` y ejecuta:
+
+```powershell
+node scripts/analyze-factura-com-sandbox-results.js
+```
+
 No subas `.env.pac.sandbox.local`, credenciales, XML/PDF, responses, manifests,
 runtime, estados de cuenta ni clientes reales. Produccion sigue bloqueada por
 codigo; `https://api.factura.com` no es aceptado por el cliente live.

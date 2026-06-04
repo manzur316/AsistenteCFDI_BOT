@@ -75,6 +75,10 @@ function readJsonIfExists(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function writeJsonIfChanged(runtimeDir, fileName, value, env = {}) {
+  return writeJson(runtimeDir, fileName, value, env);
+}
+
 function envValue(env = {}, name) {
   return text(env[name]);
 }
@@ -127,6 +131,10 @@ function loadLocalClientUidMap(runtimeDir, env = {}) {
     fromEnv = JSON.parse(env.FACTURACOM_SANDBOX_CLIENT_UIDS_JSON);
   }
   return { ...fromFile, ...fromEnv };
+}
+
+function persistLocalClientUidMap(runtimeDir, uidMap = {}, env = {}) {
+  return writeJsonIfChanged(runtimeDir, "client-uids.local.json", uidMap, env);
 }
 
 function getClientUid(client = {}, uidMap = {}, env = {}) {
@@ -200,9 +208,161 @@ function buildClientCreateBody(client = {}, config = {}) {
   };
 }
 
+function normalizeComparable(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
+}
+
+function objectValue(object = {}, names = []) {
+  for (const name of names) {
+    if (object[name] !== undefined && object[name] !== null && String(object[name]).trim() !== "") return object[name];
+  }
+  return null;
+}
+
+function candidateUidFromObject(object = {}) {
+  if (!object || typeof object !== "object" || Array.isArray(object)) return null;
+  return text(object.UID || object.uid || object.Uid || object.cfdi_uid || object.CFDI_UID);
+}
+
+function isClientLikeObject(object = {}) {
+  if (!object || typeof object !== "object" || Array.isArray(object)) return false;
+  return Boolean(objectValue(object, [
+    "RFC",
+    "rfc",
+    "Rfc",
+    "razons",
+    "RazonSocial",
+    "RazonSocialReceptor",
+    "razon_social",
+    "legal_name",
+    "client_id",
+    "Cliente",
+    "cliente",
+  ]));
+}
+
+function collectUidCandidates(response = {}) {
+  const candidates = [];
+  const seenObjects = new Set();
+
+  function visit(value, pathParts = [], depth = 0) {
+    if (value === null || value === undefined || depth > 12) return;
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, [...pathParts, String(index)], depth + 1));
+      return;
+    }
+    if (typeof value !== "object") return;
+    if (seenObjects.has(value)) return;
+    seenObjects.add(value);
+
+    const uid = candidateUidFromObject(value);
+    if (uid) {
+      const pathLabel = pathParts.join(".");
+      candidates.push({
+        uid,
+        object: value,
+        path: pathLabel,
+        direct: pathParts.length === 0,
+        depth,
+        clientLike: isClientLikeObject(value),
+      });
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      visit(child, [...pathParts, key], depth + 1);
+    }
+  }
+
+  visit(response);
+  return candidates;
+}
+
+function pickBestUidCandidate(candidates = []) {
+  if (candidates.length === 0) return null;
+  const scored = candidates
+    .map((candidate, index) => ({
+      ...candidate,
+      index,
+      score: (candidate.direct ? 100 : 0)
+        + (candidate.clientLike ? 50 : 0)
+        + (candidate.path === "Data" || candidate.path === "data" || candidate.path === "response" ? 20 : 0)
+        - candidate.depth,
+    }))
+    .sort((a, b) => b.score - a.score || a.depth - b.depth || a.index - b.index);
+  const best = scored[0];
+  const tied = scored.filter((candidate) => candidate.score === best.score && candidate.uid !== best.uid);
+  if (tied.length > 0 && !best.direct && !best.clientLike) return null;
+  return best.uid;
+}
+
 function extractUid(response = {}) {
-  const data = response.data || response.Data || response;
-  return text(data.UID || data.uid || data.Uid || data.cfdi_uid || data.CFDI_UID);
+  return pickBestUidCandidate(collectUidCandidates(response));
+}
+
+function clientMatchScore(candidate = {}, expectedClient = {}) {
+  const object = candidate.object || {};
+  let score = candidate.clientLike ? 5 : 0;
+
+  const expectedRfc = normalizeComparable(expectedClient.rfc);
+  const candidateRfc = normalizeComparable(objectValue(object, ["RFC", "rfc", "Rfc"]));
+  if (expectedRfc && candidateRfc && expectedRfc === candidateRfc) score += 100;
+
+  const expectedClientId = normalizeComparable(expectedClient.client_id || expectedClient.id);
+  const candidateClientId = normalizeComparable(objectValue(object, ["client_id", "id", "ID", "ClientId", "clientId"]));
+  if (expectedClientId && candidateClientId && expectedClientId === candidateClientId) score += 80;
+
+  const expectedName = normalizeComparable(expectedClient.legal_name || expectedClient.display_name || expectedClient.name);
+  const candidateName = normalizeComparable(objectValue(object, [
+    "razons",
+    "RazonSocial",
+    "RazonSocialReceptor",
+    "razon_social",
+    "legal_name",
+    "name",
+    "nombre",
+  ]));
+  if (expectedName && candidateName && expectedName === candidateName) score += 60;
+  if (expectedName && candidateName && (expectedName.includes(candidateName) || candidateName.includes(expectedName))) score += 25;
+
+  return score;
+}
+
+function findClientUidInResponse(response = {}, expectedClient = {}) {
+  const candidates = collectUidCandidates(response);
+  if (candidates.length === 0) return { uid: null, reason: "uid_not_found" };
+
+  const expectedRfc = normalizeComparable(expectedClient.rfc);
+  const withScores = candidates
+    .map((candidate, index) => ({
+      ...candidate,
+      index,
+      score: clientMatchScore(candidate, expectedClient),
+      candidateRfc: normalizeComparable(objectValue(candidate.object, ["RFC", "rfc", "Rfc"])),
+    }))
+    .filter((candidate) => candidate.score > 0 || candidates.length === 1);
+
+  if (withScores.length === 0) return { uid: null, reason: "uid_not_found" };
+
+  withScores.sort((a, b) => b.score - a.score || a.depth - b.depth || a.index - b.index);
+  const best = withScores[0];
+  const sameRfc = expectedRfc
+    ? withScores.filter((candidate) => candidate.candidateRfc && candidate.candidateRfc === expectedRfc)
+    : [];
+  const uniqueSameRfcUids = Array.from(new Set(sameRfc.map((candidate) => candidate.uid)));
+  if (sameRfc.length > 1 && uniqueSameRfcUids.length > 1) {
+    const bestRfcScore = sameRfc[0]?.score || 0;
+    const tiedBestRfc = sameRfc.filter((candidate) => candidate.score === bestRfcScore);
+    if (tiedBestRfc.length > 1) return { uid: null, reason: "ambiguous_client_uid" };
+  }
+
+  const tiedBest = withScores.filter((candidate) => candidate.score === best.score && candidate.uid !== best.uid);
+  if (tiedBest.length > 0 && best.score < 160) return { uid: null, reason: "ambiguous_client_uid" };
+  return { uid: best.uid, reason: "found" };
 }
 
 function extractUuid(response = {}) {
@@ -210,9 +370,43 @@ function extractUuid(response = {}) {
   return text(data.UUID || data.uuid || data.Uuid);
 }
 
-async function maybeCreateClient({ client, config, env, uidMap, manifest, summary }) {
+async function lookupClientUidAfterCreate({ client, config, env, requestFn, manifest, summary }) {
+  const rfc = text(client?.rfc);
+  if (!rfc) return { uid: null, reason: "client_rfc_missing" };
+
+  const lookupPaths = [
+    `/v1/clients/${encodeURIComponent(rfc)}`,
+    `/v1/clients?rfc=${encodeURIComponent(rfc)}`,
+  ];
+
+  let lastReason = "uid_not_found";
+  for (const lookupPath of lookupPaths) {
+    const artifactPrefix = `client-${safeId(client.client_id)}-lookup-${safeId(lookupPath)}`;
+    const requestFile = writeJson(config.runtimeDir, `${artifactPrefix}-request.json`, {
+      method: "GET",
+      path: lookupPath,
+    }, env);
+    const response = await requestFn({ method: "GET", path: lookupPath, env });
+    const responseFile = writeJson(config.runtimeDir, `${artifactPrefix}-response.json`, response, env);
+    manifest.artifacts.push({ type: "CLIENT_LOOKUP_REQUEST", client_id: client.client_id, path: path.relative(root, requestFile).replace(/\\/g, "/") });
+    manifest.artifacts.push({ type: "CLIENT_LOOKUP_RESPONSE", client_id: client.client_id, path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: response.ok });
+
+    if (!response.ok) {
+      summary.warnings.push(`client_lookup_failed:${client.client_id}:${lookupPath}`);
+      continue;
+    }
+    const lookup = findClientUidInResponse(response, client);
+    if (lookup.uid) return lookup;
+    lastReason = lookup.reason;
+    if (lookup.reason === "ambiguous_client_uid") break;
+  }
+  return { uid: null, reason: lastReason };
+}
+
+async function maybeCreateClient({ client, config, env, uidMap, manifest, summary, requestFn = facturaComRequest }) {
   const existing = getClientUid(client, uidMap, env);
-  if (existing || !config.createClients) return existing;
+  if (existing) return { uid: existing, reason: "existing" };
+  if (!config.createClients) return { uid: null, reason: "not_configured" };
 
   const body = buildClientCreateBody(client, config);
   const artifactPrefix = `client-${safeId(client.client_id)}`;
@@ -221,26 +415,41 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
     path: "/v1/clients/create",
     body,
   }, env);
-  const response = await facturaComRequest({ method: "POST", path: "/v1/clients/create", body, env });
+  const response = await requestFn({ method: "POST", path: "/v1/clients/create", body, env });
   const responseFile = writeJson(config.runtimeDir, `${artifactPrefix}-create-response.json`, response, env);
   manifest.artifacts.push({ type: "CLIENT_CREATE_REQUEST", path: path.relative(root, requestFile).replace(/\\/g, "/") });
   manifest.artifacts.push({ type: "CLIENT_CREATE_RESPONSE", path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: response.ok });
   if (!response.ok) {
     summary.errors += 1;
     summary.warnings.push(`client_create_failed:${client.client_id}`);
-    return null;
+    return { uid: null, reason: "client_create_failed" };
   }
-  const uid = extractUid(response.data);
-  if (!uid) {
-    summary.needs_local_config += 1;
-    summary.warnings.push(`client_create_missing_uid:${client.client_id}`);
-    return null;
+
+  summary.clients_created += 1;
+  let found = findClientUidInResponse(response, client);
+  if (!found.uid) {
+    summary.warnings.push(`client_create_uid_lookup_needed:${client.client_id}:${found.reason}`);
+    found = await lookupClientUidAfterCreate({ client, config, env, requestFn, manifest, summary });
   }
-  uidMap[client.client_id] = uid;
-  return uid;
+
+  if (!found.uid) {
+    if (found.reason === "ambiguous_client_uid") {
+      summary.ambiguous_clients += 1;
+      summary.warnings.push(`ambiguous_client_uid:${client.client_id}`);
+    } else {
+      summary.client_uid_missing += 1;
+      summary.warnings.push(`client_uid_missing:${client.client_id}`);
+    }
+    return found;
+  }
+
+  uidMap[client.client_id] = found.uid;
+  persistLocalClientUidMap(config.runtimeDir, uidMap, env);
+  summary.client_uids_found += 1;
+  return found;
 }
 
-async function processDraft({ fixture, client, config, env, uidMap, manifest, summary }) {
+async function processDraft({ fixture, client, config, env, uidMap, manifest, summary, requestFn = facturaComRequest }) {
   const attempt = {
     draft_id: fixture.draft_id,
     client_id: client?.client_id || fixture.client_id,
@@ -261,7 +470,13 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     return attempt;
   }
 
-  const clientUid = await maybeCreateClient({ client, config, env, uidMap, manifest, summary });
+  const clientUidResult = await maybeCreateClient({ client, config, env, uidMap, manifest, summary, requestFn });
+  if (config.createClients && !clientUidResult.uid) {
+    attempt.status = clientUidResult.reason === "ambiguous_client_uid" ? "CLIENT_UID_AMBIGUOUS" : "CLIENT_UID_MISSING";
+    attempt.warnings.push(clientUidResult.reason);
+    return attempt;
+  }
+  const clientUid = clientUidResult.uid;
   const payload = mapScenarioToFacturaCom(scenario, clientUid, config);
   if (payload.official_request.unresolved_fields.length > 0) {
     attempt.status = "NEEDS_LOCAL_CONFIG";
@@ -279,7 +494,7 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
   attempt.artifacts.push(path.relative(root, requestFile).replace(/\\/g, "/"));
   manifest.artifacts.push({ type: "CFDI_CREATE_REQUEST", draft_id: fixture.draft_id, path: path.relative(root, requestFile).replace(/\\/g, "/") });
 
-  const createResponse = await facturaComRequest({ method: "POST", path: "/v4/cfdi40/create", body, env });
+  const createResponse = await requestFn({ method: "POST", path: "/v4/cfdi40/create", body, env });
   const responseFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-create-cfdi-response.json`, createResponse, env);
   attempt.artifacts.push(path.relative(root, responseFile).replace(/\\/g, "/"));
   manifest.artifacts.push({ type: "CFDI_CREATE_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: createResponse.ok });
@@ -290,8 +505,8 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     return attempt;
   }
 
-  attempt.uid = extractUid(createResponse.data);
-  attempt.uuid = extractUuid(createResponse.data);
+  attempt.uid = extractUid(createResponse);
+  attempt.uuid = extractUuid(createResponse);
   if (attempt.uuid) summary.sandbox_uuids.push(attempt.uuid);
   if (!attempt.uid) {
     attempt.status = "CREATE_OK_UID_MISSING";
@@ -302,7 +517,7 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
   }
 
   if (attempt.uid) {
-    const lookupResponse = await facturaComRequest({ method: "GET", path: `/v4/cfdi/uid/${encodeURIComponent(attempt.uid)}`, env });
+    const lookupResponse = await requestFn({ method: "GET", path: `/v4/cfdi/uid/${encodeURIComponent(attempt.uid)}`, env });
     const lookupFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-lookup-response.json`, lookupResponse, env);
     attempt.artifacts.push(path.relative(root, lookupFile).replace(/\\/g, "/"));
     manifest.artifacts.push({ type: "CFDI_LOOKUP_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, lookupFile).replace(/\\/g, "/"), ok: lookupResponse.ok });
@@ -310,7 +525,7 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
 
   if (config.downloadTest && attempt.uid) {
     for (const format of ["xml", "pdf"]) {
-      const downloadResponse = await facturaComRequest({ method: "GET", path: `/v4/cfdi40/${encodeURIComponent(attempt.uid)}/${format}`, env });
+      const downloadResponse = await requestFn({ method: "GET", path: `/v4/cfdi40/${encodeURIComponent(attempt.uid)}/${format}`, env });
       const fileName = `${safeId(fixture.draft_id)}-download.${format}`;
       const artifact = writeText(config.runtimeDir, fileName, downloadResponse.rawText || JSON.stringify(downloadResponse.data));
       attempt.artifacts.push(path.relative(root, artifact).replace(/\\/g, "/"));
@@ -321,7 +536,7 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
   }
 
   if (config.cancelTest && attempt.uid) {
-    const cancelResponse = await facturaComRequest({
+    const cancelResponse = await requestFn({
       method: "POST",
       path: `/v4/cfdi40/${encodeURIComponent(attempt.uid)}/cancel`,
       body: { motivo: "02" },
@@ -368,6 +583,10 @@ function buildSummary(config) {
     pdf_downloaded: 0,
     cancel_ok: 0,
     cancel_error: 0,
+    clients_created: 0,
+    client_uids_found: 0,
+    client_uid_missing: 0,
+    ambiguous_clients: 0,
     sandbox_uuids: [],
     warnings: [],
     live: config.live,
@@ -375,12 +594,13 @@ function buildSummary(config) {
   };
 }
 
-async function runSmoke(env = process.env) {
+async function runSmoke(env = process.env, options = {}) {
   const config = buildSmokeConfig(env);
   if (!config.live) {
     console.log("SKIPPED: live disabled");
     return { skipped: true, ok: true };
   }
+  const requestFn = options.requestFn || facturaComRequest;
 
   const runtimeDir = ensureRuntimeDir(config.runtimeDir);
   const manifest = buildManifest({ ...config, runtimeDir });
@@ -392,7 +612,7 @@ async function runSmoke(env = process.env) {
     const batch = drafts.slice(0, config.batchSize);
     for (const fixture of batch) {
       const client = clientById.get(fixture.client_ref || fixture.client_id);
-      await processDraft({ fixture, client, config: { ...config, runtimeDir }, env, uidMap, manifest, summary });
+      await processDraft({ fixture, client, config: { ...config, runtimeDir }, env, uidMap, manifest, summary, requestFn });
     }
   } catch (error) {
     summary.errors += 1;
@@ -417,5 +637,7 @@ if (require.main === module) {
 
 module.exports = {
   buildSmokeConfig,
+  extractUid,
+  findClientUidInResponse,
   runSmoke,
 };

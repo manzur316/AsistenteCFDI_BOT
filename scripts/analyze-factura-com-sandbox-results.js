@@ -99,6 +99,7 @@ function analyze(runtimeArg = process.argv[2]) {
   const manifest = readJson(manifestPath);
   const summary = readJson(summaryPath);
   const scan = scanRuntime(runtimeDir);
+  const clientUidMapPath = path.join(runtimeDir, "client-uids.local.json");
   const artifactPaths = (manifest.artifacts || []).map((artifact) => text(artifact.path)).filter(Boolean);
   const outsideArtifacts = artifactPaths.filter((artifactPath) => {
     const abs = path.resolve(root, artifactPath);
@@ -118,6 +119,11 @@ function analyze(runtimeArg = process.argv[2]) {
     pdf_downloaded: Number(summary.pdf_downloaded || 0),
     cancel_ok: Number(summary.cancel_ok || 0),
     cancel_error: Number(summary.cancel_error || 0),
+    clients_created: Number(summary.clients_created || 0),
+    client_uids_found: Number(summary.client_uids_found || 0),
+    client_uid_missing: Number(summary.client_uid_missing || 0),
+    ambiguous_clients: Number(summary.ambiguous_clients || 0),
+    client_uid_map_exists: fs.existsSync(clientUidMapPath),
     sandbox_uuids: Array.isArray(summary.sandbox_uuids) ? summary.sandbox_uuids : [],
     warnings: Array.isArray(summary.warnings) ? summary.warnings : [],
     artifact_files: scan.files.map(rel),
@@ -137,6 +143,11 @@ function printResult(result) {
   console.log(`PDF descargados: ${result.pdf_downloaded}`);
   console.log(`Cancelaciones OK: ${result.cancel_ok}`);
   console.log(`Cancelaciones error: ${result.cancel_error}`);
+  console.log(`Clientes creados: ${result.clients_created}`);
+  console.log(`UIDs cliente encontrados: ${result.client_uids_found}`);
+  console.log(`UIDs cliente faltantes: ${result.client_uid_missing}`);
+  console.log(`Clientes ambiguos: ${result.ambiguous_clients}`);
+  console.log(`client-uids.local.json existe: ${result.client_uid_map_exists ? "si" : "no"}`);
   console.log(`UUIDs demo/sandbox: ${result.sandbox_uuids.join(", ") || "none"}`);
   console.log(`Warnings: ${result.warnings.join(" | ") || "none"}`);
   console.log(`Artifacts revisados: ${result.artifact_files.length}`);

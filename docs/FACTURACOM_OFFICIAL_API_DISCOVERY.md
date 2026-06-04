@@ -146,8 +146,17 @@ propios de Factura.com:
 - `nombre`
 - `apellidos`
 
-Para el bot, el punto pendiente es obtener y almacenar el `UID` sandbox del
-cliente demo sin guardar clientes reales.
+Para el bot, el smoke sandbox obtiene y almacena el `UID` sandbox del cliente
+demo solo en runtime local. La prioridad es:
+
+1. UID existente desde variable local o `client-uids.local.json`.
+2. UID devuelto por `POST /v1/clients/create`.
+3. Fallback `GET /v1/clients/{RFC}`.
+4. Fallback `GET /v1/clients?rfc={RFC}`.
+
+Si hay varios clientes con el mismo RFC y no se puede elegir por `client_id` o
+razon social, el smoke marca `CLIENT_UID_AMBIGUOUS`. Si no aparece UID, marca
+`CLIENT_UID_MISSING`. En ambos casos no intenta crear CFDI.
 
 ## E. Errores
 
@@ -320,6 +329,7 @@ Archivos esperados:
 - `manifest.json`
 - `summary.json`
 - request/response JSON sanitizados
+- `client-uids.local.json` solo si se encontro UID de cliente sandbox demo
 - XML/PDF sandbox solo si `FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`
 
 El analizador:
@@ -329,6 +339,7 @@ node scripts/analyze-factura-com-sandbox-results.js
 ```
 
 falla si detecta credenciales, produccion, RFC no permitido o artifacts fuera de
-`runtime/`.
+`runtime/`. Tambien reporta clientes creados, UIDs encontrados, UIDs faltantes,
+clientes ambiguos y si existe `client-uids.local.json`.
 
 Produccion sigue bloqueada aunque el host oficial este documentado.

@@ -9,7 +9,12 @@ const {
   sanitizeFacturaComResponse,
   sanitizeValue,
 } = require("./lib/factura-com-live-client");
-const { buildSmokeConfig } = require("./smoke-factura-com-sandbox");
+const {
+  buildSmokeConfig,
+  extractUid,
+  findClientUidInResponse,
+  runSmoke,
+} = require("./smoke-factura-com-sandbox");
 const { analyze } = require("./analyze-factura-com-sandbox-results");
 
 const root = path.resolve(__dirname, "..");
@@ -21,6 +26,7 @@ function printCheck(name, pass, value = "") {
 }
 
 const checks = [];
+const asyncChecks = [];
 
 function check(name, fn) {
   try {
@@ -29,6 +35,10 @@ function check(name, fn) {
   } catch (error) {
     checks.push({ name, pass: false, value: error.message });
   }
+}
+
+function checkAsync(name, fn) {
+  asyncChecks.push({ name, fn });
 }
 
 function cleanTemp() {
@@ -197,6 +207,39 @@ check("analyzer_acepta_manifest_limpio", () => {
   return "clean";
 });
 
+check("analyzer_reporta_uid_map_y_contadores_cliente", () => {
+  const runtimeDir = path.join(tempRoot, "uid-map-runtime");
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [],
+    attempts: [],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 1,
+    successful: 1,
+    errors: 0,
+    clients_created: 1,
+    client_uids_found: 1,
+    client_uid_missing: 0,
+    ambiguous_clients: 0,
+    sandbox_uuids: [],
+    warnings: [],
+  });
+  writeJson(path.join(runtimeDir, "client-uids.local.json"), {
+    "CLIENT-DEMO-PF-GENERIC": "UID-DEMO-CLIENT",
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.clients_created, 1);
+  assert.strictEqual(result.client_uids_found, 1);
+  assert.strictEqual(result.client_uid_missing, 0);
+  assert.strictEqual(result.ambiguous_clients, 0);
+  assert.strictEqual(result.client_uid_map_exists, true);
+  assert.strictEqual(result.sensitive_findings.length, 0);
+  return "uid map";
+});
+
 check("download_y_cancel_apagados_por_default", () => {
   const config = buildSmokeConfig({ FACTURACOM_SANDBOX_LIVE: "0" });
   assert.strictEqual(config.downloadTest, false);
@@ -210,6 +253,60 @@ check("batch_size_solo_1_o_5", () => {
   assert.strictEqual(buildSmokeConfig({ FACTURACOM_SANDBOX_LIVE: "0", FACTURACOM_SANDBOX_BATCH_SIZE: "5" }).batchSize, 5);
   assert.strictEqual(buildSmokeConfig({ FACTURACOM_SANDBOX_LIVE: "0", FACTURACOM_SANDBOX_BATCH_SIZE: "999" }).batchSize, 1);
   return "1|5";
+});
+
+check("extract_uid_soporta_formas_facturacom", () => {
+  const cases = [
+    [{ UID: "UID-ROOT" }, "UID-ROOT"],
+    [{ uid: "UID-LOWER" }, "UID-LOWER"],
+    [{ Uid: "UID-MIXED" }, "UID-MIXED"],
+    [{ data: { UID: "UID-DATA" } }, "UID-DATA"],
+    [{ Data: { UID: "UID-DATA-UPPER" } }, "UID-DATA-UPPER"],
+    [{ data: { uid: "UID-DATA-LOWER" } }, "UID-DATA-LOWER"],
+    [{ Data: { uid: "UID-DATA-UPPER-LOWER" } }, "UID-DATA-UPPER-LOWER"],
+    [{ data: { Data: { UID: "UID-NESTED-DATA" } } }, "UID-NESTED-DATA"],
+    [{ data: { data: { UID: "UID-NESTED-LOWER" } } }, "UID-NESTED-LOWER"],
+    [{ data: { data: [{ UID: "UID-ARRAY", rfc: "XAXX010101000" }] } }, "UID-ARRAY"],
+    [{ data: { response: { UID: "UID-RESPONSE" } } }, "UID-RESPONSE"],
+    [{ response: { UID: "UID-ROOT-RESPONSE" } }, "UID-ROOT-RESPONSE"],
+    [{ ok: true, data: { data: [{ nested: { UID: "UID-DEEP" } }] } }, "UID-DEEP"],
+  ];
+  for (const [shape, expected] of cases) {
+    assert.strictEqual(extractUid(shape), expected, JSON.stringify(shape));
+  }
+  return `${cases.length} shapes`;
+});
+
+check("find_client_uid_elige_por_rfc_client_id_y_nombre", () => {
+  const expectedClient = {
+    client_id: "CLIENT-DEMO-PF-GENERIC",
+    rfc: "XAXX010101000",
+    legal_name: "PERSONA FISICA GENERICA DEMO",
+  };
+  const response = {
+    data: [
+      { UID: "UID-OTHER", rfc: "AAA010101AAA", client_id: "OTHER" },
+      { UID: "UID-EXPECTED", rfc: "XAXX010101000", client_id: "CLIENT-DEMO-PF-GENERIC", razons: "PERSONA FISICA GENERICA DEMO" },
+    ],
+  };
+  assert.deepStrictEqual(findClientUidInResponse(response, expectedClient), { uid: "UID-EXPECTED", reason: "found" });
+  return "found";
+});
+
+check("find_client_uid_detecta_rfc_ambiguo", () => {
+  const expectedClient = {
+    client_id: "CLIENT-DEMO-PF-GENERIC",
+    rfc: "XAXX010101000",
+    legal_name: "PERSONA FISICA GENERICA DEMO",
+  };
+  const response = {
+    data: [
+      { UID: "UID-A", rfc: "XAXX010101000" },
+      { UID: "UID-B", rfc: "XAXX010101000" },
+    ],
+  };
+  assert.deepStrictEqual(findClientUidInResponse(response, expectedClient), { uid: null, reason: "ambiguous_client_uid" });
+  return "ambiguous";
 });
 
 check("workflows_y_catalogo_no_modificados", () => {
@@ -227,11 +324,98 @@ check("live_no_se_ejecuta_en_tests", () => {
   return "no live";
 });
 
-console.log("Factura.com Sandbox Smoke Safety Tests");
-for (const item of checks) printCheck(item.name, item.pass, item.value);
-const failed = checks.filter((item) => !item.pass);
-console.log(`\nPASS total: ${checks.length - failed.length}/${checks.length}`);
-if (failed.length) {
-  console.log(`FAIL total: ${failed.length}`);
-  process.exit(1);
-}
+checkAsync("create_ok_sin_uid_hace_lookup_y_continua_cfdi", async () => {
+  const runtimeDir = path.join(tempRoot, "fallback-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    if (method === "POST" && requestPath === "/v1/clients/create") {
+      return { ok: true, status: 200, data: { message: "cliente creado sin uid" } };
+    }
+    if (method === "GET" && requestPath === "/v1/clients/XAXX010101000") {
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          data: [{
+            UID: "UID-CLIENT-LOOKUP",
+            rfc: "XAXX010101000",
+            client_id: "CLIENT-DEMO-PF-GENERIC",
+            razons: "PERSONA FISICA GENERICA DEMO",
+          }],
+        },
+      };
+    }
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CFDI-001", UUID: "00000000-0000-4000-8000-000000000777" } } };
+    }
+    if (method === "GET" && requestPath === "/v4/cfdi/uid/UID-CFDI-001") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CFDI-001" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  assert.strictEqual(result.summary.successful, 1);
+  assert(calls.some((call) => call.method === "POST" && call.path === "/v1/clients/create"), "debe crear cliente");
+  assert(calls.some((call) => call.method === "GET" && call.path === "/v1/clients/XAXX010101000"), "debe hacer lookup por RFC");
+  assert(calls.some((call) => call.method === "POST" && call.path === "/v4/cfdi40/create"), "debe continuar CFDI tras UID");
+  const uidMapPath = path.join(runtimeDir, "client-uids.local.json");
+  assert(fs.existsSync(uidMapPath), "debe persistir client-uids.local.json en runtime");
+  const uidMap = JSON.parse(fs.readFileSync(uidMapPath, "utf8"));
+  assert.strictEqual(uidMap["CLIENT-DEMO-PF-GENERIC"], "UID-CLIENT-LOOKUP");
+  const gitChanged = git(["status", "--short", "runtime/client-uids.local.json"]);
+  assert.strictEqual(gitChanged.length, 0, "client-uids.local.json raiz no debe versionarse");
+  return "lookup ok";
+});
+
+checkAsync("uid_missing_no_intenta_cfdi", async () => {
+  const runtimeDir = path.join(tempRoot, "missing-uid-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    if (method === "POST" && requestPath === "/v1/clients/create") {
+      return { ok: true, status: 200, data: { message: "created_without_uid" } };
+    }
+    if (method === "GET" && requestPath.startsWith("/v1/clients")) {
+      return { ok: true, status: 200, data: { data: [] } };
+    }
+    throw new Error(`CFDI no debe ejecutarse: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.summary.client_uid_missing, 1);
+  assert.strictEqual(result.manifest.attempts[0].status, "CLIENT_UID_MISSING");
+  assert(!calls.some((call) => call.path === "/v4/cfdi40/create"), "no debe intentar CFDI sin UID");
+  assert(!fs.existsSync(path.join(runtimeDir, "client-uids.local.json")), "no debe persistir UID faltante");
+  return "blocked before cfdi";
+});
+
+(async () => {
+  for (const item of asyncChecks) {
+    try {
+      const value = await item.fn();
+      checks.push({ name: item.name, pass: true, value: value === undefined ? "" : String(value) });
+    } catch (error) {
+      checks.push({ name: item.name, pass: false, value: error.message });
+    }
+  }
+
+  console.log("Factura.com Sandbox Smoke Safety Tests");
+  for (const item of checks) printCheck(item.name, item.pass, item.value);
+  const failed = checks.filter((item) => !item.pass);
+  console.log(`\nPASS total: ${checks.length - failed.length}/${checks.length}`);
+  if (failed.length) {
+    console.log(`FAIL total: ${failed.length}`);
+    process.exit(1);
+  }
+})();

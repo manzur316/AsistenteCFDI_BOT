@@ -200,6 +200,19 @@ Los flags separados son:
 - `FACTURACOM_SANDBOX_CANCEL_TEST=0|1`
 - `FACTURACOM_SANDBOX_BATCH_SIZE=1|5`
 
+Cuando `FACTURACOM_SANDBOX_CREATE_CLIENTS=1`, el smoke puede crear clientes demo
+en sandbox y resolver `Receptor.UID` sin tocar datos reales. Si la respuesta de
+creacion no trae UID, busca por RFC en:
+
+- `GET /v1/clients/{RFC}`
+- `GET /v1/clients?rfc={RFC}`
+
+El UID encontrado se guarda en `runtime/facturacom-sandbox/client-uids.local.json`.
+Ese archivo es local, contiene identificadores sandbox y no debe versionarse. Si
+el lookup no encuentra UID o encuentra multiples clientes indistinguibles, el
+intento queda detenido como `CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS`; no se
+manda `POST /v4/cfdi40/create`.
+
 Los resultados viven solo en:
 
 ```text
