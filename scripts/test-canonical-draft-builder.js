@@ -167,6 +167,19 @@ check("confirmed_by_human_false_bloquea_pac", () => {
   return "blocked";
 });
 
+check("confirmed_by_human_ausente_bloquea_pac_y_advierte", () => {
+  const preview = demoPreview();
+  delete preview.confirmed_by_human;
+  const draft = buildCanonicalDraftFromBotPreview(preview);
+  const readiness = assertCanonicalDraftReadyForPac(draft);
+  assert.strictEqual(draft.confirmed_by_human, false);
+  assert.strictEqual(draft.ready_for_pac, false);
+  assert(draft.fiscal_warnings.includes("confirmed_by_human_no_explicito"));
+  assert(draft.blockers.some((item) => item.type === "confirmed_by_human_no_explicito"));
+  assert(readiness.errors.includes("confirmed_by_human requerido para PAC"));
+  return "explicit confirmation required";
+});
+
 check("fixture_incompleto_no_se_promueve", () => {
   const draft = buildCanonicalDraftFromBotPreview(demoPreview({
     client: demoClient({ rfc: null, tax_regime: null, fiscal_zip: null, validated_by_human: false }),

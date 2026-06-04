@@ -212,7 +212,12 @@ function buildCanonicalDraftFromBotPreview(input = {}) {
   if (!receiver.tax_regime) blockers.push({ type: "regimen_fiscal_faltante" });
   if (!receiver.fiscal_zip) blockers.push({ type: "codigo_postal_fiscal_faltante" });
 
+  const confirmedPresent = typeof source.confirmed_by_human === "boolean" || typeof input.confirmed_by_human === "boolean";
   const confirmedExplicit = source.confirmed_by_human === true || input.confirmed_by_human === true;
+  if (!confirmedPresent) {
+    blockers.push({ type: "confirmed_by_human_no_explicito" });
+    fiscalWarnings.push("confirmed_by_human_no_explicito");
+  }
   const reviewStatus = blockers.length > 0
     ? REVIEW_STATUSES.NEEDS_REVIEW
     : confirmedExplicit
