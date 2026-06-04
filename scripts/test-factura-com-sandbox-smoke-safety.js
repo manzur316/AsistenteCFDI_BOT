@@ -33,6 +33,7 @@ const { inspectRuntime } = require("./inspect-facturacom-sandbox-response-shape"
 
 const root = path.resolve(__dirname, "..");
 const tempRoot = path.join(root, "runtime", "test-facturacom-sandbox-smoke-safety");
+const sampleInvalidPfRfc = `${["XAMA", "620210", "DQ5"].join("")}Z`;
 
 function printCheck(name, pass, value = "") {
   const suffix = value === "" ? "" : ` (${value})`;
@@ -1321,6 +1322,66 @@ checkAsync("create_api_error_http_200_no_hace_lookup_ni_identity_missing", async
   const responseArtifact = result.manifest.artifacts.find((artifact) => artifact.type === "CFDI_CREATE_RESPONSE");
   assert.strictEqual(responseArtifact.ok, false);
   return "api error cutoff";
+});
+
+checkAsync("local_cfdi40161_corta_antes_de_cfdi_create", async () => {
+  const runtimeDir = path.join(tempRoot, "local-cfdi40161-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_USO_CFDI: "CN01",
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    throw new Error(`no debe llamar PAC con CFDI40161 local: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(attempt.status, "CFDI_LOCAL_RULE_ERROR");
+  assert.strictEqual(result.summary.local_cfdi_rule_errors, 1);
+  assert.strictEqual(result.summary.receptor_compatibility_errors, 1);
+  assert.strictEqual(result.summary.uso_cfdi_regimen_persona_mismatch, 1);
+  assert.strictEqual(result.summary.needs_local_config, 1);
+  assert(attempt.local_config_errors.includes("LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH"));
+  assert(!calls.some((call) => call.path === "/v4/cfdi40/create"), "no debe intentar CFDI_CREATE");
+  assert(result.manifest.artifacts.some((artifact) => artifact.type === "CFDI_LOCAL_RULE_ERROR"), "debe guardar diagnostico local");
+  return "local rule cutoff";
+});
+
+checkAsync("invalid_rfc_shape_corta_antes_de_cfdi_create", async () => {
+  const runtimeDir = path.join(tempRoot, "invalid-rfc-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    calls.push({ method, path: requestPath });
+    throw new Error(`no debe llamar PAC con RFC invalido: ${method} ${requestPath}`);
+  };
+  const originalReadFileSync = fs.readFileSync;
+  fs.readFileSync = function patchedReadFileSync(filePath, ...args) {
+    if (String(filePath).endsWith(path.join("data", "sandbox", "canonical-test-clients.json"))) {
+      const clients = JSON.parse(originalReadFileSync.call(fs, filePath, "utf8"));
+      clients[0].rfc = sampleInvalidPfRfc;
+      return JSON.stringify(clients);
+    }
+    return originalReadFileSync.call(fs, filePath, ...args);
+  };
+  try {
+    const result = await runSmoke(env, { requestFn });
+    const attempt = result.manifest.attempts[0];
+    assert.strictEqual(attempt.status, "CFDI_LOCAL_RULE_ERROR");
+    assert.strictEqual(result.summary.invalid_rfc_shape_detected, 1);
+    assert(attempt.local_config_errors.includes("LOCAL_INVALID_RFC_SHAPE"));
+    assert(!calls.some((call) => call.path === "/v4/cfdi40/create"), "no debe intentar CFDI_CREATE");
+    assert(!JSON.stringify(attempt).includes(sampleInvalidPfRfc), "no debe exponer RFC completo en intento");
+  } finally {
+    fs.readFileSync = originalReadFileSync;
+  }
+  return "invalid rfc cutoff";
 });
 
 checkAsync("identity_se_completa_desde_lookup_si_create_no_trae_uuid", async () => {

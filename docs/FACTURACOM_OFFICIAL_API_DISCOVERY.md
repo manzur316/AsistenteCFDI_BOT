@@ -352,6 +352,27 @@ El mapper conserva el payload interno mock y agrega `official_request` con:
 Los valores que requieren cuenta sandbox, cliente sandbox, serie o politica de
 pago no se inventan y quedan en `unresolved_fields`.
 
+### Compatibilidad Local CFDI40161
+
+El error SAT/Factura.com `CFDI40161` se valida localmente antes de llamar al
+PAC. El bot no debe mandar `POST /v4/cfdi40/create` si no puede demostrar:
+
+- `Receptor.UID` sandbox presente.
+- `Receptor.RegimenFiscalR` presente.
+- `UsoCFDI` presente y existente en catalogo SAT local.
+- RFC receptor con forma valida: 13 caracteres para persona fisica, 12 para
+  persona moral, o genericos `XAXX010101000`/`XEXX010101000`.
+- Tipo de persona inferido desde RFC compatible con `UsoCFDI`.
+- Regimen fiscal receptor incluido en la columna `Regimen Fiscal Receptor` de
+  `c_UsoCFDI`.
+
+La matriz esta en
+`data/knowledge_base/cfdi40_uso_cfdi_compatibility.derived.json` y deriva de
+`catCFDI_V_4_20260603.xls` por medio de `cfdi40_master_knowledge.json`. Si la
+validacion falla, el smoke marca `CFDI_LOCAL_RULE_ERROR`, guarda diagnostico
+sanitizado y no toca el endpoint CFDI. No se imprimen RFC completos: solo
+`rfc_shape`, longitud normalizada y banderas de caracteres ocultos.
+
 ## Pendientes Antes De 6A.6
 
 - Cuenta sandbox disponible.

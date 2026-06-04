@@ -231,6 +231,44 @@ intento queda detenido como `CLIENT_CREATE_FAILED`, `CLIENT_UID_MISSING` o
 Ese UID se guarda como `client_uid`. No es identidad de factura, no debe usarse
 como `cfdi_uid` y no debe convertirse en `invoice_id` de Storage.
 
+## Guard Local UsoCFDI/Receptor 6A.7I
+
+Antes de llamar `POST /v4/cfdi40/create`, el mapper ejecuta
+`scripts/lib/cfdi-receptor-compatibility-validator.js`. La validacion usa la
+matriz derivada `data/knowledge_base/cfdi40_uso_cfdi_compatibility.derived.json`,
+generada desde `cfdi40_master_knowledge.json`, que a su vez viene del catalogo
+SAT `catCFDI_V_4_20260603.xls`.
+
+Campos obligatorios antes de PAC:
+
+- `Receptor.UID`.
+- `Receptor.RegimenFiscalR`.
+- `UsoCFDI`.
+- RFC receptor con forma valida normalizada.
+- Tipo de persona inferido desde RFC.
+
+Si falla, el intento queda `CFDI_LOCAL_RULE_ERROR`, aumenta
+`local_cfdi_rule_errors`, `receptor_compatibility_errors` y
+`needs_local_config`, guarda un artifact `CFDI_LOCAL_RULE_ERROR` sanitizado y no
+manda el request CFDI al PAC. Codigos locales esperados:
+
+- `LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH`.
+- `LOCAL_INVALID_RFC_SHAPE`.
+- `LOCAL_RFC_HAS_HIDDEN_CHARACTERS` como warning cuando el RFC se puede evaluar
+  por forma normalizada sin imprimirlo completo.
+- `LOCAL_USO_CFDI_REQUIRED`.
+- `LOCAL_REGIMEN_FISCAL_RECEPTOR_REQUIRED`.
+- `LOCAL_RECEPTOR_UID_REQUIRED`.
+
+El analyzer reporta `effective_uso_cfdi`,
+`effective_regimen_fiscal_receptor`, `effective_person_type`, `rfc_shape`,
+`local_cfdi_rule_errors`, `invalid_rfc_shape_detected` y estado de
+compatibilidad UsoCFDI. El inspector puede mostrar valores exactos de catalogo
+seguros (`UsoCFDI`, `RegimenFiscalR`, `FormaPago`, `MetodoPago`,
+`ClaveProdServ`, `ClaveUnidad`, `ObjetoImp`, `Impuesto`, `TipoFactor`,
+`TasaOCuota`) pero mantiene redactados RFC completo, secretos, UID largos,
+XML/PDF y tokens.
+
 Fase 6A.6C agrega normalizacion de identidad CFDI/PAC para preparar Storage
 Engine. Los smoke live sandbox ya validaron crear CFDI, descargar XML/PDF,
 cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:

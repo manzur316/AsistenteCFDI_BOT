@@ -388,6 +388,18 @@ produccion contra sandbox. `F-PLUGIN` sigue siendo requerido y universal para la
 cuenta. No avances contratos canonicos CFDI ni storage/reporting con live smoke
 hasta que el preflight marque `AUTH_OK`.
 
+Fase 6A.7I agrega un guard local para CFDI40161 antes de
+`POST /v4/cfdi40/create`. El mapper valida `Receptor.UID`,
+`Receptor.RegimenFiscalR`, `UsoCFDI` y forma de RFC receptor contra la matriz
+SAT derivada `data/knowledge_base/cfdi40_uso_cfdi_compatibility.derived.json`.
+Si la combinacion no es compatible con el tipo de persona y regimen receptor,
+el intento queda `CFDI_LOCAL_RULE_ERROR`, aumenta `local_cfdi_rule_errors` y
+`needs_local_config`, guarda un diagnostico sanitizado y no llama al PAC. El
+inspector puede mostrar valores seguros de catalogo como `UsoCFDI`, `RegimenFiscalR`,
+`FormaPago`, `MetodoPago`, `ClaveProdServ`, `ClaveUnidad`, `ObjetoImp`,
+`Impuesto`, `TipoFactor` y `TasaOCuota`; RFC completos, UID largos, secretos,
+XML y PDF siguen redactados.
+
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como
 observabilidad local y no debe avanzar a Reporting Engine.

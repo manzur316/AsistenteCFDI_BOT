@@ -60,6 +60,26 @@ function classifyString(value, pathLabel = "") {
 
 function allowsSafePreview(pathLabel = "") {
   const normalized = String(pathLabel || "").replace(/\.\d+\./g, ".").toLowerCase();
+  const lastKey = normalized.split(".").filter(Boolean).pop();
+  const safeCatalogKeys = new Set([
+    "usocfdi",
+    "regimenfiscalr",
+    "regimenid",
+    "regimenfiscal",
+    "serie",
+    "formapago",
+    "metodopago",
+    "moneda",
+    "lugarexpedicion",
+    "tipodocumento",
+    "claveunidad",
+    "claveprodserv",
+    "objetoimp",
+    "impuesto",
+    "tipofactor",
+    "tasaocuota",
+  ]);
+  if (safeCatalogKeys.has(lastKey)) return true;
   return /(^|\.)(response|status|message|mensaje|error|errors|api_message_summary)$/.test(normalized)
     || /(^|\.)data\.(response|status|message|mensaje|error|errors)$/.test(normalized)
     || /(^|\.)api_error_fields\.(response|status|message|mensaje|error|errors)$/.test(normalized);
@@ -173,6 +193,8 @@ function inspectRuntime(runtimeArg = DEFAULT_RUNTIME_DIR) {
     "CLIENT_CREATE_RESPONSE",
     "CLIENT_LOOKUP_RESPONSE",
     "PREFLIGHT_AUTH_RESPONSE",
+    "CFDI_CREATE_REQUEST",
+    "CFDI_LOCAL_RULE_ERROR",
     "CFDI_CREATE_RESPONSE",
     "CFDI_LOOKUP_RESPONSE",
     "CFDI_XML",

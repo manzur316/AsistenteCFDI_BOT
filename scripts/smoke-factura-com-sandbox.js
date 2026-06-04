@@ -1104,6 +1104,51 @@ function applyProviderAuthFailure(attempt, summary, authPreflightResult = {}) {
   summary.warnings.push(`provider_auth_failed:${status}`);
 }
 
+function updateLocalRuleSummary(summary, receptorCompatibility = {}, errors = []) {
+  summary.local_cfdi_rule_errors += 1;
+  summary.receptor_compatibility_errors += 1;
+  if (errors.includes("LOCAL_INVALID_RFC_SHAPE")) summary.invalid_rfc_shape_detected += 1;
+  if (errors.includes("LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH")) {
+    summary.uso_cfdi_regimen_persona_mismatch += 1;
+  }
+  if (receptorCompatibility.effective_uso_cfdi) pushUnique(summary.effective_uso_cfdi_values, receptorCompatibility.effective_uso_cfdi);
+  if (receptorCompatibility.effective_regimen_fiscal_receptor) {
+    pushUnique(summary.effective_regimen_fiscal_receptor_values, receptorCompatibility.effective_regimen_fiscal_receptor);
+  }
+  if (receptorCompatibility.effective_person_type) pushUnique(summary.effective_person_type_values, receptorCompatibility.effective_person_type);
+  if (receptorCompatibility.rfc_shape) pushUnique(summary.rfc_shape_values, receptorCompatibility.rfc_shape);
+}
+
+function applyLocalCfdiRuleError({ attempt, summary, manifest, config, env, fixture, payload }) {
+  const officialRequest = payload.official_request || {};
+  const errors = Array.isArray(officialRequest.local_config_errors) ? officialRequest.local_config_errors : [];
+  const warnings = Array.isArray(officialRequest.local_config_warnings) ? officialRequest.local_config_warnings : [];
+  const receptorCompatibility = officialRequest.receptor_compatibility || {};
+  attempt.status = "CFDI_LOCAL_RULE_ERROR";
+  attempt.local_config_errors = errors;
+  attempt.local_config_warnings = warnings;
+  attempt.receptor_compatibility = receptorCompatibility;
+  attempt.warnings.push(...errors, ...warnings);
+  updateLocalRuleSummary(summary, receptorCompatibility, errors);
+  summary.errors += 1;
+  summary.needs_local_config += 1;
+  const diagnosticFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-local-cfdi-rule-error.json`, {
+    draft_id: fixture.draft_id,
+    status: attempt.status,
+    local_config_errors: errors,
+    local_config_warnings: warnings,
+    receptor_compatibility: receptorCompatibility,
+    pac_call_blocked: true,
+  }, env);
+  attempt.artifacts.push(path.relative(root, diagnosticFile).replace(/\\/g, "/"));
+  manifest.artifacts.push({
+    type: "CFDI_LOCAL_RULE_ERROR",
+    draft_id: fixture.draft_id,
+    path: path.relative(root, diagnosticFile).replace(/\\/g, "/"),
+    ok: false,
+  });
+}
+
 async function processDraft({
   fixture,
   client,
@@ -1175,6 +1220,10 @@ async function processDraft({
   const clientUid = clientUidResult.uid;
   attempt.client_uid = clientUid || null;
   const payload = mapScenarioToFacturaCom(scenario, clientUid, config);
+  if (payload.official_request.local_config_errors?.length > 0) {
+    applyLocalCfdiRuleError({ attempt, summary, manifest, config, env, fixture, payload });
+    return attempt;
+  }
   if (payload.official_request.unresolved_fields.length > 0) {
     attempt.status = "NEEDS_LOCAL_CONFIG";
     attempt.warnings.push(...payload.official_request.unresolved_fields);
@@ -1365,6 +1414,14 @@ function buildSummary(config) {
     provider_auth_status: null,
     provider_auth_message: null,
     auth_preflight_ok: null,
+    receptor_compatibility_errors: 0,
+    local_cfdi_rule_errors: 0,
+    invalid_rfc_shape_detected: 0,
+    uso_cfdi_regimen_persona_mismatch: 0,
+    effective_uso_cfdi_values: [],
+    effective_regimen_fiscal_receptor_values: [],
+    effective_person_type_values: [],
+    rfc_shape_values: [],
     client_create_errors: 0,
     client_lookup_errors: 0,
     client_create_error_messages: [],

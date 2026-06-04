@@ -225,9 +225,11 @@ function analyze(runtimeArg = process.argv[2]) {
   const clientCreateArtifactMessages = [];
   const clientLookupArtifactMessages = [];
   const authPreflightResponseShape = [];
+  const localCfdiRuleResponseShape = [];
   let authPreflightArtifactOk = null;
   let authPreflightArtifactMessage = null;
   let authPreflightArtifactStatus = null;
+  const receptorCompatibilityRecords = [];
   let clientCreateArtifactErrors = 0;
   let clientLookupArtifactErrors = 0;
   const headerIdentityCandidates = [];
@@ -302,6 +304,18 @@ function analyze(runtimeArg = process.argv[2]) {
         authPreflightArtifactMessage = responseMessagePreview(responseJson.response || responseJson);
       }
     }
+    if (artifact.type === "CFDI_LOCAL_RULE_ERROR") {
+      const responseJson = readJsonIfPossible(abs);
+      if (responseJson) {
+        const shapeLines = collectShapeLines(responseJson).slice(0, 120);
+        localCfdiRuleResponseShape.push({
+          draft_id: artifact.draft_id || null,
+          path_count: shapeLines.length,
+          paths: shapeLines,
+        });
+        if (responseJson.receptor_compatibility) receptorCompatibilityRecords.push(responseJson.receptor_compatibility);
+      }
+    }
   }
   const possibleClientUidUsedAsCfdiUid = attempts
     .filter((attempt) => {
@@ -356,6 +370,7 @@ function analyze(runtimeArg = process.argv[2]) {
     ? summary.auth_preflight_ok
     : authPreflightArtifactOk;
   for (const attempt of attempts) {
+    if (attempt.receptor_compatibility) receptorCompatibilityRecords.push(attempt.receptor_compatibility);
     increment(documentsByDraftId, attempt.draft_id);
     increment(documentsByInvoiceId, attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id);
     increment(cfdiIdentitySource, attempt.cfdi_identity_source || (attempt.identity_ambiguous ? "ambiguous" : "missing"));
@@ -415,6 +430,15 @@ function analyze(runtimeArg = process.argv[2]) {
     provider_auth_message: providerAuthMessage,
     auth_preflight_response_shape: authPreflightResponseShape,
     auth_preflight_ok: authPreflightOk,
+    receptor_compatibility_errors: Number(summary.receptor_compatibility_errors || attempts.filter((attempt) => attempt.status === "CFDI_LOCAL_RULE_ERROR").length),
+    local_cfdi_rule_errors: Number(summary.local_cfdi_rule_errors || attempts.filter((attempt) => attempt.status === "CFDI_LOCAL_RULE_ERROR").length),
+    invalid_rfc_shape_detected: Number(summary.invalid_rfc_shape_detected || receptorCompatibilityRecords.filter((item) => (item.errors || []).includes("LOCAL_INVALID_RFC_SHAPE")).length),
+    uso_cfdi_regimen_persona_mismatch: Number(summary.uso_cfdi_regimen_persona_mismatch || receptorCompatibilityRecords.filter((item) => (item.errors || []).includes("LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH")).length),
+    effective_uso_cfdi: unique([...(summary.effective_uso_cfdi_values || []), ...receptorCompatibilityRecords.map((item) => item.effective_uso_cfdi)])[0] || null,
+    effective_regimen_fiscal_receptor: unique([...(summary.effective_regimen_fiscal_receptor_values || []), ...receptorCompatibilityRecords.map((item) => item.effective_regimen_fiscal_receptor)])[0] || null,
+    effective_person_type: unique([...(summary.effective_person_type_values || []), ...receptorCompatibilityRecords.map((item) => item.effective_person_type)])[0] || null,
+    rfc_shape: unique([...(summary.rfc_shape_values || []), ...receptorCompatibilityRecords.map((item) => item.rfc_shape)])[0] || null,
+    local_cfdi_rule_response_shape: localCfdiRuleResponseShape,
     client_create_errors: Number(summary.client_create_errors ?? clientCreateArtifactErrors),
     client_lookup_errors: Number(summary.client_lookup_errors ?? clientLookupArtifactErrors),
     client_create_error_messages: clientCreateErrorMessages,
@@ -484,6 +508,14 @@ function printResult(result) {
   if (result.provider_auth_errors > 0) {
     console.log("Provider auth diagnosis: No es error de cliente ni CFDI; es autenticacion/ambiente/cuenta proveedor.");
   }
+  console.log(`Effective UsoCFDI: ${result.effective_uso_cfdi || "none"}`);
+  console.log(`Effective RegimenFiscalR: ${result.effective_regimen_fiscal_receptor || "none"}`);
+  console.log(`Effective person type: ${result.effective_person_type || "none"}`);
+  console.log(`RFC shape: ${result.rfc_shape || "none"}`);
+  console.log(`Local CFDI rule errors: ${result.local_cfdi_rule_errors}`);
+  console.log(`Receptor compatibility errors: ${result.receptor_compatibility_errors}`);
+  console.log(`Invalid RFC shape detected: ${result.invalid_rfc_shape_detected}`);
+  console.log(`UsoCFDI compatibility status: ${result.uso_cfdi_regimen_persona_mismatch > 0 ? "mismatch" : "ok_or_not_evaluated"}`);
   console.log(`Client create errors: ${result.client_create_errors}`);
   console.log(`Client lookup errors: ${result.client_lookup_errors}`);
   console.log(`Client create error messages: ${result.client_create_error_messages.join(" | ") || "none"}`);

@@ -302,6 +302,22 @@ ser del ambiente correcto: sandbox keys contra `https://sandbox.factura.com/api`
 production keys quedan fuera de alcance y produccion sigue bloqueada. `F-PLUGIN`
 se mantiene como identificador requerido de la cuenta.
 
+### UsoCFDI/Receptor Compatibility Guard 6A.7I
+
+Antes de cualquier `stampSandbox`, el Adapter Hub debe ejecutar validaciones
+locales CFDI 4.0 de receptor. Para Factura.com sandbox esto ya se modela como:
+
+- normalizar y validar forma de RFC receptor sin exponer el RFC completo;
+- inferir `PF`, `PM`, `GENERIC_NATIONAL` o `GENERIC_FOREIGN`;
+- validar `UsoCFDI` contra tipo de persona y `RegimenFiscalR` usando
+  `c_UsoCFDI` derivado del catalogo SAT;
+- cortar como `CFDI_LOCAL_RULE_ERROR` si aparece una combinacion equivalente a
+  CFDI40161;
+- no mandar placeholders, RFC mal formado ni combinaciones SAT invalidas al PAC.
+
+Esta regla pertenece al contrato neutral del Hub, no al proveedor. Factura.com
+solo es el primer adapter sandbox que la consume.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

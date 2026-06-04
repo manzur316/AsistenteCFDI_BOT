@@ -4,6 +4,10 @@ const {
   validateCanonicalInvoiceDocument,
   validateCanonicalPacResult,
 } = require("./canonical-cfdi-contracts");
+const {
+  explainUsoCfdiCompatibilityFailure,
+  validateReceptorForCfdi,
+} = require("./cfdi-receptor-compatibility-validator");
 
 const PROVIDER = "factura_com";
 const SCHEMA_VERSION = "factura_com_sandbox_payload.mock.v1";
@@ -239,6 +243,14 @@ function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, conce
     LugarExpedicion: options.lugar_expedicion,
     Comentarios: options.comentarios,
   };
+  const receptorCompatibility = validateReceptorForCfdi({
+    rfc: receiver.rfc,
+    regimenFiscalReceptor: receiver.tax_regime,
+    usoCfdi: options.uso_cfdi,
+    clientUid: options.receptor_uid,
+  });
+  const localConfigErrors = receptorCompatibility.errors || [];
+  const localConfigWarnings = receptorCompatibility.warnings || [];
 
   return {
     provider_field_status: OFFICIAL_DOCS_PARTIAL,
@@ -259,7 +271,27 @@ function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, conce
       !options.metodo_pago && "MetodoPago debe capturarse o configurarse antes de live smoke",
       !options.moneda && "Moneda debe capturarse o configurarse antes de live smoke",
       !options.lugar_expedicion && "LugarExpedicion debe capturarse o confirmarse antes de live smoke",
+      ...localConfigErrors.map((code) => `${code}: ${explainUsoCfdiCompatibilityFailure({
+        rfc: receiver.rfc,
+        regimenFiscalReceptor: receiver.tax_regime,
+        usoCfdi: options.uso_cfdi,
+        clientUid: options.receptor_uid,
+      })}`),
     ].filter(Boolean),
+    local_config_errors: localConfigErrors,
+    local_config_warnings: localConfigWarnings,
+    receptor_compatibility: {
+      ok: receptorCompatibility.ok,
+      errors: receptorCompatibility.errors,
+      warnings: receptorCompatibility.warnings,
+      effective_uso_cfdi: receptorCompatibility.effective_uso_cfdi,
+      effective_regimen_fiscal_receptor: receptorCompatibility.effective_regimen_fiscal_receptor,
+      effective_person_type: receptorCompatibility.effective_person_type,
+      rfc_shape: receptorCompatibility.rfc_shape,
+      normalized_rfc_shape: receptorCompatibility.normalized_rfc_shape,
+      normalized_rfc_length: receptorCompatibility.normalized_rfc_length,
+      rfc_has_hidden_characters: receptorCompatibility.rfc_has_hidden_characters,
+    },
   };
 }
 

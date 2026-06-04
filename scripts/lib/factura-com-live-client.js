@@ -207,6 +207,8 @@ function sanitizeValue(value, env = {}) {
     for (const [key, item] of Object.entries(value)) {
       if (/api[-_ ]?key|secret|plugin|token|authorization|password|f-api-key|f-secret-key|f-plugin/i.test(key)) {
         out[key] = "[REDACTED]";
+      } else if (/^(rfc_shape|normalized_rfc_shape|normalized_rfc_length|rfc_has_hidden_characters|invalid_rfc_shape_detected|rfc_shape_values)$/i.test(key)) {
+        out[key] = sanitizeValue(item, env);
       } else if (/rfc/i.test(key)) {
         out[key] = "[REDACTED_RFC]";
       } else {
