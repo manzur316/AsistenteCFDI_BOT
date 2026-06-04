@@ -1,0 +1,366 @@
+{
+  "api_version": "facturacom_official_discovery_6a5b.v1",
+  "non_live": true,
+  "credentials_in_repo": false,
+  "docs_source": [
+    {
+      "id": "entornos",
+      "title": "Entornos",
+      "url": "https://factura.com/apidocs/entornos.html",
+      "official": true
+    },
+    {
+      "id": "primeros_pasos",
+      "title": "Primeros pasos",
+      "url": "https://factura.com/apidocs/primeros-pasos.html",
+      "official": true
+    },
+    {
+      "id": "crear_cfdi40",
+      "title": "Crear CFDI 4.0",
+      "url": "https://factura.com/apidocs/crear-cfdi-40.html",
+      "official": true
+    },
+    {
+      "id": "buscar_cfdi",
+      "title": "Buscar CFDI",
+      "url": "https://factura.com/apidocs/buscar-cfdi.html",
+      "official": true
+    },
+    {
+      "id": "descargar_cfdi",
+      "title": "Descargar CFDI",
+      "url": "https://factura.com/apidocs/descargar-cfdi.html",
+      "official": true
+    },
+    {
+      "id": "cancelar_cfdi40",
+      "title": "Cancelar CFDI 4.0",
+      "url": "https://factura.com/apidocs/cancelar-cfdi-40.html",
+      "official": true
+    },
+    {
+      "id": "clientes",
+      "title": "Clientes",
+      "url": "https://factura.com/apidocs/clientes.html",
+      "official": true
+    },
+    {
+      "id": "productos",
+      "title": "Productos",
+      "url": "https://factura.com/apidocs/productos.html",
+      "official": true
+    },
+    {
+      "id": "catalogos",
+      "title": "Catalogos",
+      "url": "https://factura.com/apidocs/catalogos.html",
+      "official": true
+    }
+  ],
+  "environments": {
+    "sandbox": {
+      "base_url": "https://sandbox.factura.com/api",
+      "enabled_for_repo": true,
+      "live_calls_enabled": false
+    },
+    "production": {
+      "base_url": "https://api.factura.com",
+      "enabled_for_repo": false,
+      "blocked_reason": "PRODUCTION_BLOCKED"
+    }
+  },
+  "auth_shape": {
+    "content_type": "application/json",
+    "headers": [
+      "Content-Type",
+      "F-PLUGIN",
+      "F-Api-Key",
+      "F-Secret-Key"
+    ],
+    "credential_policy": "read_from_env_only_in_future_smoke",
+    "repo_policy": "no_credentials_no_plugin_value_no_real_tokens"
+  },
+  "endpoints": [
+    {
+      "id": "create_cfdi40",
+      "method": "POST",
+      "path": "/v4/cfdi40/create",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "crear_cfdi40"
+    },
+    {
+      "id": "get_cfdi_by_uid",
+      "method": "GET",
+      "path": "/v4/cfdi/uid/{UID}",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "buscar_cfdi"
+    },
+    {
+      "id": "get_cfdi_by_uuid",
+      "method": "GET",
+      "path": "/v4/cfdi/uuid/{UUID}",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "buscar_cfdi"
+    },
+    {
+      "id": "download_cfdi_pdf",
+      "method": "GET",
+      "path": "/v4/cfdi40/{cfdi_uid}/pdf",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "artifact_download_blocked_in_this_phase": true,
+      "source_id": "descargar_cfdi"
+    },
+    {
+      "id": "download_cfdi_xml",
+      "method": "GET",
+      "path": "/v4/cfdi40/{cfdi_uid}/xml",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "artifact_download_blocked_in_this_phase": true,
+      "source_id": "descargar_cfdi"
+    },
+    {
+      "id": "cancel_cfdi40",
+      "method": "POST",
+      "path": "/v4/cfdi40/{cfdi_uid}/cancel",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "cancelar_cfdi40"
+    },
+    {
+      "id": "list_clients",
+      "method": "GET",
+      "path": "/v1/clients",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "clientes"
+    },
+    {
+      "id": "get_client",
+      "method": "GET",
+      "path": "/v1/clients/{RFC_OR_UID}",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "clientes"
+    },
+    {
+      "id": "create_client",
+      "method": "POST",
+      "path": "/v1/clients/create",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "clientes"
+    },
+    {
+      "id": "create_product",
+      "method": "POST",
+      "path": "/v3/products/create",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "productos"
+    },
+    {
+      "id": "catalog_generic",
+      "method": "GET",
+      "path": "/v3/catalogo/{nombre_catalogo}",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "catalogos"
+    },
+    {
+      "id": "catalog_uso_cfdi",
+      "method": "GET",
+      "path": "/v4/catalogo/UsoCfdi",
+      "enabled_environments": [
+        "sandbox"
+      ],
+      "production_enabled": false,
+      "live_call_enabled": false,
+      "source_id": "catalogos"
+    }
+  ],
+  "required_fields": {
+    "cfdi40_create_confirmed": [
+      "Receptor.UID",
+      "TipoDocumento",
+      "Conceptos",
+      "UsoCFDI",
+      "Serie",
+      "FormaPago",
+      "MetodoPago",
+      "Moneda"
+    ],
+    "cfdi40_create_optional_or_conditional_confirmed": [
+      "Receptor.RegimenFiscalR",
+      "RegimenFiscal",
+      "BorradorSiFalla",
+      "Draft",
+      "CondicionesDePago",
+      "CfdiRelacionados",
+      "TipoCambio",
+      "NumOrder",
+      "FechaFromAPI",
+      "Comentarios",
+      "Cuenta",
+      "EnviarCorreo",
+      "LugarExpedicion"
+    ],
+    "concept_confirmed": [
+      "ClaveProdServ",
+      "NoIdentificacion",
+      "Cantidad",
+      "ClaveUnidad",
+      "Unidad",
+      "Descripcion",
+      "ValorUnitario",
+      "Importe",
+      "Descuento",
+      "ObjetoImp",
+      "Impuestos.Traslados.Base",
+      "Impuestos.Traslados.Impuesto",
+      "Impuestos.Traslados.TipoFactor",
+      "Impuestos.Traslados.TasaOCuota",
+      "Impuestos.Traslados.Importe",
+      "Impuestos.Retenidos",
+      "Impuestos.Locales"
+    ],
+    "client_create_confirmed": [
+      "rfc",
+      "razons",
+      "codpos",
+      "email",
+      "usocfdi",
+      "regimen",
+      "calle",
+      "numero_exterior",
+      "numero_interior",
+      "colonia",
+      "ciudad",
+      "delegacion",
+      "localidad",
+      "estado",
+      "pais",
+      "numregidtrib",
+      "nombre",
+      "apellidos"
+    ],
+    "product_create_confirmed": [
+      "code",
+      "name",
+      "price",
+      "clavePS",
+      "unity",
+      "claveUnity"
+    ]
+  },
+  "response_shape": {
+    "success_observed": [
+      "status",
+      "response",
+      "message",
+      "data",
+      "Data",
+      "pagination",
+      "respuestaapi"
+    ],
+    "cfdi_lookup_data_observed": [
+      "UID",
+      "UUID",
+      "Folio",
+      "Subtotal",
+      "Total",
+      "Status",
+      "Version",
+      "TipoDocumento",
+      "XML"
+    ],
+    "download_formats_observed": [
+      "pdf",
+      "xml"
+    ]
+  },
+  "error_shape": {
+    "observed_status_fields": [
+      "status",
+      "response"
+    ],
+    "observed_message_shapes": [
+      "message_as_string",
+      "message_as_field_error_object",
+      "data_as_string"
+    ],
+    "warnings_shape_confirmed": false
+  },
+  "cancellation": {
+    "endpoint": "/v4/cfdi40/{cfdi_uid}/cancel",
+    "required_inputs_confirmed": [
+      "cfdi_uid",
+      "motivo"
+    ],
+    "conditional_inputs_confirmed": [
+      "folioSustituto"
+    ],
+    "motives_confirmed": [
+      "01",
+      "02",
+      "03",
+      "04"
+    ],
+    "response_fields_observed": [
+      "response",
+      "message",
+      "respuestaapi"
+    ]
+  },
+  "unresolved_fields": [
+    "Receptor.UID source: requiere cliente demo creado en Factura.com sandbox",
+    "Serie source: requiere serie/folio dada de alta en panel sandbox",
+    "F-PLUGIN value: no versionar; definir fuente local segura antes de smoke",
+    "FormaPago policy: debe capturarse o configurarse explicitamente",
+    "MetodoPago policy: debe capturarse o configurarse explicitamente",
+    "Moneda policy: debe capturarse o configurarse explicitamente",
+    "UsoCFDI policy: debe validarse contra regimen receptor antes de live smoke",
+    "LugarExpedicion source: CP emisor/sucursal debe confirmarse antes de live smoke",
+    "Error envelope real de create CFDI sandbox debe confirmarse con smoke opt-in",
+    "Warnings envelope no confirmado",
+    "No guardar XML/PDF/acuses en repo"
+  ]
+}

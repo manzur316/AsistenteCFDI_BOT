@@ -8,6 +8,8 @@ const {
 const PROVIDER = "factura_com";
 const SCHEMA_VERSION = "factura_com_sandbox_payload.mock.v1";
 const TODO_DOCS_REQUIRED = "TODO_DOCS_REQUIRED";
+const OFFICIAL_DOCS_CONFIRMED = "OFFICIAL_DOCS_CONFIRMED";
+const OFFICIAL_DOCS_PARTIAL = "OFFICIAL_DOCS_PARTIAL";
 
 class FacturaComPayloadMapperError extends Error {
   constructor(message, details = {}) {
@@ -84,6 +86,31 @@ function extractIdempotencyKey(context = {}) {
   return text(context.idempotency_key || pacRequest?.idempotency_key);
 }
 
+function extractFacturaComOptions(sourceInvoice = {}, receiver = {}, context = {}) {
+  const provider = context.factura_com || context.facturaCom || {};
+  return {
+    receptor_uid: text(
+      provider.receptor_uid
+      || provider.receiver_uid
+      || context.factura_com_receiver_uid
+      || context.receiver_uid
+      || receiver.factura_com_uid
+      || receiver.facturacom_uid
+      || receiver.uid
+      || receiver.UID,
+    ),
+    tipo_documento: text(provider.TipoDocumento || provider.tipo_documento || context.tipo_documento || sourceInvoice.tipo_documento),
+    uso_cfdi: text(provider.UsoCFDI || provider.uso_cfdi || context.uso_cfdi || receiver.cfdi_use || receiver.uso_cfdi),
+    serie: text(provider.Serie || provider.serie || context.serie || sourceInvoice.serie),
+    forma_pago: text(provider.FormaPago || provider.forma_pago || context.forma_pago || sourceInvoice.forma_pago),
+    metodo_pago: text(provider.MetodoPago || provider.metodo_pago || context.metodo_pago || sourceInvoice.metodo_pago),
+    moneda: text(provider.Moneda || provider.moneda || context.moneda || sourceInvoice.moneda || sourceInvoice.currency),
+    enviar_correo: provider.EnviarCorreo ?? provider.enviar_correo ?? context.enviar_correo,
+    lugar_expedicion: text(provider.LugarExpedicion || provider.lugar_expedicion || context.lugar_expedicion),
+    comentarios: text(provider.Comentarios || provider.comentarios || context.comentarios),
+  };
+}
+
 function mapCanonicalReceiverToFacturaComReceiver(receiver = {}) {
   const source = receiver || {};
   return {
@@ -96,6 +123,42 @@ function mapCanonicalReceiverToFacturaComReceiver(receiver = {}) {
     person_type: text(source.person_type || source.tipo_persona),
     validated_by_human: source.validated_by_human === true,
     validation_warnings: Array.isArray(source.validation_warnings) ? clone(source.validation_warnings) : [],
+  };
+}
+
+function facturaComTaxCode(taxType) {
+  const normalized = text(taxType)?.toUpperCase();
+  if (normalized === "IVA") return "002";
+  if (normalized === "IEPS") return "003";
+  if (normalized === "ISR") return "001";
+  return normalized;
+}
+
+function buildOfficialTaxEntry(tax = {}, concept = {}) {
+  return {
+    provider_field_status: OFFICIAL_DOCS_CONFIRMED,
+    Base: number(tax.base ?? concept.subtotal, 0),
+    Impuesto: facturaComTaxCode(tax.type || tax.impuesto),
+    TipoFactor: text(tax.tipo_factor || tax.factor || (tax.rate !== undefined && tax.rate !== null ? "Tasa" : null)),
+    TasaOCuota: tax.rate === undefined || tax.rate === null ? null : number(tax.rate, 0),
+    Importe: number(tax.amount ?? tax.importe, 0),
+  };
+}
+
+function buildOfficialTaxes(concept = {}) {
+  const taxes = Array.isArray(concept.taxes) ? concept.taxes : [];
+  const traslados = taxes
+    .filter((tax) => text(tax.direction || tax.tipo)?.toUpperCase() === "TRANSFERRED")
+    .map((tax) => buildOfficialTaxEntry(tax, concept));
+  const retenidos = taxes
+    .filter((tax) => text(tax.direction || tax.tipo)?.toUpperCase() === "RETAINED")
+    .map((tax) => buildOfficialTaxEntry(tax, concept));
+
+  return {
+    provider_field_status: OFFICIAL_DOCS_CONFIRMED,
+    Traslados: traslados,
+    Retenidos: retenidos,
+    Locales: [],
   };
 }
 
@@ -126,7 +189,7 @@ function mapLineTaxes(lineItem = {}) {
 
 function mapCanonicalLineItemToFacturaComConcept(lineItem = {}) {
   const source = lineItem || {};
-  return {
+  const concept = {
     provider_field_status: TODO_DOCS_REQUIRED,
     line_id: requireText(source.line_id, "line_item.line_id"),
     description: requireText(source.description, "line_item.description"),
@@ -140,6 +203,63 @@ function mapCanonicalLineItemToFacturaComConcept(lineItem = {}) {
     taxes: mapLineTaxes(source),
     concept_id: text(source.concept_id || source.id),
     requires_human_review: true,
+  };
+  concept.official_fields = {
+    provider_field_status: OFFICIAL_DOCS_CONFIRMED,
+    ClaveProdServ: concept.clave_prod_serv,
+    Cantidad: concept.quantity,
+    ClaveUnidad: concept.clave_unidad,
+    Unidad: concept.unidad,
+    ValorUnitario: concept.unit_price,
+    Descripcion: concept.description,
+    Importe: concept.subtotal,
+    ObjetoImp: concept.tax_object,
+    Impuestos: buildOfficialTaxes(concept),
+  };
+  return concept;
+}
+
+function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, concepts = [], context = {}) {
+  const options = extractFacturaComOptions(sourceInvoice, receiver, context);
+  const body = {
+    Receptor: {
+      provider_field_status: options.receptor_uid ? OFFICIAL_DOCS_CONFIRMED : TODO_DOCS_REQUIRED,
+      UID: options.receptor_uid,
+      RegimenFiscalR: receiver.tax_regime,
+    },
+    TipoDocumento: options.tipo_documento,
+    RegimenFiscal: text(context.emitter_regimen_fiscal || sourceInvoice.emitter_regimen_fiscal),
+    Conceptos: concepts.map((concept) => concept.official_fields),
+    UsoCFDI: options.uso_cfdi,
+    Serie: options.serie,
+    FormaPago: options.forma_pago,
+    MetodoPago: options.metodo_pago,
+    Moneda: options.moneda,
+    EnviarCorreo: options.enviar_correo === undefined ? null : options.enviar_correo,
+    LugarExpedicion: options.lugar_expedicion,
+    Comentarios: options.comentarios,
+  };
+
+  return {
+    provider_field_status: OFFICIAL_DOCS_PARTIAL,
+    docs_reference: "data/sandbox/facturacom-official-contract.notes.json",
+    endpoint: {
+      provider_field_status: OFFICIAL_DOCS_CONFIRMED,
+      method: "POST",
+      path: "/v4/cfdi40/create",
+      environment: PAC_ENVIRONMENTS.SANDBOX,
+    },
+    body,
+    unresolved_fields: [
+      !options.receptor_uid && "Receptor.UID requiere cliente creado en Factura.com sandbox",
+      !options.tipo_documento && "TipoDocumento debe definirse desde politica de emision antes de live smoke",
+      !options.uso_cfdi && "UsoCFDI debe validarse contra receptor y catalogo SAT antes de live smoke",
+      !options.serie && "Serie requiere id dado de alta en panel Factura.com sandbox",
+      !options.forma_pago && "FormaPago debe capturarse o configurarse antes de live smoke",
+      !options.metodo_pago && "MetodoPago debe capturarse o configurarse antes de live smoke",
+      !options.moneda && "Moneda debe capturarse o configurarse antes de live smoke",
+      !options.lugar_expedicion && "LugarExpedicion debe capturarse o confirmarse antes de live smoke",
+    ].filter(Boolean),
   };
 }
 
@@ -175,6 +295,7 @@ function mapCanonicalInvoiceToFacturaComPayload(canonicalInvoice, context = {}) 
     draft_id: sourceInvoice.draft_id,
     receiver,
     concepts,
+    official_request: buildOfficialFacturaComRequest(sourceInvoice, receiver, concepts, context),
     taxes,
     totals: {
       subtotal: number(sourceInvoice.subtotal, 0),
@@ -213,7 +334,10 @@ function assertFacturaComSandboxPayload(payload) {
     if (!concept.clave_unidad) errors.push(`concepts[${index}].clave_unidad requerido`);
     if (!concept.tax_object) errors.push(`concepts[${index}].tax_object requerido`);
     if (concept.requires_human_review !== true) errors.push(`concepts[${index}].requires_human_review debe ser true`);
+    if (concept.official_fields?.ClaveProdServ !== concept.clave_prod_serv) errors.push(`concepts[${index}].official_fields.ClaveProdServ inconsistente`);
+    if (concept.official_fields?.ClaveUnidad !== concept.clave_unidad) errors.push(`concepts[${index}].official_fields.ClaveUnidad inconsistente`);
   }
+  if (!payload.official_request?.body?.Conceptos?.length) errors.push("official_request.body.Conceptos requerido");
   if (payload.requires_human_review !== true) errors.push("requires_human_review debe ser true");
   return {
     ok: errors.length === 0,
@@ -292,6 +416,8 @@ function normalizeFacturaComErrorResponse(error = {}, context = {}) {
 module.exports = {
   PROVIDER,
   SCHEMA_VERSION,
+  OFFICIAL_DOCS_CONFIRMED,
+  OFFICIAL_DOCS_PARTIAL,
   TODO_DOCS_REQUIRED,
   FacturaComPayloadMapperError,
   assertFacturaComSandboxPayload,

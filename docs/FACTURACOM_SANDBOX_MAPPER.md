@@ -38,14 +38,76 @@ campos especificos de Factura.com.
 `CanonicalInvoiceDocument` y su contexto canonico a un payload mock de
 Factura.com Sandbox.
 
-Como no hay documentacion local oficial del payload Factura.com en el repo, los
-campos del proveedor se marcan con:
+Fase 6A.5B agrega discovery oficial desde:
+
+- `docs/FACTURACOM_OFFICIAL_API_DISCOVERY.md`
+- `data/sandbox/facturacom-official-contract.notes.json`
+
+El mapper conserva su payload mock interno y agrega una seccion
+`official_request` con nombres de campo confirmados por documentacion oficial.
+
+Los campos del proveedor que siguen sin dato local se marcan con:
 
 ```text
 TODO_DOCS_REQUIRED
 ```
 
 Eso evita presentar esta estructura como integracion productiva o definitiva.
+
+## Campos Confirmados Por Documentacion Oficial
+
+Para `POST /v4/cfdi40/create`, la documentacion oficial confirma:
+
+- `Receptor`
+- `Receptor.UID`
+- `Receptor.RegimenFiscalR`
+- `TipoDocumento`
+- `RegimenFiscal`
+- `Conceptos`
+- `UsoCFDI`
+- `Serie`
+- `FormaPago`
+- `MetodoPago`
+- `Moneda`
+- `EnviarCorreo`
+- `LugarExpedicion`
+- `Comentarios`
+
+Para cada concepto confirma:
+
+- `ClaveProdServ`
+- `Cantidad`
+- `ClaveUnidad`
+- `Unidad`
+- `ValorUnitario`
+- `Descripcion`
+- `Importe`
+- `ObjetoImp`
+- `Impuestos.Traslados`
+- `Impuestos.Retenidos`
+- `Impuestos.Locales`
+
+El mapper llena esos nombres dentro de:
+
+```text
+payload.official_request.body
+```
+
+La estructura canonica anterior se mantiene para no acoplar el bot completo a
+Factura.com.
+
+## Campos Que Siguen TODO_DOCS_REQUIRED
+
+Estos datos no se inventan:
+
+- `Receptor.UID`: requiere cliente creado en Factura.com sandbox.
+- `Serie`: requiere id de serie dado de alta en panel sandbox.
+- `FormaPago`: debe capturarse o configurarse.
+- `MetodoPago`: debe capturarse o configurarse.
+- `Moneda`: debe capturarse o configurarse.
+- `LugarExpedicion`: debe confirmarse con CP emisor/sucursal.
+- Valor local de `F-PLUGIN`: debe vivir fuera del repo.
+- Estructura real de warnings: no quedo confirmada en las paginas auditadas.
 
 ## Normalizacion
 
@@ -80,6 +142,10 @@ La fase 6A.6 puede agregar un smoke controlado contra sandbox real solo si:
 
 - `FACTURACOM_SANDBOX_LIVE=1`
 - existen credenciales locales no versionadas
+- existe `Receptor.UID` sandbox de cliente demo
+- existe `Serie` sandbox
+- estan definidas `FormaPago`, `MetodoPago`, `Moneda`, `UsoCFDI` y
+  `LugarExpedicion`
 - 6A.3B sigue activo antes de cualquier prueba real
 - la prueba no toca produccion
 - la prueba no sube XML/PDF reales al repo
