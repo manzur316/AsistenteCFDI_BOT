@@ -208,7 +208,7 @@ checks.push({ name: "callback_data_corto", pass: callbacks.every((value) => valu
 checks.push({ name: "parse_callback_data", pass: callbacks.every((value, index) => parseCallbackData(value) === generated[index]), value: "cfdi:<token>" });
 checks.push({
   name: "callback_no_filtra_datos_sensibles",
-  pass: callbacks.every((value) => !/DRAFT|CLI-|RFC|81111811|E48|Privada|concept/i.test(value)),
+  pass: callbacks.every((value) => !/DRAFT|CLI-|AAA010101AAA|81111811|Privada|Rivera|concept|clave|monto|total/i.test(value)),
   value: callbacks[0],
 });
 
@@ -263,7 +263,7 @@ if (handleCode) {
     checks.push({ name: "preview_persiste_action_tokens", pass: behavior.preview.persistence_sql.includes("INSERT INTO cfdi_action_tokens") && !behavior.preview.persistence_sql.includes("INSERT INTO cfdi_drafts"), value: "tokens no draft final" });
     checks.push({ name: "preview_tokens_unicos", pass: new Set(behavior.buttonTokens).size === 4 && behavior.buttonTokens.every(Boolean), value: behavior.buttonTokens.join(",") });
     checks.push({ name: "preview_callback_data_limite_telegram", pass: buttons.every((button) => String(button.callback_data).length <= CALLBACK_DATA_LIMIT), value: String(Math.max(...buttons.map((button) => String(button.callback_data).length))) });
-    checks.push({ name: "preview_callback_data_sin_datos_fiscales", pass: buttons.every((button) => !/DRAFT|CLI-|RFC|81111811|E48|Privada|concept/i.test(button.callback_data)), value: "solo token" });
+    checks.push({ name: "preview_callback_data_sin_datos_fiscales", pass: buttons.every((button) => !/DRAFT|CLI-|AAA010101AAA|81111811|Privada|Rivera|concept|clave|monto|total/i.test(button.callback_data)), value: "solo token" });
   } catch (error) {
     checks.push({ name: "preview_genera_inline_keyboard", pass: false, value: error.message });
   }
