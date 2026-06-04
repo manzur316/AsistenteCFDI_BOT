@@ -173,9 +173,13 @@ El proyecto no se acoplara directamente a Factura.com ni a ningun PAC especifico
 
 El roadmap de fases 6A a 6F tambien contempla Storage Engine, Reporting Engine, Monthly Declaration Assistant y un Web Hub/Miniapp para administrar borradores, clientes, XML/PDF sandbox o futuros, reportes y paquetes mensuales para contador.
 
+La fase 6A.0 define el modelo operativo de producto y el contrato de ledger simple: entrada natural, motor interno completo, pocos accesos principales, cobros/pagos simples y paquete mensual para contador sin convertir el sistema en ERP pesado.
+
 Ver:
 
 - `docs/ROADMAP_PAC_STORAGE_REPORTING.md`
+- `docs/PRODUCT_OPERATING_MODEL.md`
+- `docs/SIMPLE_LEDGER_AND_CASHFLOW_MODEL.md`
 
 ### Politica conversacional 4.7
 
