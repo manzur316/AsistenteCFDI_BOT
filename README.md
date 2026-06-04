@@ -167,6 +167,16 @@ El workflow no crea el draft `PENDIENTE` final hasta recibir `confirmar`. Si el 
 
 El workflow local ingest tambien puede mostrar botones inline de Telegram para `Confirmar`, `Editar`, `Cancelar` y `Ver detalle`. Cada boton usa `callback_data` corto `cfdi:<token>` guardado en PostgreSQL (`cfdi_action_tokens`); no contiene datos fiscales, claves SAT, cliente ni monto. Los botones ejecutan las mismas rutas conservadoras que los comandos de texto y no timbran CFDI.
 
+## Roadmap PAC, Storage y Reporting
+
+El proyecto no se acoplara directamente a Factura.com ni a ningun PAC especifico. La ruta propuesta es un `PAC Adapter Hub` neutral, con Factura.com solo como primer adapter sandbox, y soporte futuro para Facturama, Facturapi, SW, Finkok u otros proveedores.
+
+El roadmap de fases 6A a 6F tambien contempla Storage Engine, Reporting Engine, Monthly Declaration Assistant y un Web Hub/Miniapp para administrar borradores, clientes, XML/PDF sandbox o futuros, reportes y paquetes mensuales para contador.
+
+Ver:
+
+- `docs/ROADMAP_PAC_STORAGE_REPORTING.md`
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.
