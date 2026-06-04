@@ -122,8 +122,77 @@ function compactString(value, env = {}, maxLength = 280) {
     .replace(/\s+/g, " ")
     .trim();
   if (!cleaned) return null;
-  if (/^<\?xml|^<cfdi:|^<[^>]+>/i.test(cleaned)) return `[REDACTED_XML_TEXT len=${cleaned.length}]`;
+  if (isCfdiXmlText(cleaned)) return `[REDACTED_XML_TEXT len=${cleaned.length}]`;
   if (/^%PDF/i.test(cleaned)) return `[REDACTED_PDF_TEXT len=${cleaned.length}]`;
+  return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}...` : cleaned;
+}
+
+function isCfdiXmlText(value) {
+  const cleaned = String(value || "").trim();
+  return /^<\?xml/i.test(cleaned)
+    || /^<cfdi:/i.test(cleaned)
+    || /^<Comprobante\b/i.test(cleaned)
+    || /^<tfd:TimbreFiscalDigital\b/i.test(cleaned)
+    || /<(?:cfdi:)?Comprobante\b/i.test(cleaned)
+    || /<tfd:TimbreFiscalDigital\b/i.test(cleaned);
+}
+
+function isPdfText(value) {
+  return /^%PDF/i.test(String(value || "").trim());
+}
+
+function decodeBasicHtmlEntities(value) {
+  return String(value || "")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+}
+
+function stripSimpleHtml(value) {
+  return String(value || "")
+    .replace(/<\s*br\s*\/?>/gi, " ")
+    .replace(/<\/\s*(p|li|div|tr|h[1-6])\s*>/gi, " ")
+    .replace(/<\s*li\b[^>]*>/gi, " ")
+    .replace(/<[^>]{1,120}>/g, " ");
+}
+
+function redactPreviewText(value, env = {}) {
+  return redactString(value, env)
+    .replace(/\b(F-Api-Key|F-Secret-Key|F-PLUGIN)\s*[:=]\s*[^\s,'"{}<>]+/gi, "$1: [REDACTED]")
+    .replace(/(?<!F-)\b(?:api[-_ ]?key|secret|plugin|token|authorization|password)\s*[:=]\s*[^\s,'"{}<>]+/gi, "[REDACTED_SECRET_FIELD]=[REDACTED]")
+    .replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9+/=._-]{8,}/gi, "$1 [REDACTED]")
+    .replace(/\b(?:CFDI|UID|PAC|CLIENT|INTERNAL)-[A-Z0-9_-]{6,}\b/gi, "[REDACTED_ID]");
+}
+
+function safeApiMessagePreview(value, env = {}, maxLength = 280) {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    const parts = value.map((item) => safeApiMessagePreview(item, env, maxLength)).filter(Boolean);
+    const joined = parts.join(" | ");
+    return joined.length > maxLength ? `${joined.slice(0, maxLength)}...` : joined || null;
+  }
+  if (typeof value === "object") {
+    try {
+      return safeApiMessagePreview(JSON.stringify(sanitizeValue(value, env)), env, maxLength);
+    } catch (_error) {
+      return "[UNSERIALIZABLE]";
+    }
+  }
+
+  let cleaned = String(value ?? "").trim();
+  if (!cleaned) return null;
+  if (isCfdiXmlText(cleaned)) return `[REDACTED_XML_TEXT len=${cleaned.length}]`;
+  if (isPdfText(cleaned)) return `[REDACTED_PDF_TEXT len=${cleaned.length}]`;
+
+  cleaned = decodeBasicHtmlEntities(cleaned);
+  if (/<\/?[A-Za-z][^>]*>/.test(cleaned)) cleaned = stripSimpleHtml(cleaned);
+  cleaned = redactPreviewText(cleaned, env)
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return null;
   return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}...` : cleaned;
 }
 
@@ -210,22 +279,14 @@ function extractFacturaComApiStatus(data) {
 }
 
 function summarizeApiField(value, env = {}) {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return compactString(value, env);
-  }
-  try {
-    return compactString(JSON.stringify(sanitizeValue(value, env)), env);
-  } catch (_error) {
-    return "[UNSERIALIZABLE]";
-  }
+  return safeApiMessagePreview(value, env);
 }
 
-function extractFacturaComApiMessage(data) {
+function extractFacturaComApiMessage(data, env = {}) {
   for (const candidate of nestedObjectCandidates(data)) {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) continue;
     for (const key of ["message", "Message", "mensaje", "Mensaje", "error", "Error", "errors", "Errors"]) {
-      const value = summarizeApiField(candidate[key]);
+      const value = summarizeApiField(candidate[key], env);
       if (value) return value;
     }
   }
@@ -278,7 +339,7 @@ function normalizeFacturaComHttpResponse(response = {}, env = {}) {
     ok: httpOk && apiOk !== false,
     api_status: apiStatus,
     api_status_unknown: apiStatusUnknown,
-    api_message_summary: summarizeApiField(extractFacturaComApiMessage(data), env),
+    api_message_summary: summarizeApiField(extractFacturaComApiMessage(data, env), env),
     api_error_fields: collectApiErrorFields(data, env),
     status: response.status ?? null,
     statusText: response.statusText ?? null,
@@ -414,6 +475,7 @@ module.exports = {
   isFacturaComApiSuccess,
   normalizeFacturaComHttpResponse,
   normalizeResponseHeaders,
+  safeApiMessagePreview,
   sanitizeFacturaComError,
   sanitizeFacturaComResponse,
   sanitizeValue,

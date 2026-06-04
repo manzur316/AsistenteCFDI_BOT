@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { safeApiMessagePreview } = require("./lib/factura-com-live-client");
 
 const root = path.resolve(__dirname, "..");
 const DEFAULT_RUNTIME_DIR = path.join(root, "runtime", "facturacom-sandbox");
@@ -56,21 +57,13 @@ function classifyString(value, pathLabel = "") {
 
 function allowsSafePreview(pathLabel = "") {
   const normalized = String(pathLabel || "").replace(/\.\d+\./g, ".").toLowerCase();
-  return /(^|\.)(response|status|message)$/.test(normalized)
-    || /(^|\.)data\.(response|status|message)$/.test(normalized);
+  return /(^|\.)(response|status|message|mensaje|error|errors|api_message_summary)$/.test(normalized)
+    || /(^|\.)data\.(response|status|message|mensaje|error|errors)$/.test(normalized)
+    || /(^|\.)api_error_fields\.(response|status|message|mensaje|error|errors)$/.test(normalized);
 }
 
 function safePreview(value) {
-  let cleaned = String(value ?? "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!cleaned) return null;
-  if (/^<\?xml|^<cfdi:|^<[^>]+>/i.test(cleaned)) return `[REDACTED_XML_TEXT len=${cleaned.length}]`;
-  if (/^%PDF/i.test(cleaned)) return `[REDACTED_PDF_TEXT len=${cleaned.length}]`;
-  cleaned = cleaned.replace(/\b[A-Z&\u00d1]{3,4}\d{6}[A-Z0-9]{3}\b/gi, "[REDACTED_RFC]");
-  cleaned = cleaned.replace(/\b[A-Za-z0-9_-]{16,90}\b/g, "[REDACTED_ID]");
-  cleaned = cleaned.replace(/(api[-_ ]?key|secret|plugin|token|authorization|password)\s*[:=]\s*[^\s,'"{}]+/gi, "$1=[REDACTED]");
-  return cleaned.length > 120 ? `${cleaned.slice(0, 120)}...` : cleaned;
+  return safeApiMessagePreview(value, {}, 160);
 }
 
 function describeValue(value, pathLabel = "") {
@@ -80,7 +73,7 @@ function describeValue(value, pathLabel = "") {
     const markers = classifyString(value, pathLabel);
     const preview = allowsSafePreview(pathLabel) ? safePreview(value) : null;
     const previewText = preview ? `, preview="${preview.replace(/"/g, "'")}"` : "";
-    const suffix = markers.length ? `(${markers.join(", ")}, len=${value.length}${previewText})` : `(len=${value.length}${previewText})`;
+    const suffix = markers.length ? `(len=${value.length}${previewText}, ${markers.join(", ")})` : `(len=${value.length}${previewText})`;
     return `string${suffix}`;
   }
   if (typeof value === "number") return allowsSafePreview(pathLabel) ? `number(value=${value})` : "number";

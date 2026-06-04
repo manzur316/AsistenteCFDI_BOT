@@ -308,6 +308,10 @@ El inspector solo muestra shape y marcadores. No imprime valores completos,
 credenciales, XML/PDF completos ni headers de request. Desde 6A.7D tambien
 muestra previews seguros y truncados de `response`, `status` y `message` para
 diagnosticar errores de negocio Factura.com sin abrir el JSON completo.
+Desde 6A.7E, si `message` contiene HTML de error, el preview elimina tags
+simples, decodifica entidades HTML basicas y conserva texto util como
+`El campo X es requerido`. XML CFDI real y PDF real se mantienen redactados como
+`[REDACTED_XML_TEXT ...]` o `[REDACTED_PDF_TEXT ...]`.
 
 El smoke distingue errores HTTP de errores API de Factura.com:
 

@@ -210,6 +210,13 @@ Si `POST /v4/cfdi40/create` devuelve HTTP 200 con `response=error` o
 sanitizados y no intenta lookup, download ni cancel. `CREATE_OK_IDENTITY_MISSING`
 solo aplica despues de un exito semantico real sin identidad CFDI clara.
 
+Los mensajes de error pueden venir como texto plano, objeto JSON o HTML corto
+dentro de `message`. Para diagnostico local, 6A.7E convierte HTML simple
+(`<br>`, `<b>`, `<strong>`, listas y parrafos) a texto plano seguro, decodifica
+entidades basicas y trunca el preview. XML CFDI real y PDF real siguen
+redactados completos; el preview nunca debe exponer credenciales, RFC completo,
+tokens ni IDs largos.
+
 No se encontro una estructura oficial unica de warnings en las paginas
 auditadas. Queda pendiente confirmar si Factura.com devuelve warnings separados
 del error principal.

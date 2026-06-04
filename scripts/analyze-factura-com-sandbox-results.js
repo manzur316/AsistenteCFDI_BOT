@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { collectShapeLines } = require("./inspect-facturacom-sandbox-response-shape");
+const { safeApiMessagePreview } = require("./lib/factura-com-live-client");
 
 const root = path.resolve(__dirname, "..");
 const DEFAULT_RUNTIME_DIR = path.join(root, "runtime", "facturacom-sandbox");
@@ -243,7 +244,11 @@ function analyze(runtimeArg = process.argv[2]) {
   const apiErrorMessagesDetected = unique([
     ...(Array.isArray(summary.api_error_messages_detected) ? summary.api_error_messages_detected : []),
     ...attempts.map((attempt) => attempt.api_message_summary || attempt.api_error?.api_message_summary),
-  ]);
+  ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
+  const createApiErrorMessagePreviews = unique(createApiErrors
+    .map((attempt) => attempt.api_message_summary || attempt.api_error?.api_message_summary)
+    .map((value) => safeApiMessagePreview(value))
+    .filter(Boolean));
   const apiStatusUnknownAttempts = attempts.filter((attempt) => attempt.api_status_unknown === true);
   const businessSuccessfulAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK");
   const identityMissingAfterApiSuccessAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK_IDENTITY_MISSING");
@@ -301,6 +306,7 @@ function analyze(runtimeArg = process.argv[2]) {
     create_api_errors: Number(summary.create_api_errors ?? createApiErrors.length),
     create_http_errors: Number(summary.create_http_errors ?? createHttpErrors.length),
     api_error_messages_detected: apiErrorMessagesDetected,
+    create_api_error_message_previews: createApiErrorMessagePreviews,
     business_successful: Number(summary.business_successful ?? businessSuccessfulAttempts.length),
     identity_missing_after_api_success: Number(summary.identity_missing_after_api_success ?? identityMissingAfterApiSuccessAttempts.length),
     possible_client_uid_used_as_cfdi_uid: possibleClientUidUsedAsCfdiUid,
@@ -353,6 +359,8 @@ function printResult(result) {
   console.log(`Create API errors: ${result.create_api_errors}`);
   console.log(`Create HTTP errors: ${result.create_http_errors}`);
   console.log(`API error messages detectados: ${result.api_error_messages_detected.join(" | ") || "none"}`);
+  console.log(`API error message previews: ${result.api_error_messages_detected.join(" | ") || "none"}`);
+  console.log(`Create API error message previews: ${result.create_api_error_message_previews.join(" | ") || "none"}`);
   console.log(`Business successful: ${result.business_successful}`);
   console.log(`Identity missing after API success: ${result.identity_missing_after_api_success}`);
   console.log(`CFDI UIDs: ${result.cfdi_uids.join(", ") || "none"}`);

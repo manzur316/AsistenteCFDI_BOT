@@ -353,6 +353,12 @@ reporta `create_response_shapes_detected`, `header_identity_candidates`,
 previews cortos de `response`, `status` y `message`, con RFC, secretos e IDs
 largos redactados.
 
+Fase 6A.7E mejora esos previews: si Factura.com manda `data.message` como HTML
+de error, el sistema quita tags simples, decodifica entidades HTML basicas y
+muestra texto plano truncado para diagnostico. CFDI XML real (`<?xml`,
+`<cfdi:Comprobante>`, `<tfd:TimbreFiscalDigital>`) y PDF real (`%PDF`) siguen
+redactados como marcadores seguros.
+
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como
 observabilidad local y no debe avanzar a Reporting Engine.

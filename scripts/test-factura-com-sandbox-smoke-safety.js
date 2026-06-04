@@ -10,6 +10,7 @@ const {
   isFacturaComApiError,
   isFacturaComApiSuccess,
   normalizeFacturaComHttpResponse,
+  safeApiMessagePreview,
   sanitizeFacturaComError,
   sanitizeFacturaComResponse,
   sanitizeValue,
@@ -191,6 +192,64 @@ check("normaliza_error_api_facturacom_con_http_200", () => {
   assert.strictEqual(response.api_message_summary.includes("[REDACTED_RFC]"), true);
   assertNoSecret(response, env.FACTURACOM_SECRET_KEY);
   return "http ok/api error";
+});
+
+check("safe_api_message_preview_convierte_html_error_a_texto", () => {
+  const env = validLiveEnv();
+  const html = `<b>Error</b><br>El campo UsoCFDI es requerido &amp; debe ser valido para RFC AAA010101AAA. F-Api-Key: ${env.FACTURACOM_API_KEY}`;
+  const preview = safeApiMessagePreview(html, env);
+  assert(preview.includes("Error"), preview);
+  assert(preview.includes("El campo UsoCFDI es requerido & debe ser valido"), preview);
+  assert(preview.includes("[REDACTED_RFC]"), preview);
+  assert(!preview.includes("<b>"), preview);
+  assert(!preview.includes(env.FACTURACOM_API_KEY), preview);
+  assert(preview.includes("F-Api-Key: [REDACTED]"), preview);
+  return preview;
+});
+
+check("safe_api_message_preview_redacta_xml_pdf_y_secretos", () => {
+  const env = validLiveEnv();
+  const xmlPreview = safeApiMessagePreview('<?xml version="1.0"?><cfdi:Comprobante RFC="AAA010101AAA"></cfdi:Comprobante>', env);
+  const cfdiPreview = safeApiMessagePreview('<cfdi:Comprobante><tfd:TimbreFiscalDigital UUID="00000000-0000-4000-8000-000000000999" /></cfdi:Comprobante>', env);
+  const pdfPreview = safeApiMessagePreview("%PDF-1.7 demo content", env);
+  const objectPreview = safeApiMessagePreview({
+    message: `<strong>Error</strong> token=${env.FACTURACOM_SECRET_KEY}`,
+    nested: ["RFC AAA010101AAA"],
+  }, env);
+  assert(xmlPreview.startsWith("[REDACTED_XML_TEXT"), xmlPreview);
+  assert(cfdiPreview.startsWith("[REDACTED_XML_TEXT"), cfdiPreview);
+  assert(pdfPreview.startsWith("[REDACTED_PDF_TEXT"), pdfPreview);
+  assert(!objectPreview.includes(env.FACTURACOM_SECRET_KEY), objectPreview);
+  assert(objectPreview.includes("[REDACTED_FACTURACOM_SECRET]") || objectPreview.includes("[REDACTED]"), objectPreview);
+  assert(objectPreview.includes("[REDACTED_RFC]"), objectPreview);
+  assert.strictEqual(safeApiMessagePreview("[REDACTED_XML_TEXT len=114]", env), "[REDACTED_XML_TEXT len=114]");
+  return "redacted";
+});
+
+check("normaliza_status_error_objeto_y_http_error", () => {
+  const env = validLiveEnv();
+  const apiError = normalizeFacturaComHttpResponse({
+    ok: true,
+    status: 200,
+    data: {
+      status: "error",
+      message: { UsoCFDI: ["<b>Campo requerido</b>"] },
+    },
+  }, env);
+  const httpError = normalizeFacturaComHttpResponse({
+    ok: false,
+    status: 400,
+    statusText: "Bad Request",
+    data: { message: "bad request" },
+  }, env);
+  assert.strictEqual(apiError.http_ok, true);
+  assert.strictEqual(apiError.api_ok, false);
+  assert.strictEqual(apiError.ok, false);
+  assert(apiError.api_message_summary.includes("Campo requerido"), apiError.api_message_summary);
+  assert.strictEqual(httpError.http_ok, false);
+  assert.strictEqual(httpError.api_ok, null);
+  assert.strictEqual(httpError.ok, false);
+  return "status error/http error";
 });
 
 check("normaliza_success_y_estado_api_desconocido", () => {
@@ -375,20 +434,21 @@ check("analyzer_reporta_identity_missing_sin_secretos", () => {
 check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
   const runtimeDir = path.join(tempRoot, "api-error-runtime");
   const responsePath = path.join(runtimeDir, "DRAFT-API-ERROR-create-cfdi-response.json");
+  const htmlMessage = "<b>Error</b><br>El campo UsoCFDI es requerido para RFC AAA010101AAA";
   writeJson(responsePath, {
     ok: false,
     http_ok: true,
     api_ok: false,
     status: 200,
     api_status: "error",
-    api_message_summary: "UsoCFDI invalido para receptor demo",
+    api_message_summary: safeApiMessagePreview(htmlMessage),
     api_error_fields: {
       response: "error",
-      message: "UsoCFDI invalido para receptor demo",
+      message: safeApiMessagePreview(htmlMessage),
     },
     data: {
       response: "error",
-      message: "UsoCFDI invalido para receptor demo",
+      message: htmlMessage,
     },
   });
   writeJson(path.join(runtimeDir, "manifest.json"), {
@@ -407,12 +467,12 @@ check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
       http_ok: true,
       api_ok: false,
       api_status: "error",
-      api_message_summary: "UsoCFDI invalido para receptor demo",
+      api_message_summary: htmlMessage,
       api_error: {
         http_ok: true,
         api_ok: false,
         api_status: "error",
-        api_message_summary: "UsoCFDI invalido para receptor demo",
+        api_message_summary: htmlMessage,
       },
     }],
   });
@@ -424,7 +484,7 @@ check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
     http_errors: 0,
     create_api_errors: 1,
     create_http_errors: 0,
-    api_error_messages_detected: ["UsoCFDI invalido para receptor demo"],
+    api_error_messages_detected: [htmlMessage],
     business_successful: 0,
     identity_missing_after_api_success: 0,
     warnings: [],
@@ -435,6 +495,14 @@ check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
   assert.strictEqual(result.http_errors, 0);
   assert.strictEqual(result.identity_missing_after_api_success, 0);
   assert.strictEqual(result.api_error_messages_detected.length, 1);
+  assert(result.api_error_messages_detected[0].includes("El campo UsoCFDI es requerido"), result.api_error_messages_detected[0]);
+  assert(result.api_error_messages_detected[0].includes("[REDACTED_RFC]"), result.api_error_messages_detected[0]);
+  assert.strictEqual(result.create_api_error_message_previews.length, 1);
+  const cli = runNode(["scripts/analyze-factura-com-sandbox-results.js", runtimeDir]);
+  assert.strictEqual(cli.status, 0, cli.stderr);
+  assert(cli.stdout.includes("API error message previews:"), cli.stdout);
+  assert(cli.stdout.includes("Create API error message previews:"), cli.stdout);
+  assert(!cli.stdout.includes("AAA010101AAA"), cli.stdout);
   assert.strictEqual(result.sensitive_findings.length, 0);
   return "api error";
 });
@@ -482,8 +550,12 @@ check("inspector_no_imprime_valores_completos_y_marca_forbidden", () => {
     status: 200,
     data: {
       response: "error",
-      message: "Validacion fallida para CFDI-UID-SHAPE-SECRET",
+      message: "<b>Validacion fallida</b><br>Campo requerido para CFDI-UID-SHAPE-SECRET",
+      api_message_summary: "<p>Resumen seguro</p>",
       request: {
+        headers: {
+          "F-Api-Key": "SHOULD-NOT-PRINT-REQUEST-HEADER",
+        },
         body: {
           Receptor: { UID: "UID-CLIENT-SHAPE-SECRET", RFC: "XAXX010101000" },
         },
@@ -503,9 +575,11 @@ check("inspector_no_imprime_valores_completos_y_marca_forbidden", () => {
   assert(output.includes("FORBIDDEN_CLIENT_UID_SOURCE"), output);
   assert(output.includes("uid-like"), output);
   assert(output.includes('preview="error"'), output);
-  assert(output.includes("[REDACTED_ID]"), output);
+  assert(output.includes("Validacion fallida"), output);
+  assert(output.includes("Campo requerido"), output);
   assert(!output.includes("UID-CLIENT-SHAPE-SECRET"), "no debe imprimir client UID completo");
   assert(!output.includes("CFDI-UID-SHAPE-SECRET"), "no debe imprimir cfdi UID completo");
+  assert(!output.includes("SHOULD-NOT-PRINT-REQUEST-HEADER"), "no debe imprimir headers de request");
   return "shape safe";
 });
 
