@@ -26,6 +26,7 @@ const safeFiles = [
   "sql/001_init_cfdi_bot.sql",
   "sql/003_clients_amounts_tax.sql",
   "sql/003_seed_clients.example.sql",
+  "sql/004_action_tokens.sql",
   "workflow/cfdi_manual_test.n8n.json",
   "workflow/cfdi_telegram_postgres_polling.n8n.json",
   "workflow/cfdi_telegram_local_ingest.n8n.json",

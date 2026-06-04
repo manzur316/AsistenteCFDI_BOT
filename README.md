@@ -77,6 +77,7 @@ La memoria, historial, drafts y logs viven en PostgreSQL local (`cfdi_bot`). Ver
 - `sql/001_init_cfdi_bot.sql`
 - `sql/003_clients_amounts_tax.sql`
 - `sql/003_seed_clients.example.sql`
+- `sql/004_action_tokens.sql`
 
 Este modo con Schedule Trigger queda como legacy. Funciona, pero puede sentirse lento porque depende del intervalo del Schedule.
 
@@ -163,6 +164,8 @@ Flujo recomendado:
 4. Responder `confirmar`, `editar` o `cancelar`.
 
 El workflow no crea el draft `PENDIENTE` final hasta recibir `confirmar`. Si el cliente no existe, ofrece crear cliente basico, continuar sin cliente o cancelar. El alta manual con `/nuevocliente` usa plantilla escrita y deja `validated_by_human=false` hasta ejecutar `/validarcliente CLIENT_ID`.
+
+El workflow local ingest tambien puede mostrar botones inline de Telegram para `Confirmar`, `Editar`, `Cancelar` y `Ver detalle`. Cada boton usa `callback_data` corto `cfdi:<token>` guardado en PostgreSQL (`cfdi_action_tokens`); no contiene datos fiscales, claves SAT, cliente ni monto. Los botones ejecutan las mismas rutas conservadoras que los comandos de texto y no timbran CFDI.
 
 ### Politica conversacional 4.7
 

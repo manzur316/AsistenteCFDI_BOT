@@ -25,7 +25,6 @@ const protectedPaths = [
   "data/base_cfdi_resico_n8n_emberhub_2026.xlsx",
   "workflow/cfdi_manual_test.n8n.json",
   "workflow/cfdi_telegram_postgres_polling.n8n.json",
-  "workflow/cfdi_telegram_local_ingest.n8n.json",
 ];
 
 function printCheck(name, pass, value = "") {
