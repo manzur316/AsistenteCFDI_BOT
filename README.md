@@ -326,6 +326,25 @@ a intentar desde `GET /v4/cfdi/uid/{cfdi_uid}` y desde el XML descargado cuando
 `CREATE_OK_IDENTITY_MISSING`, no aumenta `successful` y el analyzer reporta
 `identity_missing`.
 
+Fase 6A.7C agrega inspeccion segura de la forma real de respuesta sandbox:
+
+```powershell
+node scripts/inspect-facturacom-sandbox-response-shape.js
+```
+
+El inspector lee `runtime/facturacom-sandbox/manifest.json` y artifacts
+`CFDI_CREATE_RESPONSE`, `CFDI_LOOKUP_RESPONSE` y `CFDI_XML`. Solo imprime rutas,
+keys, tipos, longitudes y marcadores como `uid-like`, `uuid-like`,
+`rfc-like` o `FORBIDDEN_CLIENT_UID_SOURCE`; no imprime valores completos,
+credenciales, XML/PDF completos ni headers de request. El analyzer tambien
+reporta `create_response_shapes_detected`, `header_identity_candidates`,
+`forbidden_client_uid_candidates_detected`, `cfdi_identity_source` e
+`identity_ambiguous`.
+
+Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
+headers, lookup, XML o busqueda oficial documentada, el flujo se queda como
+observabilidad local y no debe avanzar a Reporting Engine.
+
 Fase 6A.7 agrega el Storage Engine sandbox local. Despues de un smoke sandbox,
 organiza artifacts ya existentes sin llamar Factura.com:
 

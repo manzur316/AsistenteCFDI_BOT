@@ -246,6 +246,22 @@ Reglas especificas sandbox:
   `__<draft_id>` y reporta `identity_collisions`/`duplicate_invoice_ids`.
 - Todo documento conserva `BORRADOR SUJETO A REVISION HUMANA`.
 
+### Factura.com Identity Discovery 6A.7C
+
+El fix de 6A.7B separo correctamente `client_uid` de `cfdi_uid`. El estado real
+observado despues de esa separacion puede quedar con create OK pero sin
+identidad CFDI clara. En ese caso:
+
+- `client_uid` nunca vuelve a ser invoice id.
+- `successful` no aumenta sin `cfdi_uid`, `uuid` o `pac_invoice_id`.
+- Storage puede guardar evidencia con `PARTIAL_INTERNAL_ID`, pero Reporting no
+  debe avanzar como si fueran CFDI identificados.
+- El inspector local `scripts/inspect-facturacom-sandbox-response-shape.js`
+  permite revisar shapes sin exponer valores completos.
+- El fallback post-create por busqueda queda apagado hasta que exista endpoint
+  oficial documentado por serie/folio/receptor/fecha/total/comentarios con
+  criterios estrictos.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del
@@ -395,6 +411,8 @@ Criterio de salida: sandbox probado sin folios reales ni produccion.
 - En 6A.7B, separar `client_uid` de `cfdi_uid`, bloquear overwrite silencioso y
   hacer que Reporting no avance con documentos pisados o colisiones sin
   resolver.
+- En 6A.7C, descubrir de forma segura el shape real de respuesta Factura.com y
+  mantener Reporting bloqueado si solo existen identidades internas parciales.
 
 Criterio de salida: todo documento queda trazable por emisor, cliente, periodo,
 estatus y proveedor.

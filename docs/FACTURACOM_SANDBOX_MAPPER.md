@@ -231,8 +231,21 @@ cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:
 El extractor de `cfdi_uid` no revisa `Receptor.UID`, request body, headers,
 cliente, payload canonical ni `client-uids.local.json`. Solo revisa ramas de
 respuesta CFDI (`data`, `Data`, `response`, `respuestaapi`) y `rawText` si es
-JSON. Si create responde OK pero no hay `cfdi_uid`, `uuid` ni `pac_invoice_id`,
-el intento queda `CREATE_OK_IDENTITY_MISSING`, no aumenta `successful` y el
+JSON. Fase 6A.7C agrega captura de headers de respuesta sanitizados: `Location`
+puede ser candidato de identidad, sin imprimir valores completos y sin usar
+headers de request.
+
+El smoke tambien manda una referencia interna demo en `Comentarios`:
+
+```text
+SANDBOX_DEMO <draft_id> <internal_invoice_id>
+```
+
+Esto no contiene datos reales y permite una busqueda futura si Factura.com
+documenta oficialmente un endpoint por comentarios o criterios estrictos.
+
+Si create responde OK pero no hay `cfdi_uid`, `uuid` ni `pac_invoice_id`, el
+intento queda `CREATE_OK_IDENTITY_MISSING`, no aumenta `successful` y el
 analyzer reporta `identity_missing`.
 
 El UUID puede no venir en create response. El smoke busca en `Data`, `data`,
@@ -284,6 +297,15 @@ Si dos drafts distintos generan el mismo invoice id, Storage crea un sufijo
 estable `__<draft_id>`, conserva ambos documentos y reporta
 `identity_collisions`/`duplicate_invoice_ids`. Reporting no debe avanzar con
 documentos pisados ni colisiones sin revisar.
+
+Inspeccion segura local de response shape:
+
+```powershell
+node scripts/inspect-facturacom-sandbox-response-shape.js
+```
+
+El inspector solo muestra shape y marcadores. No imprime valores completos,
+credenciales, XML/PDF completos ni headers de request.
 
 Los resultados viven solo en:
 

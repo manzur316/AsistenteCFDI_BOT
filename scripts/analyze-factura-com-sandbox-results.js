@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { collectShapeLines } = require("./inspect-facturacom-sandbox-response-shape");
 
 const root = path.resolve(__dirname, "..");
 const DEFAULT_RUNTIME_DIR = path.join(root, "runtime", "facturacom-sandbox");
@@ -95,6 +96,19 @@ function duplicatesByDraft(attempts = [], identityFn = () => null) {
     .map(([identity, drafts]) => [identity, Array.from(drafts)]));
 }
 
+function collectHeaderIdentityCandidatesFromResponse(response = {}) {
+  const headers = response.responseHeaders || {};
+  const location = text(response.location || headers.location || headers.Location);
+  if (!location) return [];
+  return [{
+    header: "location",
+    length: location.length,
+    source: "response_header",
+    uid_like: /[A-Za-z0-9_-]{8,90}/.test(location),
+    uuid_like: /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i.test(location),
+  }];
+}
+
 function findSensitiveText(filePath, content) {
   const findings = [];
   const patterns = [
@@ -164,13 +178,45 @@ function analyze(runtimeArg = process.argv[2]) {
     return !isInside(runtimeDir, abs);
   });
   const createRequestReceptorUidsByDraft = {};
+  const createResponseShapesDetected = [];
+  const headerIdentityCandidates = [];
+  const forbiddenClientUidCandidatesDetected = [];
   for (const artifact of manifest.artifacts || []) {
-    if (!artifact || artifact.type !== "CFDI_CREATE_REQUEST" || !artifact.path) continue;
+    if (!artifact || !artifact.path) continue;
     const abs = path.resolve(root, artifact.path);
     if (!isInside(runtimeDir, abs)) continue;
-    const requestJson = readJsonIfPossible(abs);
-    const receptorUid = getNested(requestJson, ["body", "Receptor", "UID"]);
-    if (receptorUid) createRequestReceptorUidsByDraft[artifact.draft_id || "UNKNOWN"] = receptorUid;
+    if (artifact.type === "CFDI_CREATE_REQUEST") {
+      const requestJson = readJsonIfPossible(abs);
+      const receptorUid = getNested(requestJson, ["body", "Receptor", "UID"]);
+      if (receptorUid) createRequestReceptorUidsByDraft[artifact.draft_id || "UNKNOWN"] = receptorUid;
+    }
+    if (artifact.type === "CFDI_CREATE_RESPONSE" || artifact.type === "CFDI_LOOKUP_RESPONSE") {
+      const responseJson = readJsonIfPossible(abs);
+      if (responseJson) {
+        const shapeLines = collectShapeLines(responseJson).slice(0, 120);
+        if (artifact.type === "CFDI_CREATE_RESPONSE") {
+          createResponseShapesDetected.push({
+            draft_id: artifact.draft_id || null,
+            path_count: shapeLines.length,
+            paths: shapeLines,
+          });
+        }
+        headerIdentityCandidates.push(...collectHeaderIdentityCandidatesFromResponse(responseJson).map((candidate) => ({
+          ...candidate,
+          draft_id: artifact.draft_id || null,
+          artifact_type: artifact.type,
+        })));
+        for (const line of shapeLines) {
+          if (line.includes("FORBIDDEN_CLIENT_UID_SOURCE")) {
+            forbiddenClientUidCandidatesDetected.push({
+              draft_id: artifact.draft_id || null,
+              artifact_type: artifact.type,
+              path: line.replace(/: .*/, ""),
+            });
+          }
+        }
+      }
+    }
   }
   const possibleClientUidUsedAsCfdiUid = attempts
     .filter((attempt) => {
@@ -191,9 +237,17 @@ function analyze(runtimeArg = process.argv[2]) {
   ));
   const documentsByDraftId = {};
   const documentsByInvoiceId = {};
+  const cfdiIdentitySource = {};
   for (const attempt of attempts) {
     increment(documentsByDraftId, attempt.draft_id);
     increment(documentsByInvoiceId, attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id);
+    increment(cfdiIdentitySource, attempt.cfdi_identity_source || (attempt.identity_ambiguous ? "ambiguous" : "missing"));
+    if (Array.isArray(attempt.header_identity_candidates)) {
+      headerIdentityCandidates.push(...attempt.header_identity_candidates.map((candidate) => ({
+        ...candidate,
+        draft_id: attempt.draft_id || null,
+      })));
+    }
   }
 
   const errors = [...scan.findings];
@@ -227,6 +281,11 @@ function analyze(runtimeArg = process.argv[2]) {
     pac_invoice_ids: Array.isArray(summary.pac_invoice_ids) && summary.pac_invoice_ids.length ? summary.pac_invoice_ids : attemptPacInvoiceIds,
     sandbox_uuids: Array.isArray(summary.sandbox_uuids) && summary.sandbox_uuids.length ? summary.sandbox_uuids : attemptUuids,
     xml_uuids: attemptXmlUuids,
+    create_response_shapes_detected: createResponseShapesDetected,
+    header_identity_candidates: headerIdentityCandidates,
+    forbidden_client_uid_candidates_detected: forbiddenClientUidCandidatesDetected,
+    cfdi_identity_source: cfdiIdentitySource,
+    identity_ambiguous: Number(summary.identity_ambiguous || attempts.filter((attempt) => attempt.identity_ambiguous).length),
     possible_client_uid_used_as_cfdi_uid: possibleClientUidUsedAsCfdiUid,
     duplicate_invoice_ids: duplicateInvoiceIds,
     documents_by_draft_id: documentsByDraftId,
@@ -266,6 +325,11 @@ function printResult(result) {
   console.log(`Identidades faltantes: ${result.identity_missing}`);
   console.log(`XML UUID encontrados: ${result.xml_uuid_found}`);
   console.log(`Lookup identity encontrados: ${result.lookup_identity_found}`);
+  console.log(`Create response shapes detectados: ${result.create_response_shapes_detected.length}`);
+  console.log(`Header identity candidates: ${result.header_identity_candidates.length}`);
+  console.log(`Forbidden client UID candidates: ${result.forbidden_client_uid_candidates_detected.length}`);
+  console.log(`CFDI identity source: ${JSON.stringify(result.cfdi_identity_source)}`);
+  console.log(`Identity ambiguous: ${result.identity_ambiguous}`);
   console.log(`CFDI UIDs: ${result.cfdi_uids.join(", ") || "none"}`);
   console.log(`PAC invoice IDs: ${result.pac_invoice_ids.join(", ") || "none"}`);
   console.log(`UUIDs demo/sandbox: ${result.sandbox_uuids.join(", ") || "none"}`);

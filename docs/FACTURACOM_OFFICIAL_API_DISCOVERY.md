@@ -79,6 +79,12 @@ Politica local:
 No se agrego transporte HTTP al mapper. La implementacion real debe vivir en el
 adapter sandbox y pasar por 6A.6 con opt-in explicito.
 
+No quedo documentado en las fuentes locales un endpoint oficial de listado o
+busqueda estricta de CFDI recien creado por serie, folio, receptor, fecha,
+rango de fechas, total, RFC receptor o comentarios. Por eso el fallback
+post-create por busqueda queda apagado por defecto. Solo puede activarse si una
+fase posterior confirma endpoint oficial y criterios suficientemente estrictos.
+
 ## D. Campos Requeridos Para CFDI
 
 ### Crear CFDI 4.0
@@ -252,10 +258,13 @@ Storage Engine no es timbrado productivo, sino normalizar identidad:
 El extractor CFDI nunca toma `Receptor.UID`, `client_uid`,
 `client-uids.local.json`, headers, request body ni payload canonical como
 `cfdi_uid`. `extractCfdiUid` solo revisa respuestas CFDI (`data`, `Data`,
-`response`, `respuestaapi` o `rawText` JSON parseable). Si create devuelve OK
-pero no hay `cfdi_uid`, `uuid` ni `pac_invoice_id`, el smoke marca
-`CREATE_OK_IDENTITY_MISSING`, no incrementa `successful` y el analyzer reporta
-`identity_missing`.
+`response`, `respuestaapi` o `rawText` JSON parseable). Fase 6A.7C agrega
+headers de respuesta sanitizados; `Location` puede registrarse como candidato
+de identidad si contiene UID/UUID, pero nunca se usan headers de request.
+
+Si create devuelve OK pero no hay `cfdi_uid`, `uuid` ni `pac_invoice_id`, el
+smoke marca `CREATE_OK_IDENTITY_MISSING`, no incrementa `successful` y el
+analyzer reporta `identity_missing`.
 
 El UUID puede no venir en la respuesta de `POST /v4/cfdi40/create`. El smoke lo
 busca en estructuras anidadas de create, lookup, `respuestaapi`, timbre fiscal y
@@ -376,5 +385,16 @@ ambiguos, si existe `client-uids.local.json`, CFDI UIDs, UUIDs,
 `pac_invoice_id`, identidades completas/parciales/faltantes, IDs duplicados por
 draft y UUID encontrado en XML. La falta de UUID se reporta como observabilidad,
 no como error de seguridad.
+
+Inspector de shape local:
+
+```powershell
+node scripts/inspect-facturacom-sandbox-response-shape.js
+```
+
+Este comando no llama Factura.com. Lee artifacts locales runtime y muestra solo
+shape: rutas de campos, keys, tipos, longitudes aproximadas y marcadores
+`uid-like`, `uuid-like`, `rfc-like` o `FORBIDDEN_CLIENT_UID_SOURCE`. No imprime
+valores completos, XML/PDF completos, credenciales ni headers de request.
 
 Produccion sigue bloqueada aunque el host oficial este documentado.

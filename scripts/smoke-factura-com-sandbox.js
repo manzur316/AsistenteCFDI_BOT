@@ -13,6 +13,7 @@ const {
 const root = path.resolve(__dirname, "..");
 const DEFAULT_RUNTIME_DIR = path.join(root, "runtime", "facturacom-sandbox");
 const SCHEMA_VERSION = "facturacom_sandbox_smoke.v1";
+const OFFICIAL_POST_CREATE_SEARCH_DOCUMENTED = false;
 const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
 const RFC_PATTERN = /^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/i;
 
@@ -112,6 +113,7 @@ function buildSmokeConfig(env = {}) {
     moneda: envValue(env, "FACTURACOM_SANDBOX_MONEDA") || "MXN",
     lugarExpedicion: envValue(env, "FACTURACOM_SANDBOX_LUGAR_EXPEDICION"),
     emitterRegimenFiscal: envValue(env, "FACTURACOM_SANDBOX_EMITTER_REGIMEN_FISCAL") || "626",
+    postCreateSearchDocumented: false,
   };
   if (live) assertFacturaComSandboxEnv(env);
   return config;
@@ -169,6 +171,8 @@ function buildCanonicalScenario(fixture, client) {
 }
 
 function mapScenarioToFacturaCom(scenario, clientUid, config) {
+  const draftId = scenario.canonicalDraft?.draft_id || scenario.invoice?.draft_id || "DRAFT-UNKNOWN";
+  const internalInvoiceId = `INTERNAL-${safeId(draftId)}`;
   return mapCanonicalInvoiceToFacturaComPayload(scenario.invoice, {
     canonicalDraft: scenario.canonicalDraft,
     canonicalPacRequest: scenario.canonicalPacRequest,
@@ -181,6 +185,7 @@ function mapScenarioToFacturaCom(scenario, clientUid, config) {
       Moneda: config.moneda,
       LugarExpedicion: config.lugarExpedicion,
       EnviarCorreo: false,
+      Comentarios: `SANDBOX_DEMO ${draftId} ${internalInvoiceId}`,
     },
     uso_cfdi: config.usoCfdi,
     emitter_regimen_fiscal: config.emitterRegimenFiscal,
@@ -463,9 +468,13 @@ function isForbiddenCfdiUidCandidate(candidate = {}) {
   return false;
 }
 
-function extractCfdiUid(response = {}) {
-  const candidates = collectCfdiResponseFieldCandidates(response, ["UID", "uid", "Uid", "cfdi_uid", "CFDI_UID"])
+function collectCfdiIdentityFieldCandidates(response = {}, wantedKeys = []) {
+  return collectCfdiResponseFieldCandidates(response, wantedKeys)
     .filter((candidate) => !isForbiddenCfdiUidCandidate(candidate));
+}
+
+function extractCfdiUid(response = {}) {
+  const candidates = collectCfdiIdentityFieldCandidates(response, ["UID", "uid", "Uid", "cfdi_uid", "CFDI_UID"]);
   return pickBestFieldCandidate(candidates, (candidate) => {
     const key = String(candidate.key).toLowerCase();
     const pathText = String(candidate.path || "").toLowerCase();
@@ -572,15 +581,43 @@ function extractUuid(response = {}) {
   return null;
 }
 
+function extractUuidFromCfdiResponse(response = {}) {
+  const candidates = collectCfdiIdentityFieldCandidates(response, [
+    "UUID",
+    "uuid",
+    "Uuid",
+    "FolioFiscal",
+    "folio_fiscal",
+  ]);
+  const fromFields = pickBestFieldCandidate(candidates, (candidate) => {
+    const key = String(candidate.key).toLowerCase();
+    const pathText = String(candidate.path || "").toLowerCase();
+    return (key === "uuid" || key === "foliofiscal" || key === "folio_fiscal" ? 120 : 60)
+      + (candidate.cfdiLike ? 80 : 0)
+      + (pathText.includes("timbrefiscaldigital") ? 80 : 0)
+      + (pathText.includes("comprobante") || pathText.includes("respuestaapi") ? 40 : 0)
+      - (candidate.clientLike ? 120 : 0);
+  }, validUuid);
+  if (fromFields) return fromFields;
+
+  for (const rootItem of cfdiResponseRoots(response)) {
+    for (const item of collectStrings(rootItem.value)) {
+      const fromXml = extractUuidFromXmlText(item.value);
+      if (fromXml) return fromXml;
+    }
+  }
+  return null;
+}
+
 function extractSerie(response = {}) {
-  return pickBestFieldCandidate(collectFieldCandidates(response, ["Serie", "serie"]), (candidate) => {
+  return pickBestFieldCandidate(collectCfdiIdentityFieldCandidates(response, ["Serie", "serie"]), (candidate) => {
     const pathText = String(candidate.path || "").toLowerCase();
     return 80 + (candidate.cfdiLike ? 50 : 0) + (pathText.includes("comprobante") ? 30 : 0) - (candidate.clientLike ? 80 : 0);
   }, (value) => text(value));
 }
 
 function extractFolio(response = {}) {
-  return pickBestFieldCandidate(collectFieldCandidates(response, ["Folio", "folio"]), (candidate) => {
+  return pickBestFieldCandidate(collectCfdiIdentityFieldCandidates(response, ["Folio", "folio"]), (candidate) => {
     const pathText = String(candidate.path || "").toLowerCase();
     return 80 + (candidate.cfdiLike ? 50 : 0) + (pathText.includes("comprobante") ? 30 : 0) - (candidate.clientLike ? 80 : 0);
   }, (value) => {
@@ -591,7 +628,7 @@ function extractFolio(response = {}) {
 }
 
 function extractPacInvoiceId(response = {}) {
-  return pickBestFieldCandidate(collectFieldCandidates(response, [
+  return pickBestFieldCandidate(collectCfdiIdentityFieldCandidates(response, [
     "id",
     "ID",
     "Id",
@@ -617,7 +654,7 @@ function extractPacInvoiceId(response = {}) {
 }
 
 function extractStatus(response = {}) {
-  return pickBestFieldCandidate(collectFieldCandidates(response, [
+  return pickBestFieldCandidate(collectCfdiIdentityFieldCandidates(response, [
     "status",
     "Status",
     "estado",
@@ -630,14 +667,86 @@ function extractStatus(response = {}) {
 }
 
 function extractCfdiIdentity(response = {}) {
+  return extractCfdiIdentityFromCreateResponse(response);
+}
+
+function extractCfdiIdentityFromCreateResponse(response = {}) {
   return {
     cfdi_uid: extractCfdiUid(response),
-    uuid: extractUuid(response),
+    uuid: extractUuidFromCfdiResponse(response),
     pac_invoice_id: extractPacInvoiceId(response),
     serie: extractSerie(response),
     folio: extractFolio(response),
     status: extractStatus(response),
   };
+}
+
+function extractCfdiIdentityFromLookupResponse(response = {}) {
+  return extractCfdiIdentityFromCreateResponse(response);
+}
+
+function uidLikeFromLocation(location) {
+  const cleaned = text(location);
+  if (!cleaned || validUuid(cleaned)) return null;
+  const pathText = cleaned.split("?")[0];
+  const ignored = new Set(["api", "v1", "v3", "v4", "cfdi", "cfdi40", "uid", "uuid", "create", "xml", "pdf", "cancel"]);
+  const segments = pathText.split(/[\/#]/).map(text).filter(Boolean).reverse();
+  for (const segment of segments) {
+    if (ignored.has(segment.toLowerCase())) continue;
+    if (/^[A-Za-z0-9_-]{8,90}$/.test(segment) && !RFC_PATTERN.test(segment)) return segment;
+  }
+  return null;
+}
+
+function extractCfdiIdentityFromHeaders(response = {}) {
+  const headers = response.responseHeaders || {};
+  const location = text(response.location || headers.location || headers.Location);
+  const uuid = validUuid(location);
+  const cfdiUid = uidLikeFromLocation(location);
+  return {
+    cfdi_uid: cfdiUid,
+    uuid,
+    pac_invoice_id: null,
+    serie: null,
+    folio: null,
+    status: null,
+    header_identity_candidates: location ? [{
+      header: "location",
+      kind: uuid ? "uuid" : (cfdiUid ? "uid-like" : "unknown"),
+      length: location.length,
+      source: "response_header",
+    }] : [],
+  };
+}
+
+function extractCfdiIdentityFromXmlText(xml) {
+  return {
+    cfdi_uid: null,
+    uuid: extractUuidFromXmlText(xml),
+    pac_invoice_id: null,
+    serie: null,
+    folio: null,
+    status: null,
+  };
+}
+
+function mergeIdentityParts(...parts) {
+  return parts.reduce((merged, part) => ({
+    cfdi_uid: merged.cfdi_uid || part?.cfdi_uid || null,
+    uuid: merged.uuid || part?.uuid || null,
+    pac_invoice_id: merged.pac_invoice_id || part?.pac_invoice_id || null,
+    serie: merged.serie || part?.serie || null,
+    folio: merged.folio || part?.folio || null,
+    status: merged.status || part?.status || null,
+    header_identity_candidates: [
+      ...(merged.header_identity_candidates || []),
+      ...(part?.header_identity_candidates || []),
+    ],
+  }), {});
+}
+
+function hasClearInvoiceIdentity(identity = {}) {
+  return Boolean(identity.cfdi_uid || identity.uuid || identity.pac_invoice_id);
 }
 
 function mergeAttemptIdentity(attempt, identity = {}, source = "unknown") {
@@ -664,6 +773,12 @@ function mergeAttemptIdentity(attempt, identity = {}, source = "unknown") {
   if (!attempt.serie && identity.serie) attempt.serie = identity.serie;
   if (!attempt.folio && identity.folio) attempt.folio = identity.folio;
   if (identity.status) attempt.identity_status = identity.status;
+  if (Array.isArray(identity.header_identity_candidates) && identity.header_identity_candidates.length > 0) {
+    attempt.header_identity_candidates = [
+      ...(attempt.header_identity_candidates || []),
+      ...identity.header_identity_candidates,
+    ];
+  }
 
   const after = JSON.stringify({
     cfdi_uid: attempt.cfdi_uid,
@@ -675,6 +790,7 @@ function mergeAttemptIdentity(attempt, identity = {}, source = "unknown") {
   const changed = before !== after;
   if (changed) {
     attempt.identity_sources = Array.from(new Set([...(attempt.identity_sources || []), source]));
+    attempt.cfdi_identity_source = attempt.cfdi_identity_source || source;
   }
   attempt.identity = {
     cfdi_uid: attempt.cfdi_uid || null,
@@ -718,6 +834,10 @@ function finalizeAttemptIdentity(attempt, summary) {
     summary.pac_invoice_ids_found += 1;
     addUnique(summary.pac_invoice_ids, attempt.pac_invoice_id);
   }
+  if (Array.isArray(attempt.header_identity_candidates) && attempt.header_identity_candidates.length > 0) {
+    summary.header_identity_candidates += attempt.header_identity_candidates.length;
+  }
+  if (attempt.identity_ambiguous) summary.identity_ambiguous += 1;
   if (completeness === "complete") summary.identities_complete += 1;
   else if (completeness === "partial") summary.identities_partial += 1;
   else summary.identity_missing += 1;
@@ -808,7 +928,60 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
   return found;
 }
 
-async function processDraft({ fixture, client, config, env, uidMap, manifest, summary, requestFn = facturaComRequest }) {
+function normalizePostCreateSearchMatches(searchResult = {}) {
+  if (Array.isArray(searchResult)) return searchResult;
+  if (Array.isArray(searchResult.matches)) return searchResult.matches;
+  if (Array.isArray(searchResult.data)) return searchResult.data;
+  if (Array.isArray(searchResult.Data)) return searchResult.Data;
+  if (Array.isArray(searchResult.response)) return searchResult.response;
+  return [];
+}
+
+async function maybeRunPostCreateSearch({ attempt, body, createResponse, config, postCreateSearchFn, postCreateSearchDocumented }) {
+  const documented = Boolean(postCreateSearchDocumented || config.postCreateSearchDocumented || OFFICIAL_POST_CREATE_SEARCH_DOCUMENTED);
+  if (!documented || typeof postCreateSearchFn !== "function") {
+    attempt.post_create_search_status = "NOT_DOCUMENTED";
+    return { ok: false, reason: "not_documented" };
+  }
+  const searchResult = await postCreateSearchFn({
+    attempt,
+    body,
+    createResponse,
+    criteria: {
+      serie: body?.Serie || null,
+      receptor_uid: body?.Receptor?.UID || null,
+      total: body?.Conceptos ? null : null,
+      comentarios: body?.Comentarios || null,
+      internal_invoice_id: attempt.internal_invoice_id || null,
+      draft_id: attempt.draft_id || null,
+    },
+  });
+  const matches = normalizePostCreateSearchMatches(searchResult);
+  attempt.post_create_search_status = matches.length === 1 ? "ONE_MATCH" : (matches.length > 1 ? "AMBIGUOUS" : "NO_MATCH");
+  if (matches.length === 0) return { ok: false, reason: "no_match" };
+  if (matches.length > 1) {
+    attempt.status = "CFDI_IDENTITY_AMBIGUOUS";
+    attempt.identity_ambiguous = true;
+    attempt.warnings.push("CFDI_IDENTITY_AMBIGUOUS");
+    return { ok: false, reason: "ambiguous" };
+  }
+  const identity = extractCfdiIdentityFromLookupResponse({ data: matches[0] });
+  if (!hasClearInvoiceIdentity(identity)) return { ok: false, reason: "match_without_identity" };
+  return { ok: true, identity };
+}
+
+async function processDraft({
+  fixture,
+  client,
+  config,
+  env,
+  uidMap,
+  manifest,
+  summary,
+  requestFn = facturaComRequest,
+  postCreateSearchFn = null,
+  postCreateSearchDocumented = false,
+}) {
   const attempt = {
     draft_id: fixture.draft_id,
     internal_invoice_id: `INTERNAL-${safeId(fixture.draft_id)}`,
@@ -830,6 +1003,10 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     identity_completeness: null,
     identity_sources: [],
     identity_attempted: false,
+    cfdi_identity_source: null,
+    header_identity_candidates: [],
+    post_create_search_status: null,
+    identity_ambiguous: false,
     warnings: [],
   };
   manifest.attempts.push(attempt);
@@ -880,11 +1057,27 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
   }
 
   attempt.identity_attempted = true;
-  const createIdentity = extractCfdiIdentity(createResponse);
-  mergeAttemptIdentity(attempt, createIdentity, "create");
-  const hasClearInvoiceIdentity = Boolean(attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id);
-  if (!hasClearInvoiceIdentity) {
-    attempt.status = "CREATE_OK_IDENTITY_MISSING";
+  const createIdentity = extractCfdiIdentityFromCreateResponse(createResponse);
+  mergeAttemptIdentity(attempt, createIdentity, "create_response");
+  const headerIdentity = extractCfdiIdentityFromHeaders(createResponse);
+  mergeAttemptIdentity(attempt, headerIdentity, "response_header");
+  let hasClearIdentity = hasClearInvoiceIdentity(attempt);
+  if (!hasClearIdentity) {
+    const search = await maybeRunPostCreateSearch({
+      attempt,
+      body,
+      createResponse,
+      config,
+      postCreateSearchFn,
+      postCreateSearchDocumented,
+    });
+    if (search.ok) {
+      mergeAttemptIdentity(attempt, search.identity, "post_create_search");
+      hasClearIdentity = hasClearInvoiceIdentity(attempt);
+    }
+  }
+  if (!hasClearIdentity) {
+    if (!attempt.identity_ambiguous) attempt.status = "CREATE_OK_IDENTITY_MISSING";
     attempt.warnings.push("CFDI_UID_MISSING");
     summary.warnings.push(`cfdi_uid_missing:${fixture.draft_id}`);
     finalizeAttemptIdentity(attempt, summary);
@@ -901,8 +1094,8 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     manifest.artifacts.push({ type: "CFDI_LOOKUP_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, lookupFile).replace(/\\/g, "/"), ok: lookupResponse.ok });
     attempt.lookup_status = lookupResponse.ok ? "OK" : "ERROR";
     if (lookupResponse.ok) {
-      const lookupIdentity = extractCfdiIdentity(lookupResponse);
-      if (mergeAttemptIdentity(attempt, lookupIdentity, "lookup")) summary.lookup_identity_found += 1;
+      const lookupIdentity = extractCfdiIdentityFromLookupResponse(lookupResponse);
+      if (mergeAttemptIdentity(attempt, lookupIdentity, "lookup_response")) summary.lookup_identity_found += 1;
     }
   }
 
@@ -916,10 +1109,11 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
       manifest.artifacts.push({ type: `CFDI_${format.toUpperCase()}`, draft_id: fixture.draft_id, path: path.relative(root, artifact).replace(/\\/g, "/"), ok: downloadResponse.ok });
       if (format === "xml" && downloadResponse.ok) {
         summary.xml_downloaded += 1;
-        const xmlUuid = extractUuid(downloadResponse);
+        const xmlIdentity = extractCfdiIdentityFromXmlText(downloadResponse.rawText || JSON.stringify(downloadResponse.data));
+        const xmlUuid = xmlIdentity.uuid;
         if (xmlUuid) {
           attempt.xml_uuid = xmlUuid;
-          if (!attempt.uuid) mergeAttemptIdentity(attempt, { uuid: xmlUuid }, "xml");
+          if (!attempt.uuid) mergeAttemptIdentity(attempt, xmlIdentity, "xml");
           summary.xml_uuid_found += 1;
         }
       }
@@ -938,7 +1132,7 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     attempt.artifacts.push(path.relative(root, cancelFile).replace(/\\/g, "/"));
     manifest.artifacts.push({ type: "CFDI_CANCEL_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, cancelFile).replace(/\\/g, "/"), ok: cancelResponse.ok });
     attempt.cancel_status = cancelResponse.ok ? "OK" : "ERROR";
-    attempt.cancel_response_identity = extractCfdiIdentity(cancelResponse);
+    attempt.cancel_response_identity = extractCfdiIdentityFromLookupResponse(cancelResponse);
     mergeAttemptIdentity(attempt, attempt.cancel_response_identity, "cancel");
     if (cancelResponse.ok) summary.cancel_ok += 1;
     else summary.cancel_error += 1;
@@ -990,6 +1184,8 @@ function buildSummary(config) {
     identities_partial: 0,
     identity_missing: 0,
     possible_client_uid_used_as_cfdi_uid: 0,
+    header_identity_candidates: 0,
+    identity_ambiguous: 0,
     xml_uuid_found: 0,
     lookup_identity_found: 0,
     cfdi_uids: [],
@@ -1008,6 +1204,8 @@ async function runSmoke(env = process.env, options = {}) {
     return { skipped: true, ok: true };
   }
   const requestFn = options.requestFn || facturaComRequest;
+  const postCreateSearchFn = options.postCreateSearchFn || null;
+  const postCreateSearchDocumented = Boolean(options.postCreateSearchDocumented);
 
   const runtimeDir = ensureRuntimeDir(config.runtimeDir);
   const manifest = buildManifest({ ...config, runtimeDir });
@@ -1019,7 +1217,18 @@ async function runSmoke(env = process.env, options = {}) {
     const batch = drafts.slice(0, config.batchSize);
     for (const fixture of batch) {
       const client = clientById.get(fixture.client_ref || fixture.client_id);
-      await processDraft({ fixture, client, config: { ...config, runtimeDir }, env, uidMap, manifest, summary, requestFn });
+      await processDraft({
+        fixture,
+        client,
+        config: { ...config, runtimeDir },
+        env,
+        uidMap,
+        manifest,
+        summary,
+        requestFn,
+        postCreateSearchFn,
+        postCreateSearchDocumented,
+      });
     }
   } catch (error) {
     summary.errors += 1;
@@ -1045,6 +1254,10 @@ if (require.main === module) {
 module.exports = {
   buildSmokeConfig,
   extractCfdiIdentity,
+  extractCfdiIdentityFromCreateResponse,
+  extractCfdiIdentityFromHeaders,
+  extractCfdiIdentityFromLookupResponse,
+  extractCfdiIdentityFromXmlText,
   extractClientUid,
   extractCfdiUid,
   extractFolio,

@@ -154,6 +154,20 @@ function sanitizeFacturaComError(error = {}, env = {}) {
   return sanitizeValue(source, env);
 }
 
+function normalizeResponseHeaders(headers = {}, env = {}) {
+  const out = {};
+  if (headers && typeof headers.forEach === "function") {
+    headers.forEach((value, key) => {
+      out[String(key).toLowerCase()] = sanitizeValue(value, env);
+    });
+    return out;
+  }
+  for (const [key, value] of Object.entries(headers || {})) {
+    out[String(key).toLowerCase()] = sanitizeValue(Array.isArray(value) ? value.join(", ") : value, env);
+  }
+  return out;
+}
+
 async function requestWithFetch({ url, method, headers, body, timeoutMs }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -164,6 +178,7 @@ async function requestWithFetch({ url, method, headers, body, timeoutMs }) {
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
     });
+    const responseHeaders = normalizeResponseHeaders(response.headers);
     const contentType = response.headers.get("content-type") || "";
     const rawText = await response.text();
     let data = rawText;
@@ -179,6 +194,8 @@ async function requestWithFetch({ url, method, headers, body, timeoutMs }) {
       status: response.status,
       statusText: response.statusText,
       contentType,
+      responseHeaders,
+      location: responseHeaders.location || null,
       data,
       rawText,
     };
@@ -204,6 +221,7 @@ function requestWithHttps({ url, method, headers, body, timeoutMs }) {
       response.on("end", () => {
         const rawText = Buffer.concat(chunks).toString("utf8");
         const contentType = response.headers["content-type"] || "";
+        const responseHeaders = normalizeResponseHeaders(response.headers);
         let data = rawText;
         if (String(contentType).includes("application/json") || /^[\s\r\n]*[{[]/.test(rawText)) {
           try {
@@ -217,6 +235,8 @@ function requestWithHttps({ url, method, headers, body, timeoutMs }) {
           status: response.statusCode,
           statusText: response.statusMessage,
           contentType,
+          responseHeaders,
+          location: responseHeaders.location || null,
           data,
           rawText,
         });
@@ -255,6 +275,8 @@ async function facturaComRequest({ method, path, body, env } = {}) {
   return {
     ...response,
     request: sanitizeValue({ method: httpMethod, url, body }, env),
+    responseHeaders: sanitizeValue(response.responseHeaders || {}, env),
+    location: sanitizeValue(response.location || response.responseHeaders?.location || null, env),
     data: sanitizeFacturaComResponse(response.data, env),
     rawText: redactString(response.rawText || "", env),
   };
@@ -265,6 +287,7 @@ module.exports = {
   assertFacturaComSandboxEnv,
   buildFacturaComHeaders,
   facturaComRequest,
+  normalizeResponseHeaders,
   sanitizeFacturaComError,
   sanitizeFacturaComResponse,
   sanitizeValue,

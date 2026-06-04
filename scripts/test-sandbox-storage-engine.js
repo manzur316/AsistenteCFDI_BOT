@@ -256,6 +256,8 @@ check("build_index_summary_y_analyze", () => {
   assert.strictEqual(summary.with_pdf, 1);
   assert.strictEqual(analysis.total_documents, 2);
   assert.strictEqual(analysis.identity_internal, 1);
+  assert.strictEqual(analysis.created, 0);
+  assert.strictEqual(analysis.error, 1);
   assert.strictEqual(analysis.sensitive_findings.length, 0);
   return `${summary.total_documents} docs`;
 });

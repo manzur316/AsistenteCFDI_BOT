@@ -12,6 +12,7 @@ const {
 const {
   buildSmokeConfig,
   extractCfdiIdentity,
+  extractCfdiIdentityFromHeaders,
   extractClientUid,
   extractCfdiUid,
   extractUid,
@@ -20,6 +21,7 @@ const {
   runSmoke,
 } = require("./smoke-factura-com-sandbox");
 const { analyze } = require("./analyze-factura-com-sandbox-results");
+const { inspectRuntime } = require("./inspect-facturacom-sandbox-response-shape");
 
 const root = path.resolve(__dirname, "..");
 const tempRoot = path.join(root, "runtime", "test-facturacom-sandbox-smoke-safety");
@@ -352,6 +354,76 @@ check("analyzer_detecta_client_uid_como_cfdi_uid", () => {
   return "detected";
 });
 
+check("inspector_no_imprime_valores_completos_y_marca_forbidden", () => {
+  const runtimeDir = path.join(tempRoot, "inspect-runtime");
+  const responsePath = path.join(runtimeDir, "DRAFT-SHAPE-create-cfdi-response.json");
+  writeJson(responsePath, {
+    ok: true,
+    status: 200,
+    data: {
+      request: {
+        body: {
+          Receptor: { UID: "UID-CLIENT-SHAPE-SECRET", RFC: "XAXX010101000" },
+        },
+      },
+      Data: { UID: "CFDI-UID-SHAPE-SECRET" },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    artifacts: [{
+      type: "CFDI_CREATE_RESPONSE",
+      draft_id: "DRAFT-SHAPE",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+    }],
+    attempts: [],
+  });
+  const output = inspectRuntime(runtimeDir);
+  assert(output.includes("FORBIDDEN_CLIENT_UID_SOURCE"), output);
+  assert(output.includes("uid-like"), output);
+  assert(!output.includes("UID-CLIENT-SHAPE-SECRET"), "no debe imprimir client UID completo");
+  assert(!output.includes("CFDI-UID-SHAPE-SECRET"), "no debe imprimir cfdi UID completo");
+  return "shape safe";
+});
+
+check("analyzer_reporta_shapes_headers_y_forbidden_sources", () => {
+  const runtimeDir = path.join(tempRoot, "shape-analyzer-runtime");
+  const responsePath = path.join(runtimeDir, "DRAFT-SHAPE-create-cfdi-response.json");
+  writeJson(responsePath, {
+    ok: true,
+    status: 201,
+    responseHeaders: {
+      location: "https://sandbox.factura.com/api/v4/cfdi/uid/CFDI-UID-HEADER-SHAPE",
+      "content-type": "application/json",
+    },
+    data: {
+      request: {
+        body: {
+          Receptor: { UID: "UID-CLIENT-SHAPE", RFC: "XAXX010101000" },
+        },
+      },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    artifacts: [{
+      type: "CFDI_CREATE_RESPONSE",
+      draft_id: "DRAFT-SHAPE",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+    }],
+    attempts: [],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 0,
+    successful: 0,
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.create_response_shapes_detected.length, 1);
+  assert.strictEqual(result.header_identity_candidates.length, 1);
+  assert.strictEqual(result.forbidden_client_uid_candidates_detected.length, 1);
+  assert.strictEqual(result.sensitive_findings.length, 0);
+  return "shape analysis";
+});
+
 check("download_y_cancel_apagados_por_default", () => {
   const config = buildSmokeConfig({ FACTURACOM_SANDBOX_LIVE: "0" });
   assert.strictEqual(config.downloadTest, false);
@@ -465,6 +537,17 @@ check("extract_cfdi_identity_normaliza_campos", () => {
   assert.strictEqual(identity.pac_invoice_id, "PAC-INVOICE-123");
   assert.strictEqual(identity.status, "active");
   return "identity";
+});
+
+check("response_header_location_uid_like_es_candidate", () => {
+  const identity = extractCfdiIdentityFromHeaders({
+    responseHeaders: {
+      location: "https://sandbox.factura.com/api/v4/cfdi/uid/CFDI-UID-HEADER-123",
+    },
+  });
+  assert.strictEqual(identity.cfdi_uid, "CFDI-UID-HEADER-123");
+  assert.strictEqual(identity.header_identity_candidates[0].kind, "uid-like");
+  return "location";
 });
 
 check("find_client_uid_elige_por_rfc_client_id_y_nombre", () => {
@@ -641,6 +724,135 @@ checkAsync("identity_se_completa_desde_xml_si_lookup_no_trae_uuid", async () => 
   assert.strictEqual(result.summary.xml_uuid_found, 1);
   assert.strictEqual(result.summary.uuids_found, 1);
   return "xml identity";
+});
+
+checkAsync("comentarios_incluye_draft_id_internal_invoice_id", async () => {
+  const runtimeDir = path.join(tempRoot, "comments-runtime");
+  let createBody = null;
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath, body }) => {
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      createBody = body;
+      return { ok: true, status: 200, data: { Data: { UID: "CFDI-UID-COMMENTS" } } };
+    }
+    if (method === "GET" && requestPath === "/v4/cfdi/uid/CFDI-UID-COMMENTS") {
+      return { ok: true, status: 200, data: { Data: { UID: "CFDI-UID-COMMENTS" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+
+  await runSmoke(env, { requestFn });
+  assert(createBody.Comentarios.includes("SANDBOX_DEMO"), createBody.Comentarios);
+  assert(createBody.Comentarios.includes("DRAFT-DEMO-CCTV-SERVICE"), createBody.Comentarios);
+  assert(createBody.Comentarios.includes("INTERNAL-DRAFT-DEMO-CCTV-SERVICE"), createBody.Comentarios);
+  return "comentarios";
+});
+
+checkAsync("fallback_search_no_se_ejecuta_si_no_esta_documentado", async () => {
+  const runtimeDir = path.join(tempRoot, "search-not-documented-runtime");
+  let searchCalls = 0;
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { response: "success" } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+  const postCreateSearchFn = async () => {
+    searchCalls += 1;
+    return { matches: [{ UID: "CFDI-UID-SHOULD-NOT-RUN" }] };
+  };
+
+  const result = await runSmoke(env, { requestFn, postCreateSearchFn });
+  assert.strictEqual(searchCalls, 0);
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.manifest.attempts[0].post_create_search_status, "NOT_DOCUMENTED");
+  return "not documented";
+});
+
+checkAsync("fallback_search_un_match_asigna_cfdi_uid", async () => {
+  const runtimeDir = path.join(tempRoot, "search-one-match-runtime");
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { response: "success" } };
+    }
+    if (method === "GET" && requestPath === "/v4/cfdi/uid/CFDI-UID-SEARCH-ONE") {
+      return { ok: true, status: 200, data: { Data: { UID: "CFDI-UID-SEARCH-ONE" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+  const postCreateSearchFn = async () => ({ matches: [{ UID: "CFDI-UID-SEARCH-ONE" }] });
+
+  const result = await runSmoke(env, { requestFn, postCreateSearchFn, postCreateSearchDocumented: true });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 1);
+  assert.strictEqual(attempt.cfdi_uid, "CFDI-UID-SEARCH-ONE");
+  assert.strictEqual(attempt.cfdi_identity_source, "post_create_search");
+  assert.strictEqual(attempt.post_create_search_status, "ONE_MATCH");
+  return "one match";
+});
+
+checkAsync("fallback_search_multiple_matches_marca_ambiguous", async () => {
+  const runtimeDir = path.join(tempRoot, "search-ambiguous-runtime");
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { response: "success" } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+  const postCreateSearchFn = async () => ({ matches: [{ UID: "CFDI-UID-A" }, { UID: "CFDI-UID-B" }] });
+
+  const result = await runSmoke(env, { requestFn, postCreateSearchFn, postCreateSearchDocumented: true });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.summary.identity_ambiguous, 1);
+  assert.strictEqual(attempt.status, "CFDI_IDENTITY_AMBIGUOUS");
+  assert.strictEqual(attempt.post_create_search_status, "AMBIGUOUS");
+  return "ambiguous";
+});
+
+checkAsync("create_identity_desde_response_header_cuenta_success", async () => {
+  const runtimeDir = path.join(tempRoot, "header-identity-runtime");
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return {
+        ok: true,
+        status: 201,
+        responseHeaders: { location: "https://sandbox.factura.com/api/v4/cfdi/uid/CFDI-UID-HEADER-SUCCESS" },
+        data: { response: "success" },
+      };
+    }
+    if (method === "GET" && requestPath === "/v4/cfdi/uid/CFDI-UID-HEADER-SUCCESS") {
+      return { ok: true, status: 200, data: { Data: { UID: "CFDI-UID-HEADER-SUCCESS" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 1);
+  assert.strictEqual(attempt.cfdi_uid, "CFDI-UID-HEADER-SUCCESS");
+  assert.strictEqual(attempt.cfdi_identity_source, "response_header");
+  assert.strictEqual(result.summary.header_identity_candidates, 1);
+  return "header success";
 });
 
 checkAsync("create_ok_solo_receptor_uid_no_cuenta_como_cfdi_identity", async () => {
