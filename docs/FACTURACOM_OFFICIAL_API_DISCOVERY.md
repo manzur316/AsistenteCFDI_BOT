@@ -147,7 +147,8 @@ propios de Factura.com:
 - `apellidos`
 
 Para el bot, el smoke sandbox obtiene y almacena el `UID` sandbox del cliente
-demo solo en runtime local. La prioridad es:
+demo solo en runtime local como `client_uid`. Este valor pertenece al receptor
+y no debe confundirse con el UID del CFDI. La prioridad para resolver cliente es:
 
 1. UID existente desde variable local o `client-uids.local.json`.
 2. UID devuelto por `POST /v1/clients/create`.
@@ -238,13 +239,23 @@ Los smoke live sandbox locales ya validaron create, descarga XML/PDF,
 cancelacion sandbox y batch de 5 CFDI sin findings sensibles. El pendiente para
 Storage Engine no es timbrado productivo, sino normalizar identidad:
 
-- `cfdi_uid` / `uid` del proveedor.
+- `client_uid`: UID del cliente/receptor enviado en `Receptor.UID`.
+- `cfdi_uid`: UID del CFDI/factura devuelto por create/lookup CFDI.
 - `uuid` fiscal.
 - `pac_invoice_id` cuando exista.
+- `internal_invoice_id` y `draft_id` internos.
 - `serie` y `folio`.
 - `status` / `lookup_status`.
 - `cancel_status` y posible identidad dentro de la respuesta de cancelacion.
 - referencias runtime de XML/PDF.
+
+El extractor CFDI nunca toma `Receptor.UID`, `client_uid`,
+`client-uids.local.json`, headers, request body ni payload canonical como
+`cfdi_uid`. `extractCfdiUid` solo revisa respuestas CFDI (`data`, `Data`,
+`response`, `respuestaapi` o `rawText` JSON parseable). Si create devuelve OK
+pero no hay `cfdi_uid`, `uuid` ni `pac_invoice_id`, el smoke marca
+`CREATE_OK_IDENTITY_MISSING`, no incrementa `successful` y el analyzer reporta
+`identity_missing`.
 
 El UUID puede no venir en la respuesta de `POST /v4/cfdi40/create`. El smoke lo
 busca en estructuras anidadas de create, lookup, `respuestaapi`, timbre fiscal y
@@ -358,10 +369,12 @@ El analizador:
 node scripts/analyze-factura-com-sandbox-results.js
 ```
 
-falla si detecta credenciales, produccion, RFC no permitido o artifacts fuera de
-`runtime/`. Tambien reporta clientes creados, UIDs encontrados, UIDs faltantes,
-clientes ambiguos, si existe `client-uids.local.json`, CFDI UIDs, UUIDs,
-`pac_invoice_id`, identidades completas/parciales/faltantes y UUID encontrado en
-XML. La falta de UUID se reporta como observabilidad, no como error de seguridad.
+falla si detecta credenciales, produccion, RFC no permitido, artifacts fuera de
+`runtime/` o un posible `client_uid` usado como `cfdi_uid`. Tambien reporta
+clientes creados, UIDs de cliente encontrados, UIDs faltantes, clientes
+ambiguos, si existe `client-uids.local.json`, CFDI UIDs, UUIDs,
+`pac_invoice_id`, identidades completas/parciales/faltantes, IDs duplicados por
+draft y UUID encontrado en XML. La falta de UUID se reporta como observabilidad,
+no como error de seguridad.
 
 Produccion sigue bloqueada aunque el host oficial este documentado.

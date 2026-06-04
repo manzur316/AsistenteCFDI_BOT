@@ -63,22 +63,36 @@ function parseDateParts(value) {
 }
 
 function identityStatus(attempt = {}) {
-  const hasProviderUid = Boolean(text(attempt.cfdi_uid || attempt.uid));
+  const hasProviderUid = Boolean(text(attempt.cfdi_uid));
   const hasUuid = Boolean(text(attempt.uuid));
   if (hasProviderUid && hasUuid) return "COMPLETE";
-  if (hasProviderUid) return "PARTIAL_PROVIDER_UID";
+  if (hasProviderUid || text(attempt.pac_invoice_id) || hasUuid) return "PARTIAL_PROVIDER_UID";
+  if (text(attempt.internal_invoice_id) || text(attempt.draft_id)) return "PARTIAL_INTERNAL_ID";
   return "MISSING";
 }
 
 function documentStatus(attempt = {}) {
   if (attempt.cancel_status === "OK" || /cancel/i.test(String(attempt.status || ""))) return "CANCELLED";
   if (/error|missing|ambiguous|invalid|failed/i.test(String(attempt.status || ""))) return "ERROR";
-  if (identityStatus(attempt) === "MISSING") return "PARTIAL";
+  if (identityStatus(attempt) === "MISSING" || identityStatus(attempt) === "PARTIAL_INTERNAL_ID") return "PARTIAL";
   return "CREATED";
 }
 
-function invoiceIdForAttempt(attempt = {}) {
-  return safeSegment(attempt.cfdi_uid || attempt.uid || attempt.uuid || attempt.pac_invoice_id || attempt.draft_id || "INVOICE-UNKNOWN");
+function providerInvoiceIdForAttempt(attempt = {}) {
+  return text(attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id);
+}
+
+function internalInvoiceIdForAttempt(attempt = {}, context = {}) {
+  const attemptIndex = context.attemptIndex ?? attempt.attempt_index ?? 0;
+  return text(attempt.internal_invoice_id)
+    || (text(attempt.draft_id) ? `${text(attempt.draft_id)}__attempt-${attemptIndex}` : null)
+    || `INVOICE-UNKNOWN__attempt-${attemptIndex}`;
+}
+
+function invoiceIdForAttempt(attempt = {}, context = {}) {
+  return safeSegment(context.invoiceIdOverride
+    || providerInvoiceIdForAttempt(attempt)
+    || internalInvoiceIdForAttempt(attempt, context));
 }
 
 function buildStoragePathForAttempt(attempt = {}, context = {}) {
@@ -86,7 +100,7 @@ function buildStoragePathForAttempt(attempt = {}, context = {}) {
   const parts = parseDateParts(context.createdAt || attempt.created_at || context.manifest?.created_at);
   const emitterId = safeSegment(context.emitterId || attempt.emitter_id || "EMITTER-DEMO");
   const clientId = safeSegment(context.clientId || attempt.client_id || "CLIENT-UNKNOWN");
-  const invoiceId = invoiceIdForAttempt(attempt);
+  const invoiceId = invoiceIdForAttempt(attempt, context);
   const invoiceDir = path.join(
     storageRoot,
     "emitters",
@@ -107,6 +121,7 @@ function buildStoragePathForAttempt(attempt = {}, context = {}) {
     year: parts.year,
     month: parts.month,
     invoiceId,
+    baseInvoiceId: safeSegment(providerInvoiceIdForAttempt(attempt) || internalInvoiceIdForAttempt(attempt, context)),
   };
 }
 
@@ -184,7 +199,13 @@ function buildStoredInvoiceManifest(attempt = {}, artifacts = [], context = {}) 
     month: pathInfo.month,
     draft_id: attempt.draft_id || null,
     invoice_id: pathInfo.invoiceId,
-    cfdi_uid: text(attempt.cfdi_uid || attempt.uid),
+    storage_invoice_id: pathInfo.invoiceId,
+    base_invoice_id: pathInfo.baseInvoiceId,
+    identity_collision: Boolean(context.identityCollision),
+    identity_collision_warning: context.identityCollision ? "invoice_id_collision" : null,
+    client_uid: text(attempt.client_uid),
+    internal_invoice_id: text(attempt.internal_invoice_id),
+    cfdi_uid: text(attempt.cfdi_uid),
     uuid: text(attempt.uuid),
     pac_invoice_id: text(attempt.pac_invoice_id),
     serie: text(attempt.serie),
@@ -233,6 +254,11 @@ function buildStorageIndex(storageRoot = DEFAULT_STORAGE_ROOT) {
       month: manifest.month,
       status: manifest.status,
       identity_status: manifest.identity_status,
+      storage_invoice_id: manifest.storage_invoice_id || manifest.invoice_id,
+      base_invoice_id: manifest.base_invoice_id || manifest.invoice_id,
+      identity_collision: Boolean(manifest.identity_collision),
+      client_uid: manifest.client_uid,
+      internal_invoice_id: manifest.internal_invoice_id,
       cfdi_uid: manifest.cfdi_uid,
       uuid: manifest.uuid,
       pac_invoice_id: manifest.pac_invoice_id,
@@ -276,13 +302,22 @@ function buildStorageSummary(index = {}) {
     with_pdf: 0,
     identity_complete: 0,
     identity_partial: 0,
+    identity_internal: 0,
     identity_missing: 0,
+    identity_collisions: 0,
+    duplicate_invoice_ids: {},
+    documents_by_draft_id: {},
+    documents_by_invoice_id: {},
     human_review_warning: HUMAN_REVIEW_WARNING,
   };
 
+  const invoiceIdCounts = {};
   for (const document of documents) {
     increment(summary.by_client, document.client_id);
     increment(summary.by_month, `${document.year}-${document.month}`);
+    increment(summary.documents_by_draft_id, document.draft_id || "UNKNOWN");
+    increment(summary.documents_by_invoice_id, document.base_invoice_id || document.invoice_id || "UNKNOWN");
+    increment(invoiceIdCounts, document.base_invoice_id || document.invoice_id || "UNKNOWN");
     if (document.status === "CREATED") summary.created += 1;
     else if (document.status === "CANCELLED") summary.cancelled += 1;
     else if (document.status === "ERROR") summary.error += 1;
@@ -291,8 +326,14 @@ function buildStorageSummary(index = {}) {
     if (document.has_pdf) summary.with_pdf += 1;
     if (document.identity_status === "COMPLETE") summary.identity_complete += 1;
     else if (document.identity_status === "PARTIAL_PROVIDER_UID") summary.identity_partial += 1;
+    else if (document.identity_status === "PARTIAL_INTERNAL_ID") {
+      summary.identity_internal += 1;
+      summary.identity_missing += 1;
+    }
     else summary.identity_missing += 1;
+    if (document.identity_collision) summary.identity_collisions += 1;
   }
+  summary.duplicate_invoice_ids = Object.fromEntries(Object.entries(invoiceIdCounts).filter(([, count]) => count > 1));
   return summary;
 }
 
@@ -367,6 +408,7 @@ module.exports = {
   copySmokeArtifactToStorage,
   documentStatus,
   identityStatus,
+  invoiceIdForAttempt,
   scanSensitiveFiles,
   sanitizeStorageRecord,
 };

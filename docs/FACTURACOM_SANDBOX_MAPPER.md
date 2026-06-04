@@ -213,15 +213,27 @@ el lookup no encuentra UID o encuentra multiples clientes indistinguibles, el
 intento queda detenido como `CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS`; no se
 manda `POST /v4/cfdi40/create`.
 
+Ese UID se guarda como `client_uid`. No es identidad de factura, no debe usarse
+como `cfdi_uid` y no debe convertirse en `invoice_id` de Storage.
+
 Fase 6A.6C agrega normalizacion de identidad CFDI/PAC para preparar Storage
 Engine. Los smoke live sandbox ya validaron crear CFDI, descargar XML/PDF,
 cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:
 
-- `cfdi_uid` / `uid`.
+- `client_uid`: UID del receptor usado en `Receptor.UID`.
+- `cfdi_uid`: UID real del CFDI/factura devuelto por respuesta CFDI.
 - `uuid` fiscal si aparece en create, lookup o XML.
 - `pac_invoice_id`, `serie`, `folio` y `status` si Factura.com los devuelve.
+- `internal_invoice_id` y `draft_id` para trazabilidad local.
 - `lookup_status`, `cancel_status` y `cancel_response_identity`.
 - `identity_completeness`: `complete`, `partial` o `missing`.
+
+El extractor de `cfdi_uid` no revisa `Receptor.UID`, request body, headers,
+cliente, payload canonical ni `client-uids.local.json`. Solo revisa ramas de
+respuesta CFDI (`data`, `Data`, `response`, `respuestaapi`) y `rawText` si es
+JSON. Si create responde OK pero no hay `cfdi_uid`, `uuid` ni `pac_invoice_id`,
+el intento queda `CREATE_OK_IDENTITY_MISSING`, no aumenta `successful` y el
+analyzer reporta `identity_missing`.
 
 El UUID puede no venir en create response. El smoke busca en `Data`, `data`,
 `response`, `respuestaapi`, `TimbreFiscalDigital`, `Comprobante` y XML descargado.
@@ -244,7 +256,7 @@ Estructura:
 
 ```text
 runtime/storage-sandbox/
-  emitters/EMITTER-DEMO/<yyyy>/<mm>/clients/<client_id>/invoices/<cfdi_uid_o_id>/
+  emitters/EMITTER-DEMO/<yyyy>/<mm>/clients/<client_id>/invoices/<cfdi_uid_uuid_pac_o_internal_id>/
     manifest.json
     canonical-summary.json
     request/
@@ -259,6 +271,19 @@ runtime/storage-sandbox/
 Para sandbox, `cfdi_uid` funciona como identidad principal del proveedor. `uuid`
 es nullable porque Factura.com sandbox puede no devolverlo en el analyzer. Una
 factura con `cfdi_uid` y sin `uuid` queda como `PARTIAL_PROVIDER_UID`.
+
+Storage nunca usa `client_uid` como `invoice_id`. El orden de ruta es:
+
+1. `cfdi_uid`
+2. `uuid`
+3. `pac_invoice_id`
+4. `internal_invoice_id`
+5. `draft_id + attempt index`
+
+Si dos drafts distintos generan el mismo invoice id, Storage crea un sufijo
+estable `__<draft_id>`, conserva ambos documentos y reporta
+`identity_collisions`/`duplicate_invoice_ids`. Reporting no debe avanzar con
+documentos pisados ni colisiones sin revisar.
 
 Los resultados viven solo en:
 

@@ -155,6 +155,8 @@ Dimensiones de organizacion:
 - Draft original.
 - PAC provider.
 - UUID sandbox o produccion cuando exista.
+- Identidad separada: `client_uid` del receptor, `cfdi_uid` del CFDI,
+  `uuid`, `pac_invoice_id`, `internal_invoice_id` y `draft_id`.
 
 Estructura conceptual:
 
@@ -186,6 +188,13 @@ Metadatos minimos por documento:
 - `pac_provider`
 - `pac_environment`: `SANDBOX` o `PRODUCTION`
 - `uuid`
+- `client_uid`
+- `cfdi_uid`
+- `pac_invoice_id`
+- `internal_invoice_id`
+- `draft_id`
+- `identity_status`
+- `identity_collisions`
 - `status`
 - `client_id`
 - `emitter_id`
@@ -226,9 +235,15 @@ Reglas especificas sandbox:
 - No crea XML/PDF nuevo.
 - No toca workflows productivos.
 - No versiona runtime.
-- `cfdi_uid` es la identidad principal del proveedor en sandbox.
+- `client_uid` es solo UID del receptor y nunca debe usarse como `invoice_id`.
+- `cfdi_uid` es la identidad principal del CFDI/proveedor en sandbox.
 - `uuid` es nullable.
 - Si hay `cfdi_uid` sin `uuid`, la identidad queda `PARTIAL_PROVIDER_UID`.
+- Si falta `cfdi_uid`, Storage puede usar `uuid`, `pac_invoice_id`,
+  `internal_invoice_id` o `draft_id + attempt index`, pero marca
+  `PARTIAL_INTERNAL_ID` o `MISSING`.
+- Si dos drafts chocan en el mismo invoice id, Storage agrega sufijo
+  `__<draft_id>` y reporta `identity_collisions`/`duplicate_invoice_ids`.
 - Todo documento conserva `BORRADOR SUJETO A REVISION HUMANA`.
 
 ## Reporting Engine
@@ -377,6 +392,9 @@ Criterio de salida: sandbox probado sin folios reales ni produccion.
 - Separar `SANDBOX` de `PRODUCTION`.
 - En 6A.7, organizar artifacts sandbox locales por emisor, cliente, periodo,
   estatus y documento usando `cfdi_uid` como identidad principal sandbox.
+- En 6A.7B, separar `client_uid` de `cfdi_uid`, bloquear overwrite silencioso y
+  hacer que Reporting no avance con documentos pisados o colisiones sin
+  resolver.
 
 Criterio de salida: todo documento queda trazable por emisor, cliente, periodo,
 estatus y proveedor.

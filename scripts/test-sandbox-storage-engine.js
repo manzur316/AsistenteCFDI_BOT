@@ -97,7 +97,9 @@ function createSmokeFixture(name = "smoke") {
     attempts: [
       {
         draft_id: "DRAFT-DEMO",
+        internal_invoice_id: "INTERNAL-DRAFT-DEMO",
         client_id: "CLIENT-DEMO-PF-GENERIC",
+        client_uid: "UID-CLIENT-DEMO",
         status: "CREATE_OK",
         uid: "CFDI-UID-123",
         cfdi_uid: "CFDI-UID-123",
@@ -108,13 +110,15 @@ function createSmokeFixture(name = "smoke") {
       },
       {
         draft_id: "DRAFT-MISSING",
+        internal_invoice_id: "INTERNAL-DRAFT-MISSING",
         client_id: "CLIENT-DEMO-PF-GENERIC",
-        status: "CREATE_OK_UID_MISSING",
+        client_uid: "UID-CLIENT-DEMO",
+        status: "CREATE_OK_IDENTITY_MISSING",
         uid: null,
         cfdi_uid: null,
         uuid: null,
         artifacts: [],
-        warnings: ["create_ok_uid_missing:DRAFT-MISSING"],
+        warnings: ["CFDI_UID_MISSING"],
       },
     ],
   };
@@ -138,6 +142,7 @@ check("path_se_genera_bajo_runtime_storage_sandbox", () => {
   const pathInfo = buildStoragePathForAttempt({
     draft_id: "DRAFT-DEMO",
     uid: "CFDI-UID-123",
+    cfdi_uid: "CFDI-UID-123",
     client_id: "CLIENT-DEMO-PF-GENERIC",
   }, {
     storageRoot,
@@ -246,17 +251,75 @@ check("build_index_summary_y_analyze", () => {
   assert.strictEqual(summary.error, 1);
   assert.strictEqual(summary.identity_partial, 1);
   assert.strictEqual(summary.identity_missing, 1);
+  assert.strictEqual(summary.identity_internal, 1);
   assert.strictEqual(summary.with_xml, 1);
   assert.strictEqual(summary.with_pdf, 1);
   assert.strictEqual(analysis.total_documents, 2);
+  assert.strictEqual(analysis.identity_internal, 1);
   assert.strictEqual(analysis.sensitive_findings.length, 0);
   return `${summary.total_documents} docs`;
+});
+
+check("storage_no_sobrescribe_colision_y_genera_sufijo", () => {
+  const smokeRuntime = path.join(tempRoot, "collision-smoke");
+  const storageRoot = path.join(tempRoot, "collision-storage");
+  const responseA = path.join(smokeRuntime, "DRAFT-A-create-cfdi-response.json");
+  const responseB = path.join(smokeRuntime, "DRAFT-B-create-cfdi-response.json");
+  writeJson(responseA, { ok: true, data: { Data: { UID: "CFDI-UID-COLLISION" } } });
+  writeJson(responseB, { ok: true, data: { Data: { UID: "CFDI-UID-COLLISION" } } });
+  writeJson(path.join(smokeRuntime, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    created_at: "2026-06-04T00:00:00.000Z",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [
+      { type: "CFDI_CREATE_RESPONSE", draft_id: "DRAFT-A", path: rel(responseA), ok: true },
+      { type: "CFDI_CREATE_RESPONSE", draft_id: "DRAFT-B", path: rel(responseB), ok: true },
+    ],
+    attempts: [
+      {
+        draft_id: "DRAFT-A",
+        internal_invoice_id: "INTERNAL-DRAFT-A",
+        client_id: "CLIENT-DEMO-PF-GENERIC",
+        client_uid: "UID-CLIENT-A",
+        status: "CREATE_OK",
+        cfdi_uid: "CFDI-UID-COLLISION",
+        uuid: null,
+      },
+      {
+        draft_id: "DRAFT-B",
+        internal_invoice_id: "INTERNAL-DRAFT-B",
+        client_id: "CLIENT-DEMO-PF-GENERIC",
+        client_uid: "UID-CLIENT-B",
+        status: "CREATE_OK",
+        cfdi_uid: "CFDI-UID-COLLISION",
+        uuid: null,
+      },
+    ],
+  });
+  writeJson(path.join(smokeRuntime, "summary.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    created_at: "2026-06-04T00:00:00.000Z",
+    total_attempts: 2,
+    successful: 2,
+    warnings: [],
+  });
+  const result = storeArtifacts({ smokeRuntime, storageRoot });
+  assert.strictEqual(result.stored_documents, 2);
+  assert(fs.existsSync(path.join(storageRoot, "emitters", "EMITTER-DEMO", "2026", "06", "clients", "CLIENT-DEMO-PF-GENERIC", "invoices", "CFDI-UID-COLLISION", "manifest.json")));
+  assert(fs.existsSync(path.join(storageRoot, "emitters", "EMITTER-DEMO", "2026", "06", "clients", "CLIENT-DEMO-PF-GENERIC", "invoices", "CFDI-UID-COLLISION__DRAFT-B", "manifest.json")));
+  const analysis = analyze(storageRoot);
+  assert.strictEqual(analysis.identity_collisions, 1);
+  assert.deepStrictEqual(analysis.duplicate_invoice_ids, { "CFDI-UID-COLLISION": 2 });
+  assert.strictEqual(analysis.documents_by_draft_id["DRAFT-A"], 1);
+  assert.strictEqual(analysis.documents_by_draft_id["DRAFT-B"], 1);
+  return "collision suffixed";
 });
 
 check("secretos_y_produccion_detectados", () => {
   const badRuntime = path.join(tempRoot, "bad-smoke");
   writeJson(path.join(badRuntime, "manifest.json"), {
-    attempts: [{ draft_id: "DRAFT", status: "CREATE_OK", uid: "UID" }],
+    attempts: [{ draft_id: "DRAFT", status: "CREATE_OK", cfdi_uid: "UID" }],
     base_url: "https://api.factura.com",
   });
   writeJson(path.join(badRuntime, "summary.json"), { successful: 1 });

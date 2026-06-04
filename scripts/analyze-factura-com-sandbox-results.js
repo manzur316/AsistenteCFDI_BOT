@@ -53,11 +53,46 @@ function unique(values = []) {
 }
 
 function attemptIdentityCompleteness(attempt = {}) {
-  const hasUid = Boolean(text(attempt.cfdi_uid || attempt.uid));
+  const hasUid = Boolean(text(attempt.cfdi_uid));
   const hasUuid = Boolean(text(attempt.uuid));
   if (hasUid && hasUuid) return "complete";
   if (hasUid || hasUuid || attempt.pac_invoice_id || attempt.serie || attempt.folio) return "partial";
   return "missing";
+}
+
+function readJsonIfPossible(filePath) {
+  try {
+    return readJson(filePath);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function getNested(object = {}, pathParts = []) {
+  let current = object;
+  for (const part of pathParts) {
+    if (!current || typeof current !== "object") return null;
+    current = current[part];
+  }
+  return text(current);
+}
+
+function increment(object, key) {
+  const safeKey = key || "UNKNOWN";
+  object[safeKey] = (object[safeKey] || 0) + 1;
+}
+
+function duplicatesByDraft(attempts = [], identityFn = () => null) {
+  const byId = new Map();
+  for (const attempt of attempts) {
+    const identity = text(identityFn(attempt));
+    if (!identity) continue;
+    if (!byId.has(identity)) byId.set(identity, new Set());
+    byId.get(identity).add(text(attempt.draft_id) || "UNKNOWN");
+  }
+  return Object.fromEntries(Array.from(byId.entries())
+    .filter(([, drafts]) => drafts.size > 1)
+    .map(([identity, drafts]) => [identity, Array.from(drafts)]));
 }
 
 function findSensitiveText(filePath, content) {
@@ -113,7 +148,12 @@ function analyze(runtimeArg = process.argv[2]) {
   const scan = scanRuntime(runtimeDir);
   const clientUidMapPath = path.join(runtimeDir, "client-uids.local.json");
   const attempts = Array.isArray(manifest.attempts) ? manifest.attempts : [];
-  const attemptCfdiUids = unique(attempts.map((attempt) => attempt.cfdi_uid || attempt.uid));
+  const uidMap = fs.existsSync(clientUidMapPath) ? readJsonIfPossible(clientUidMapPath) || {} : {};
+  const clientUids = unique([
+    ...attempts.map((attempt) => attempt.client_uid),
+    ...Object.values(uidMap),
+  ]);
+  const attemptCfdiUids = unique(attempts.map((attempt) => attempt.cfdi_uid));
   const attemptUuids = unique(attempts.map((attempt) => attempt.uuid));
   const attemptPacInvoiceIds = unique(attempts.map((attempt) => attempt.pac_invoice_id));
   const attemptXmlUuids = unique(attempts.map((attempt) => attempt.xml_uuid));
@@ -123,6 +163,38 @@ function analyze(runtimeArg = process.argv[2]) {
     const abs = path.resolve(root, artifactPath);
     return !isInside(runtimeDir, abs);
   });
+  const createRequestReceptorUidsByDraft = {};
+  for (const artifact of manifest.artifacts || []) {
+    if (!artifact || artifact.type !== "CFDI_CREATE_REQUEST" || !artifact.path) continue;
+    const abs = path.resolve(root, artifact.path);
+    if (!isInside(runtimeDir, abs)) continue;
+    const requestJson = readJsonIfPossible(abs);
+    const receptorUid = getNested(requestJson, ["body", "Receptor", "UID"]);
+    if (receptorUid) createRequestReceptorUidsByDraft[artifact.draft_id || "UNKNOWN"] = receptorUid;
+  }
+  const possibleClientUidUsedAsCfdiUid = attempts
+    .filter((attempt) => {
+      const cfdiUid = text(attempt.cfdi_uid);
+      if (!cfdiUid) return false;
+      return cfdiUid === text(attempt.client_uid)
+        || clientUids.includes(cfdiUid)
+        || createRequestReceptorUidsByDraft[attempt.draft_id || "UNKNOWN"] === cfdiUid;
+    })
+    .map((attempt) => ({
+      draft_id: attempt.draft_id || null,
+      cfdi_uid: attempt.cfdi_uid || null,
+      client_uid: attempt.client_uid || null,
+      create_request_receptor_uid: createRequestReceptorUidsByDraft[attempt.draft_id || "UNKNOWN"] || null,
+    }));
+  const duplicateInvoiceIds = duplicatesByDraft(attempts, (attempt) => (
+    attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id
+  ));
+  const documentsByDraftId = {};
+  const documentsByInvoiceId = {};
+  for (const attempt of attempts) {
+    increment(documentsByDraftId, attempt.draft_id);
+    increment(documentsByInvoiceId, attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id);
+  }
 
   const errors = [...scan.findings];
   if (outsideArtifacts.length > 0) errors.push(`artifacts_outside_runtime:${outsideArtifacts.join(",")}`);
@@ -141,6 +213,7 @@ function analyze(runtimeArg = process.argv[2]) {
     client_uids_found: Number(summary.client_uids_found || 0),
     client_uid_missing: Number(summary.client_uid_missing || 0),
     ambiguous_clients: Number(summary.ambiguous_clients || 0),
+    client_uids: clientUids,
     client_uid_map_exists: fs.existsSync(clientUidMapPath),
     cfdi_uids_found: Number(summary.cfdi_uids_found ?? attemptCfdiUids.length),
     uuids_found: Number(summary.uuids_found ?? attemptUuids.length),
@@ -154,9 +227,16 @@ function analyze(runtimeArg = process.argv[2]) {
     pac_invoice_ids: Array.isArray(summary.pac_invoice_ids) && summary.pac_invoice_ids.length ? summary.pac_invoice_ids : attemptPacInvoiceIds,
     sandbox_uuids: Array.isArray(summary.sandbox_uuids) && summary.sandbox_uuids.length ? summary.sandbox_uuids : attemptUuids,
     xml_uuids: attemptXmlUuids,
+    possible_client_uid_used_as_cfdi_uid: possibleClientUidUsedAsCfdiUid,
+    duplicate_invoice_ids: duplicateInvoiceIds,
+    documents_by_draft_id: documentsByDraftId,
+    documents_by_invoice_id: documentsByInvoiceId,
     warnings: Array.isArray(summary.warnings) ? summary.warnings : [],
     artifact_files: scan.files.map(rel),
-    sensitive_findings: errors,
+    sensitive_findings: [
+      ...errors,
+      ...possibleClientUidUsedAsCfdiUid.map((item) => `possible_client_uid_used_as_cfdi_uid:${item.draft_id}`),
+    ],
   };
   return result;
 }
@@ -177,6 +257,7 @@ function printResult(result) {
   console.log(`UIDs cliente faltantes: ${result.client_uid_missing}`);
   console.log(`Clientes ambiguos: ${result.ambiguous_clients}`);
   console.log(`client-uids.local.json existe: ${result.client_uid_map_exists ? "si" : "no"}`);
+  console.log(`Client UIDs: ${result.client_uids.join(", ") || "none"}`);
   console.log(`CFDI UIDs encontrados: ${result.cfdi_uids_found}`);
   console.log(`UUIDs encontrados: ${result.uuids_found}`);
   console.log(`PAC invoice IDs encontrados: ${result.pac_invoice_ids_found}`);
@@ -188,6 +269,10 @@ function printResult(result) {
   console.log(`CFDI UIDs: ${result.cfdi_uids.join(", ") || "none"}`);
   console.log(`PAC invoice IDs: ${result.pac_invoice_ids.join(", ") || "none"}`);
   console.log(`UUIDs demo/sandbox: ${result.sandbox_uuids.join(", ") || "none"}`);
+  console.log(`Posible client UID usado como CFDI UID: ${result.possible_client_uid_used_as_cfdi_uid.length ? JSON.stringify(result.possible_client_uid_used_as_cfdi_uid) : "none"}`);
+  console.log(`Duplicate invoice ids: ${JSON.stringify(result.duplicate_invoice_ids)}`);
+  console.log(`Documents by draft_id: ${JSON.stringify(result.documents_by_draft_id)}`);
+  console.log(`Documents by invoice_id: ${JSON.stringify(result.documents_by_invoice_id)}`);
   console.log(`Warnings: ${result.warnings.join(" | ") || "none"}`);
   console.log(`Artifacts revisados: ${result.artifact_files.length}`);
   console.log(`Sensitive findings: ${result.sensitive_findings.length ? result.sensitive_findings.join(" | ") : "none"}`);

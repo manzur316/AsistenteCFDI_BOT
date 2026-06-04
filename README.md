@@ -296,9 +296,11 @@ en este orden:
 - Fallback `GET /v1/clients?rfc={RFC}`.
 
 El mapa `client-uids.local.json` se persiste solo dentro de `runtime/` y no debe
-versionarse. Si la creacion del cliente responde OK pero no se puede obtener un
-UID claro, el intento queda como `CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS` y
-no se intenta crear CFDI. Para reintentar despues de un smoke, revisa
+versionarse. Ese UID pertenece al cliente/receptor (`client_uid`) y nunca debe
+usarse como `cfdi_uid` ni como `invoice_id`. Si la creacion del cliente responde
+OK pero no se puede obtener un UID claro, el intento queda como
+`CLIENT_UID_MISSING` o `CLIENT_UID_AMBIGUOUS` y no se intenta crear CFDI. Para
+reintentar despues de un smoke, revisa
 `summary.json`, `manifest.json` y ejecuta:
 
 ```powershell
@@ -307,18 +309,22 @@ node scripts/analyze-factura-com-sandbox-results.js
 
 Fase 6A.6C normaliza identidad CFDI/PAC despues de los smoke live sandbox
 validados localmente: create, download XML/PDF, cancelacion sandbox y batch de 5
-CFDI. Antes del Storage Engine, cada intento puede registrar:
+CFDI. Antes del Storage Engine, cada intento separa:
 
-- `cfdi_uid` / `uid` del proveedor.
+- `client_uid`: UID del cliente/receptor usado en `Receptor.UID`.
+- `cfdi_uid`: UID del CFDI/factura creado por Factura.com.
 - `uuid` fiscal cuando venga en create, lookup o XML.
 - `pac_invoice_id` si el proveedor lo entrega.
+- `internal_invoice_id` y `draft_id` internos del bot.
 - `serie`, `folio`, `status`, `lookup_status` y `cancel_status`.
 - referencias runtime de XML/PDF sin versionarlas.
 
 Factura.com puede no devolver UUID en `POST /v4/cfdi40/create`; el smoke vuelve
-a intentar desde `GET /v4/cfdi/uid/{UID}` y desde el XML descargado cuando
-`FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`. El analizador reporta identidades
-completas, parciales o faltantes sin fallar solo porque falte UUID.
+a intentar desde `GET /v4/cfdi/uid/{cfdi_uid}` y desde el XML descargado cuando
+`FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`. Si create responde OK pero no hay
+`cfdi_uid`, `uuid` ni `pac_invoice_id`, el intento queda como
+`CREATE_OK_IDENTITY_MISSING`, no aumenta `successful` y el analyzer reporta
+`identity_missing`.
 
 Fase 6A.7 agrega el Storage Engine sandbox local. Despues de un smoke sandbox,
 organiza artifacts ya existentes sin llamar Factura.com:
@@ -332,7 +338,7 @@ La salida queda solo en runtime:
 
 ```text
 runtime/storage-sandbox/
-  emitters/EMITTER-DEMO/2026/06/clients/CLIENT-DEMO-PF-GENERIC/invoices/<cfdi_uid_o_id>/
+  emitters/EMITTER-DEMO/2026/06/clients/CLIENT-DEMO-PF-GENERIC/invoices/<cfdi_uid_uuid_pac_o_internal_id>/
     manifest.json
     canonical-summary.json
     request/
@@ -347,7 +353,12 @@ runtime/storage-sandbox/
 En sandbox, `cfdi_uid` es la identidad principal del proveedor. `uuid` es
 nullable; si hay `cfdi_uid` sin UUID, la identidad queda como
 `PARTIAL_PROVIDER_UID`, valida para organizar Storage Engine sandbox pero no
-como folio fiscal real.
+como folio fiscal real. Si falta `cfdi_uid` real, Storage puede usar
+`uuid`, `pac_invoice_id`, `internal_invoice_id` o `draft_id + attempt index`
+como ruta tecnica, pero marca la identidad como `PARTIAL_INTERNAL_ID` o
+`MISSING`. Si dos drafts generan el mismo invoice id, Storage agrega un sufijo
+estable `__<draft_id>` y reporta `identity_collisions`; no debe sobrescribir
+silenciosamente documentos.
 
 No subas `.env.pac.sandbox.local`, credenciales, XML/PDF, responses, manifests,
 runtime, estados de cuenta ni clientes reales. Produccion sigue bloqueada por

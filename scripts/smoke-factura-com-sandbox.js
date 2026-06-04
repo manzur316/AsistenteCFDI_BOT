@@ -423,8 +423,49 @@ function pickBestFieldCandidate(candidates = [], scoreFn = () => 0, validateFn =
   return scored[0]?.value || null;
 }
 
+function parseJsonText(value) {
+  const cleaned = text(value);
+  if (!cleaned || !/^[\[{]/.test(cleaned)) return null;
+  try {
+    return JSON.parse(cleaned);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function cfdiResponseRoots(response = {}) {
+  const roots = [];
+  for (const key of ["data", "Data", "response", "respuestaapi"]) {
+    if (response?.[key] !== undefined && response?.[key] !== null) {
+      roots.push({ label: key, value: response[key] });
+    }
+  }
+  const rawJson = parseJsonText(response?.rawText);
+  if (rawJson) roots.push({ label: "rawText", value: rawJson });
+  return roots;
+}
+
+function collectCfdiResponseFieldCandidates(response = {}, wantedKeys = []) {
+  return cfdiResponseRoots(response).flatMap((rootItem) => collectFieldCandidates(rootItem.value, wantedKeys)
+    .map((candidate) => ({
+      ...candidate,
+      path: candidate.path ? `${rootItem.label}.${candidate.path}` : rootItem.label,
+      depth: candidate.depth + 1,
+    })));
+}
+
+function isForbiddenCfdiUidCandidate(candidate = {}) {
+  const pathText = String(candidate.path || "").toLowerCase();
+  if (candidate.clientLike) return true;
+  if (/(^|\.)(request|headers|payload|canonical|client|cliente|receiver)(\.|$)/i.test(candidate.path || "")) return true;
+  if (/(^|\.)(receptor|receiver)\.(uid|uid_receptor)$/i.test(candidate.path || "")) return true;
+  if (pathText.includes("request.body.receptor.uid")) return true;
+  return false;
+}
+
 function extractCfdiUid(response = {}) {
-  const candidates = collectFieldCandidates(response, ["UID", "uid", "Uid", "cfdi_uid", "CFDI_UID"]);
+  const candidates = collectCfdiResponseFieldCandidates(response, ["UID", "uid", "Uid", "cfdi_uid", "CFDI_UID"])
+    .filter((candidate) => !isForbiddenCfdiUidCandidate(candidate));
   return pickBestFieldCandidate(candidates, (candidate) => {
     const key = String(candidate.key).toLowerCase();
     const pathText = String(candidate.path || "").toLowerCase();
@@ -499,6 +540,10 @@ function findClientUidInResponse(response = {}, expectedClient = {}) {
   const tiedBest = withScores.filter((candidate) => candidate.score === best.score && candidate.uid !== best.uid);
   if (tiedBest.length > 0 && best.score < 160) return { uid: null, reason: "ambiguous_client_uid" };
   return { uid: best.uid, reason: "found" };
+}
+
+function extractClientUid(response = {}, expectedClient = {}) {
+  return findClientUidInResponse(response, expectedClient).uid;
 }
 
 function extractUuid(response = {}) {
@@ -605,8 +650,15 @@ function mergeAttemptIdentity(attempt, identity = {}, source = "unknown") {
     folio: attempt.folio,
   });
 
-  if (!attempt.cfdi_uid && identity.cfdi_uid) attempt.cfdi_uid = identity.cfdi_uid;
-  if (!attempt.uid && identity.cfdi_uid) attempt.uid = identity.cfdi_uid;
+  if (!attempt.cfdi_uid && identity.cfdi_uid) {
+    if (attempt.client_uid && identity.cfdi_uid === attempt.client_uid) {
+      attempt.warnings = Array.isArray(attempt.warnings) ? attempt.warnings : [];
+      attempt.warnings.push(`possible_client_uid_used_as_cfdi_uid:${source}`);
+    } else {
+      attempt.cfdi_uid = identity.cfdi_uid;
+      if (!attempt.uid) attempt.uid = identity.cfdi_uid;
+    }
+  }
   if (!attempt.uuid && identity.uuid) attempt.uuid = identity.uuid;
   if (!attempt.pac_invoice_id && identity.pac_invoice_id) attempt.pac_invoice_id = identity.pac_invoice_id;
   if (!attempt.serie && identity.serie) attempt.serie = identity.serie;
@@ -637,7 +689,7 @@ function mergeAttemptIdentity(attempt, identity = {}, source = "unknown") {
 }
 
 function identityCompleteness(attempt = {}) {
-  const hasUid = Boolean(attempt.cfdi_uid || attempt.uid);
+  const hasUid = Boolean(attempt.cfdi_uid);
   const hasUuid = Boolean(attempt.uuid);
   if (hasUid && hasUuid) return "complete";
   if (hasUid || hasUuid || attempt.pac_invoice_id || attempt.serie || attempt.folio) return "partial";
@@ -654,9 +706,9 @@ function finalizeAttemptIdentity(attempt, summary) {
   mergeAttemptIdentity(attempt, {}, "finalize");
   const completeness = identityCompleteness(attempt);
   attempt.identity_completeness = completeness;
-  if (attempt.cfdi_uid || attempt.uid) {
+  if (attempt.cfdi_uid) {
     summary.cfdi_uids_found += 1;
-    addUnique(summary.cfdi_uids, attempt.cfdi_uid || attempt.uid);
+    addUnique(summary.cfdi_uids, attempt.cfdi_uid);
   }
   if (attempt.uuid) {
     summary.uuids_found += 1;
@@ -669,6 +721,11 @@ function finalizeAttemptIdentity(attempt, summary) {
   if (completeness === "complete") summary.identities_complete += 1;
   else if (completeness === "partial") summary.identities_partial += 1;
   else summary.identity_missing += 1;
+  if (attempt.cfdi_uid && attempt.client_uid && attempt.cfdi_uid === attempt.client_uid) {
+    summary.possible_client_uid_used_as_cfdi_uid += 1;
+    attempt.warnings = Array.isArray(attempt.warnings) ? attempt.warnings : [];
+    attempt.warnings.push("possible_client_uid_used_as_cfdi_uid");
+  }
   attempt.identity_finalized = true;
 }
 
@@ -754,7 +811,9 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
 async function processDraft({ fixture, client, config, env, uidMap, manifest, summary, requestFn = facturaComRequest }) {
   const attempt = {
     draft_id: fixture.draft_id,
+    internal_invoice_id: `INTERNAL-${safeId(fixture.draft_id)}`,
     client_id: client?.client_id || fixture.client_id,
+    client_uid: null,
     status: "STARTED",
     artifacts: [],
     uid: null,
@@ -791,6 +850,7 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     return attempt;
   }
   const clientUid = clientUidResult.uid;
+  attempt.client_uid = clientUid || null;
   const payload = mapScenarioToFacturaCom(scenario, clientUid, config);
   if (payload.official_request.unresolved_fields.length > 0) {
     attempt.status = "NEEDS_LOCAL_CONFIG";
@@ -822,16 +882,20 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
   attempt.identity_attempted = true;
   const createIdentity = extractCfdiIdentity(createResponse);
   mergeAttemptIdentity(attempt, createIdentity, "create");
-  if (!attempt.uid) {
-    attempt.status = "CREATE_OK_UID_MISSING";
-    summary.warnings.push(`create_ok_uid_missing:${fixture.draft_id}`);
+  const hasClearInvoiceIdentity = Boolean(attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id);
+  if (!hasClearInvoiceIdentity) {
+    attempt.status = "CREATE_OK_IDENTITY_MISSING";
+    attempt.warnings.push("CFDI_UID_MISSING");
+    summary.warnings.push(`cfdi_uid_missing:${fixture.draft_id}`);
+    finalizeAttemptIdentity(attempt, summary);
+    return attempt;
   } else {
     attempt.status = "CREATE_OK";
     summary.successful += 1;
   }
 
-  if (attempt.uid) {
-    const lookupResponse = await requestFn({ method: "GET", path: `/v4/cfdi/uid/${encodeURIComponent(attempt.uid)}`, env });
+  if (attempt.cfdi_uid) {
+    const lookupResponse = await requestFn({ method: "GET", path: `/v4/cfdi/uid/${encodeURIComponent(attempt.cfdi_uid)}`, env });
     const lookupFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-lookup-response.json`, lookupResponse, env);
     attempt.artifacts.push(path.relative(root, lookupFile).replace(/\\/g, "/"));
     manifest.artifacts.push({ type: "CFDI_LOOKUP_RESPONSE", draft_id: fixture.draft_id, path: path.relative(root, lookupFile).replace(/\\/g, "/"), ok: lookupResponse.ok });
@@ -842,9 +906,10 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     }
   }
 
-  if (config.downloadTest && attempt.uid) {
+  const cfdiReference = attempt.cfdi_uid || attempt.uuid;
+  if (config.downloadTest && cfdiReference) {
     for (const format of ["xml", "pdf"]) {
-      const downloadResponse = await requestFn({ method: "GET", path: `/v4/cfdi40/${encodeURIComponent(attempt.uid)}/${format}`, env });
+      const downloadResponse = await requestFn({ method: "GET", path: `/v4/cfdi40/${encodeURIComponent(cfdiReference)}/${format}`, env });
       const fileName = `${safeId(fixture.draft_id)}-download.${format}`;
       const artifact = writeText(config.runtimeDir, fileName, downloadResponse.rawText || JSON.stringify(downloadResponse.data));
       attempt.artifacts.push(path.relative(root, artifact).replace(/\\/g, "/"));
@@ -862,10 +927,10 @@ async function processDraft({ fixture, client, config, env, uidMap, manifest, su
     }
   }
 
-  if (config.cancelTest && attempt.uid) {
+  if (config.cancelTest && cfdiReference) {
     const cancelResponse = await requestFn({
       method: "POST",
-      path: `/v4/cfdi40/${encodeURIComponent(attempt.uid)}/cancel`,
+      path: `/v4/cfdi40/${encodeURIComponent(cfdiReference)}/cancel`,
       body: { motivo: "02" },
       env,
     });
@@ -924,6 +989,7 @@ function buildSummary(config) {
     identities_complete: 0,
     identities_partial: 0,
     identity_missing: 0,
+    possible_client_uid_used_as_cfdi_uid: 0,
     xml_uuid_found: 0,
     lookup_identity_found: 0,
     cfdi_uids: [],
@@ -979,6 +1045,7 @@ if (require.main === module) {
 module.exports = {
   buildSmokeConfig,
   extractCfdiIdentity,
+  extractClientUid,
   extractCfdiUid,
   extractFolio,
   extractSerie,

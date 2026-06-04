@@ -41,7 +41,12 @@ function rel(filePath) {
 }
 
 function attemptSucceeded(attempt = {}) {
-  return attempt.status === "CREATE_OK" || Boolean(attempt.cfdi_uid || attempt.uid);
+  return attempt.status === "CREATE_OK" || Boolean(attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id);
+}
+
+function attemptStoreable(attempt = {}) {
+  return Boolean(attempt.draft_id || attempt.internal_invoice_id || attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id)
+    && !/CANONICAL_INVALID|CLIENT_UID_MISSING|CLIENT_UID_AMBIGUOUS|NEEDS_LOCAL_CONFIG/i.test(String(attempt.status || ""));
 }
 
 function artifactsForAttempt(manifest = {}, attempt = {}) {
@@ -74,6 +79,56 @@ function buildCanonicalSummary(invoiceManifest = {}, attempt = {}) {
   });
 }
 
+function readExistingManifest(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function resolveCollisionSafePathInfo(attempt = {}, context = {}, state = {}) {
+  const basePathInfo = buildStoragePathForAttempt(attempt, context);
+  const draftId = String(attempt.draft_id || "");
+  const key = [
+    basePathInfo.emitterId,
+    basePathInfo.year,
+    basePathInfo.month,
+    basePathInfo.clientId,
+    basePathInfo.baseInvoiceId,
+  ].join("|");
+  const seenDrafts = state.seenDraftsByBaseInvoiceId.get(key) || new Set();
+  const existingManifest = readExistingManifest(path.join(basePathInfo.invoiceDir, "manifest.json"));
+  const existingDraft = String(existingManifest?.draft_id || "");
+  const collidesInMemory = seenDrafts.size > 0 && draftId && !seenDrafts.has(draftId);
+  const collidesOnDisk = existingDraft && draftId && existingDraft !== draftId;
+  const identityCollision = collidesInMemory || collidesOnDisk;
+  seenDrafts.add(draftId || `attempt-${context.attemptIndex || 0}`);
+  state.seenDraftsByBaseInvoiceId.set(key, seenDrafts);
+
+  if (!identityCollision) return { ...basePathInfo, identityCollision: false, warnings: [] };
+
+  const suffixedInvoiceId = `${basePathInfo.baseInvoiceId}__${safeDraftSuffix(draftId || `attempt-${context.attemptIndex || 0}`)}`;
+  const suffixedPathInfo = buildStoragePathForAttempt(attempt, {
+    ...context,
+    invoiceIdOverride: suffixedInvoiceId,
+  });
+  return {
+    ...suffixedPathInfo,
+    identityCollision: true,
+    warnings: ["invoice_id_collision"],
+  };
+}
+
+function safeDraftSuffix(value) {
+  return String(value || "DRAFT-UNKNOWN")
+    .trim()
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80) || "DRAFT-UNKNOWN";
+}
+
 function storeArtifacts(options = {}) {
   const smokeRuntime = assertInsideRuntime(options.smokeRuntime || DEFAULT_SMOKE_RUNTIME, "smokeRuntime");
   const storageRoot = assertInsideRuntime(options.storageRoot || DEFAULT_STORAGE_ROOT, "storageRoot");
@@ -84,8 +139,9 @@ function storeArtifacts(options = {}) {
   const attempts = Array.isArray(manifest.attempts) ? manifest.attempts : [];
   if (attempts.length === 0) throw new Error("manifest.json no contiene attempts");
   const successfulAttempts = attempts.filter(attemptSucceeded);
-  if (successfulAttempts.length === 0 && Number(summary.successful || 0) === 0) {
-    throw new Error("No hay intentos exitosos para almacenar");
+  const storeableAttempts = attempts.filter(attemptStoreable);
+  if (successfulAttempts.length === 0 && Number(summary.successful || 0) === 0 && storeableAttempts.length === 0) {
+    throw new Error("No hay intentos almacenables para almacenar");
   }
 
   const smokeFindings = scanSensitiveFiles(smokeRuntime);
@@ -93,15 +149,19 @@ function storeArtifacts(options = {}) {
 
   fs.mkdirSync(storageRoot, { recursive: true });
   const stored = [];
+  const collisionState = { seenDraftsByBaseInvoiceId: new Map() };
 
-  for (const attempt of attempts) {
-    const pathInfo = buildStoragePathForAttempt(attempt, {
+  for (const [attemptIndex, attempt] of attempts.entries()) {
+    if (!attemptStoreable(attempt)) continue;
+    const storageContext = {
       storageRoot,
       manifest,
       createdAt: manifest.created_at || summary.created_at,
       clientId: attempt.client_id,
       emitterId: attempt.emitter_id || "EMITTER-DEMO",
-    });
+      attemptIndex,
+    };
+    const pathInfo = resolveCollisionSafePathInfo(attempt, storageContext, collisionState);
     fs.mkdirSync(pathInfo.invoiceDir, { recursive: true });
 
     const copiedArtifacts = artifactsForAttempt(manifest, attempt).map((artifact) => copySmokeArtifactToStorage(artifact, {
@@ -111,12 +171,13 @@ function storeArtifacts(options = {}) {
       invoiceDir: pathInfo.invoiceDir,
     }));
     const invoiceManifest = buildStoredInvoiceManifest(attempt, copiedArtifacts, {
-      storageRoot,
-      manifest,
-      createdAt: manifest.created_at || summary.created_at,
-      clientId: attempt.client_id,
-      emitterId: attempt.emitter_id || "EMITTER-DEMO",
+      ...storageContext,
+      invoiceIdOverride: pathInfo.invoiceId,
+      identityCollision: pathInfo.identityCollision,
     });
+    if (pathInfo.warnings.length > 0) {
+      invoiceManifest.storage_warnings = Array.from(new Set([...(invoiceManifest.storage_warnings || []), ...pathInfo.warnings]));
+    }
 
     const invoiceManifestPath = path.join(pathInfo.invoiceDir, "manifest.json");
     const canonicalSummaryPath = path.join(pathInfo.invoiceDir, "canonical-summary.json");
@@ -124,9 +185,12 @@ function storeArtifacts(options = {}) {
     writeJson(canonicalSummaryPath, buildCanonicalSummary(invoiceManifest, attempt));
     stored.push({
       invoice_id: invoiceManifest.invoice_id,
+      base_invoice_id: invoiceManifest.base_invoice_id,
+      draft_id: invoiceManifest.draft_id,
       manifest_path: rel(invoiceManifestPath),
       status: invoiceManifest.status,
       identity_status: invoiceManifest.identity_status,
+      identity_collision: invoiceManifest.identity_collision,
     });
   }
 

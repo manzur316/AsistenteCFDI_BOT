@@ -12,6 +12,7 @@ const {
 const {
   buildSmokeConfig,
   extractCfdiIdentity,
+  extractClientUid,
   extractCfdiUid,
   extractUid,
   extractUuid,
@@ -316,6 +317,41 @@ check("analyzer_reporta_identity_missing_sin_secretos", () => {
   return "missing";
 });
 
+check("analyzer_detecta_client_uid_como_cfdi_uid", () => {
+  const runtimeDir = path.join(tempRoot, "client-uid-collision-runtime");
+  const requestPath = path.join(runtimeDir, "DRAFT-DEMO-create-cfdi-request.json");
+  writeJson(requestPath, {
+    body: {
+      Receptor: { UID: "UID-CLIENT-COLLISION", RFC: "XAXX010101000" },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [{
+      type: "CFDI_CREATE_REQUEST",
+      draft_id: "DRAFT-DEMO",
+      path: path.relative(root, requestPath).replace(/\\/g, "/"),
+    }],
+    attempts: [{
+      draft_id: "DRAFT-DEMO",
+      status: "CREATE_OK",
+      client_uid: "UID-CLIENT-COLLISION",
+      cfdi_uid: "UID-CLIENT-COLLISION",
+    }],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 1,
+    successful: 1,
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.possible_client_uid_used_as_cfdi_uid.length, 1);
+  assert(result.sensitive_findings.some((finding) => finding.includes("possible_client_uid_used_as_cfdi_uid")));
+  return "detected";
+});
+
 check("download_y_cancel_apagados_por_default", () => {
   const config = buildSmokeConfig({ FACTURACOM_SANDBOX_LIVE: "0" });
   assert.strictEqual(config.downloadTest, false);
@@ -354,7 +390,6 @@ check("extract_uid_soporta_formas_facturacom", () => {
 });
 
 check("extract_cfdi_uid_soporta_formas_facturacom", () => {
-  assert.strictEqual(extractCfdiUid({ UID: "CFDI-UID-ROOT" }), "CFDI-UID-ROOT");
   assert.strictEqual(extractCfdiUid({ data: { UID: "CFDI-UID-DATA" } }), "CFDI-UID-DATA");
   assert.strictEqual(extractCfdiUid({ Data: { UID: "CFDI-UID-DATA-UPPER" } }), "CFDI-UID-DATA-UPPER");
   assert.strictEqual(extractCfdiUid({ data: { cfdi_uid: "CFDI-UID-LOWER" } }), "CFDI-UID-LOWER");
@@ -365,6 +400,34 @@ check("extract_cfdi_uid_soporta_formas_facturacom", () => {
     },
   }), "CFDI-UID-PREFERRED");
   return "cfdi uid";
+});
+
+check("extract_cfdi_uid_ignora_receptor_uid_y_request", () => {
+  assert.strictEqual(extractCfdiUid({
+    data: {
+      request: {
+        body: {
+          Receptor: { UID: "UID-CLIENT-REQUEST", RFC: "XAXX010101000" },
+        },
+      },
+    },
+  }), null);
+  assert.strictEqual(extractCfdiUid({
+    data: {
+      Receptor: { UID: "UID-CLIENT-RECEPTOR", RFC: "XAXX010101000" },
+    },
+  }), null);
+  return "ignored receptor";
+});
+
+check("extract_client_uid_detecta_receptor_uid", () => {
+  const client = { client_id: "CLIENT-DEMO-PF-GENERIC", rfc: "XAXX010101000" };
+  assert.strictEqual(extractClientUid({
+    body: {
+      Receptor: { UID: "UID-CLIENT-RECEPTOR", RFC: "XAXX010101000" },
+    },
+  }, client), "UID-CLIENT-RECEPTOR");
+  return "client uid";
 });
 
 check("extract_uuid_soporta_json_xml_y_no_rfc", () => {
@@ -578,6 +641,62 @@ checkAsync("identity_se_completa_desde_xml_si_lookup_no_trae_uuid", async () => 
   assert.strictEqual(result.summary.xml_uuid_found, 1);
   assert.strictEqual(result.summary.uuids_found, 1);
   return "xml identity";
+});
+
+checkAsync("create_ok_solo_receptor_uid_no_cuenta_como_cfdi_identity", async () => {
+  const runtimeDir = path.join(tempRoot, "create-ok-receptor-only-runtime");
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          request: {
+            body: {
+              Receptor: { UID: "UID-CLIENT-LOCAL", RFC: "XAXX010101000" },
+            },
+          },
+        },
+      };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.summary.identity_missing, 1);
+  assert.strictEqual(attempt.status, "CREATE_OK_IDENTITY_MISSING");
+  assert.strictEqual(attempt.cfdi_uid, null);
+  assert.strictEqual(attempt.client_uid, "UID-CLIENT-LOCAL");
+  assert(attempt.warnings.includes("CFDI_UID_MISSING"));
+  return "identity missing";
+});
+
+checkAsync("cfdi_uid_igual_client_uid_se_rechaza", async () => {
+  const runtimeDir = path.join(tempRoot, "cfdi-equals-client-runtime");
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  const requestFn = async ({ method, path: requestPath }) => {
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { Data: { UID: "UID-CLIENT-LOCAL" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+
+  const result = await runSmoke(env, { requestFn });
+  const attempt = result.manifest.attempts[0];
+  assert.strictEqual(result.summary.successful, 0);
+  assert.strictEqual(result.summary.identity_missing, 1);
+  assert.strictEqual(attempt.cfdi_uid, null);
+  assert(attempt.warnings.some((warning) => warning.includes("possible_client_uid_used_as_cfdi_uid")));
+  return "rejected";
 });
 
 checkAsync("uid_missing_no_intenta_cfdi", async () => {
