@@ -1,0 +1,271 @@
+const https = require("https");
+
+const SANDBOX_HOST = "sandbox.factura.com";
+const PRODUCTION_HOST = "api.factura.com";
+const DEFAULT_TIMEOUT_MS = 30000;
+
+class FacturaComLiveClientError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = "FacturaComLiveClientError";
+    this.code = details.code || "FACTURA_COM_LIVE_CLIENT_ERROR";
+    this.details = details;
+  }
+}
+
+function text(value) {
+  const cleaned = String(value ?? "").trim();
+  return cleaned || null;
+}
+
+function fail(message, code, details = {}) {
+  throw new FacturaComLiveClientError(message, { code, ...details });
+}
+
+function parseUrl(value, field = "FACTURACOM_BASE_URL") {
+  const raw = text(value);
+  if (!raw) fail(`${field} requerido`, "FACTURA_COM_BASE_URL_REQUIRED", { field });
+  try {
+    return new URL(raw);
+  } catch (_error) {
+    fail(`${field} invalido`, "FACTURA_COM_BASE_URL_INVALID", { field });
+  }
+}
+
+function envValue(env = {}, names = []) {
+  for (const name of names) {
+    const value = text(env[name]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function isPlaceholder(value) {
+  return /^(REEMPLAZAR|CHANGE|PLACEHOLDER|LOCAL_ONLY|TEST_)/i.test(String(value || ""));
+}
+
+function assertRealValue(value, field) {
+  const cleaned = text(value);
+  if (!cleaned || isPlaceholder(cleaned)) {
+    fail(`${field} requerido para smoke sandbox live`, "FACTURA_COM_ENV_REQUIRED", { field });
+  }
+  return cleaned;
+}
+
+function assertSandboxBaseUrl(baseUrl) {
+  const parsed = parseUrl(baseUrl);
+  if (parsed.protocol !== "https:") {
+    fail("FACTURACOM_BASE_URL debe usar https", "FACTURA_COM_BASE_URL_NOT_HTTPS", { host: parsed.host });
+  }
+  if (parsed.hostname === PRODUCTION_HOST) {
+    fail("Produccion Factura.com bloqueada", "FACTURA_COM_PRODUCTION_BLOCKED", { host: parsed.hostname });
+  }
+  if (parsed.hostname !== SANDBOX_HOST) {
+    fail("FACTURACOM_BASE_URL debe apuntar a sandbox.factura.com", "FACTURA_COM_SANDBOX_REQUIRED", { host: parsed.hostname });
+  }
+  return parsed;
+}
+
+function assertFacturaComSandboxEnv(env = {}) {
+  if (String(env.FACTURACOM_SANDBOX_LIVE || "") !== "1") {
+    fail("FACTURACOM_SANDBOX_LIVE distinto de 1", "FACTURA_COM_LIVE_DISABLED");
+  }
+  const baseUrl = envValue(env, ["FACTURACOM_BASE_URL", "FACTURACOM_SANDBOX_BASE_URL"]);
+  const parsedBaseUrl = assertSandboxBaseUrl(baseUrl);
+  const apiKey = assertRealValue(envValue(env, ["FACTURACOM_API_KEY", "FACTURACOM_SANDBOX_API_KEY"]), "FACTURACOM_API_KEY");
+  const secretKey = assertRealValue(envValue(env, ["FACTURACOM_SECRET_KEY", "FACTURACOM_SANDBOX_SECRET_KEY"]), "FACTURACOM_SECRET_KEY");
+  const plugin = assertRealValue(envValue(env, ["FACTURACOM_PLUGIN", "FACTURACOM_SANDBOX_PLUGIN"]), "FACTURACOM_PLUGIN");
+  const timeoutMs = Number(env.FACTURACOM_SANDBOX_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
+
+  return {
+    live: true,
+    baseUrl: parsedBaseUrl.origin + parsedBaseUrl.pathname.replace(/\/+$/, ""),
+    apiKey,
+    secretKey,
+    plugin,
+    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+  };
+}
+
+function buildFacturaComHeaders(env = {}) {
+  const config = assertFacturaComSandboxEnv(env);
+  return {
+    "Content-Type": "application/json",
+    "F-PLUGIN": config.plugin,
+    "F-Api-Key": config.apiKey,
+    "F-Secret-Key": config.secretKey,
+  };
+}
+
+function sensitiveValues(env = {}) {
+  return [
+    envValue(env, ["FACTURACOM_API_KEY", "FACTURACOM_SANDBOX_API_KEY"]),
+    envValue(env, ["FACTURACOM_SECRET_KEY", "FACTURACOM_SANDBOX_SECRET_KEY"]),
+    envValue(env, ["FACTURACOM_PLUGIN", "FACTURACOM_SANDBOX_PLUGIN"]),
+  ].filter(Boolean);
+}
+
+function redactString(value, env = {}) {
+  let output = String(value);
+  for (const secret of sensitiveValues(env)) {
+    if (!secret) continue;
+    output = output.split(secret).join("[REDACTED_FACTURACOM_SECRET]");
+  }
+  output = output.replace(/\b[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}\b/gi, "[REDACTED_RFC]");
+  output = output.replace(/\b(F-Api-Key|F-Secret-Key|F-PLUGIN)\s*:\s*[^\s,'"{}]+/gi, "$1: [REDACTED]");
+  output = output.replace(/https:\/\/api\.factura\.com/gi, "[BLOCKED_FACTURACOM_PRODUCTION_URL]");
+  return output;
+}
+
+function sanitizeValue(value, env = {}) {
+  if (value === null || value === undefined) return value;
+  if (typeof value === "string") return redactString(value, env);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (Buffer.isBuffer(value)) return "[REDACTED_BINARY]";
+  if (Array.isArray(value)) return value.map((item) => sanitizeValue(item, env));
+  if (typeof value === "object") {
+    const out = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (/api[-_ ]?key|secret|plugin|token|authorization|password|f-api-key|f-secret-key|f-plugin/i.test(key)) {
+        out[key] = "[REDACTED]";
+      } else if (/rfc/i.test(key)) {
+        out[key] = "[REDACTED_RFC]";
+      } else {
+        out[key] = sanitizeValue(item, env);
+      }
+    }
+    return out;
+  }
+  return null;
+}
+
+function sanitizeFacturaComResponse(response = {}, env = {}) {
+  return sanitizeValue(response, env);
+}
+
+function sanitizeFacturaComError(error = {}, env = {}) {
+  const source = error instanceof Error ? {
+    name: error.name,
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    response: error.response,
+  } : error;
+  return sanitizeValue(source, env);
+}
+
+async function requestWithFetch({ url, method, headers, body, timeoutMs }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const contentType = response.headers.get("content-type") || "";
+    const rawText = await response.text();
+    let data = rawText;
+    if (contentType.includes("application/json") || /^[\s\r\n]*[{[]/.test(rawText)) {
+      try {
+        data = JSON.parse(rawText);
+      } catch (_error) {
+        data = rawText;
+      }
+    }
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      contentType,
+      data,
+      rawText,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function requestWithHttps({ url, method, headers, body, timeoutMs }) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const payload = body === undefined ? null : JSON.stringify(body);
+    const request = https.request({
+      method,
+      hostname: parsed.hostname,
+      port: parsed.port || 443,
+      path: `${parsed.pathname}${parsed.search}`,
+      headers: payload ? { ...headers, "Content-Length": Buffer.byteLength(payload) } : headers,
+      timeout: timeoutMs,
+    }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => {
+        const rawText = Buffer.concat(chunks).toString("utf8");
+        const contentType = response.headers["content-type"] || "";
+        let data = rawText;
+        if (String(contentType).includes("application/json") || /^[\s\r\n]*[{[]/.test(rawText)) {
+          try {
+            data = JSON.parse(rawText);
+          } catch (_error) {
+            data = rawText;
+          }
+        }
+        resolve({
+          ok: response.statusCode >= 200 && response.statusCode < 300,
+          status: response.statusCode,
+          statusText: response.statusMessage,
+          contentType,
+          data,
+          rawText,
+        });
+      });
+    });
+    request.on("timeout", () => {
+      request.destroy(new Error("Factura.com sandbox request timeout"));
+    });
+    request.on("error", reject);
+    if (payload) request.write(payload);
+    request.end();
+  });
+}
+
+function buildRequestUrl(baseUrl, requestPath) {
+  const base = assertSandboxBaseUrl(baseUrl);
+  const cleanedPath = text(requestPath);
+  if (!cleanedPath || !cleanedPath.startsWith("/")) {
+    fail("path debe ser relativo y empezar con /", "FACTURA_COM_REQUEST_PATH_INVALID", { path: requestPath });
+  }
+  if (/^https?:\/\//i.test(cleanedPath)) {
+    fail("path absoluto bloqueado", "FACTURA_COM_ABSOLUTE_PATH_BLOCKED", { path: requestPath });
+  }
+  return `${base.origin}${base.pathname.replace(/\/+$/, "")}${cleanedPath}`;
+}
+
+async function facturaComRequest({ method, path, body, env } = {}) {
+  const config = assertFacturaComSandboxEnv(env || {});
+  const url = buildRequestUrl(config.baseUrl, path);
+  const headers = buildFacturaComHeaders(env);
+  const httpMethod = text(method || "GET").toUpperCase();
+  const response = typeof fetch === "function"
+    ? await requestWithFetch({ url, method: httpMethod, headers, body, timeoutMs: config.timeoutMs })
+    : await requestWithHttps({ url, method: httpMethod, headers, body, timeoutMs: config.timeoutMs });
+
+  return {
+    ...response,
+    request: sanitizeValue({ method: httpMethod, url, body }, env),
+    data: sanitizeFacturaComResponse(response.data, env),
+    rawText: redactString(response.rawText || "", env),
+  };
+}
+
+module.exports = {
+  FacturaComLiveClientError,
+  assertFacturaComSandboxEnv,
+  buildFacturaComHeaders,
+  facturaComRequest,
+  sanitizeFacturaComError,
+  sanitizeFacturaComResponse,
+  sanitizeValue,
+};

@@ -155,3 +155,61 @@ Todo resultado sigue siendo:
 ```text
 BORRADOR SUJETO A REVISION HUMANA
 ```
+
+## Smoke Sandbox Controlado 6A.6
+
+La fase 6A.6 agrega un arnes local, apagado por defecto:
+
+- `scripts/lib/factura-com-live-client.js`
+- `scripts/smoke-factura-com-sandbox.js`
+- `scripts/analyze-factura-com-sandbox-results.js`
+
+Dry-run sin llamadas:
+
+```powershell
+node scripts/smoke-factura-com-sandbox.js
+```
+
+Debe imprimir:
+
+```text
+SKIPPED: live disabled
+```
+
+Smoke live sandbox, solo con opt-in local:
+
+```powershell
+$env:FACTURACOM_SANDBOX_LIVE="1"
+$env:FACTURACOM_BASE_URL="https://sandbox.factura.com/api"
+$env:FACTURACOM_API_KEY="REEMPLAZAR_LOCALMENTE"
+$env:FACTURACOM_SECRET_KEY="REEMPLAZAR_LOCALMENTE"
+$env:FACTURACOM_PLUGIN="REEMPLAZAR_LOCALMENTE"
+$env:FACTURACOM_SANDBOX_SERIE="REEMPLAZAR_LOCALMENTE"
+$env:FACTURACOM_SANDBOX_USO_CFDI="G03"
+$env:FACTURACOM_SANDBOX_FORMA_PAGO="03"
+$env:FACTURACOM_SANDBOX_METODO_PAGO="PUE"
+$env:FACTURACOM_SANDBOX_MONEDA="MXN"
+$env:FACTURACOM_SANDBOX_LUGAR_EXPEDICION="00000"
+node scripts/smoke-factura-com-sandbox.js
+```
+
+Los flags separados son:
+
+- `FACTURACOM_SANDBOX_CREATE_CLIENTS=0|1`
+- `FACTURACOM_SANDBOX_DOWNLOAD_TEST=0|1`
+- `FACTURACOM_SANDBOX_CANCEL_TEST=0|1`
+- `FACTURACOM_SANDBOX_BATCH_SIZE=1|5`
+
+Los resultados viven solo en:
+
+```text
+runtime/facturacom-sandbox/
+```
+
+Analisis local:
+
+```powershell
+node scripts/analyze-factura-com-sandbox-results.js
+```
+
+No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.

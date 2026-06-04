@@ -258,3 +258,77 @@ pago no se inventan y quedan en `unresolved_fields`.
 
 Recomendacion: 6A.6 puede proceder solo como smoke sandbox controlado si esos
 pendientes quedan resueltos localmente y con `FACTURACOM_SANDBOX_LIVE=1`.
+
+## 6A.6 Smoke Sandbox Controlado
+
+El discovery oficial alimenta un smoke controlado, pero el smoke sigue apagado
+por defecto.
+
+### Dry-Run
+
+```powershell
+node scripts/smoke-factura-com-sandbox.js
+```
+
+Resultado esperado sin variables live:
+
+```text
+SKIPPED: live disabled
+```
+
+En dry-run no se llama a Factura.com y no se crean artifacts runtime.
+
+### Configuracion Local
+
+Copia la plantilla a un archivo local ignorado:
+
+```powershell
+Copy-Item .env.pac.sandbox.example .env.pac.sandbox.local
+```
+
+Llena solamente en local:
+
+- `FACTURACOM_SANDBOX_LIVE=1`
+- `FACTURACOM_BASE_URL=https://sandbox.factura.com/api`
+- `FACTURACOM_API_KEY`
+- `FACTURACOM_SECRET_KEY`
+- `FACTURACOM_PLUGIN`
+- `FACTURACOM_SANDBOX_SERIE`
+- `FACTURACOM_SANDBOX_USO_CFDI`
+- `FACTURACOM_SANDBOX_FORMA_PAGO`
+- `FACTURACOM_SANDBOX_METODO_PAGO`
+- `FACTURACOM_SANDBOX_MONEDA`
+- `FACTURACOM_SANDBOX_LUGAR_EXPEDICION`
+
+Flags opcionales:
+
+- `FACTURACOM_SANDBOX_CREATE_CLIENTS=0|1`
+- `FACTURACOM_SANDBOX_DOWNLOAD_TEST=0|1`
+- `FACTURACOM_SANDBOX_CANCEL_TEST=0|1`
+- `FACTURACOM_SANDBOX_BATCH_SIZE=1|5`
+
+### Artifacts
+
+El smoke escribe solo en:
+
+```text
+runtime/facturacom-sandbox/
+```
+
+Archivos esperados:
+
+- `manifest.json`
+- `summary.json`
+- request/response JSON sanitizados
+- XML/PDF sandbox solo si `FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`
+
+El analizador:
+
+```powershell
+node scripts/analyze-factura-com-sandbox-results.js
+```
+
+falla si detecta credenciales, produccion, RFC no permitido o artifacts fuera de
+`runtime/`.
+
+Produccion sigue bloqueada aunque el host oficial este documentado.

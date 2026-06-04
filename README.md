@@ -224,6 +224,73 @@ La fase 6A.5 agrega el `Factura.com Sandbox Mapper` mock-only:
 
 Esta capa traduce contratos canonicos a un payload sandbox de proveedor marcado como `TODO_DOCS_REQUIRED`, normaliza respuestas mock a `CanonicalPacResult` y mantiene Factura.com aislado del nucleo. No hace llamadas live, no usa credenciales, no crea XML/PDF reales y no abre produccion. La siguiente fase recomendada es 6A.6: smoke sandbox controlado con `FACTURACOM_SANDBOX_LIVE=1`, credenciales locales no versionadas y seguridad 6A.3B activa.
 
+La fase 6A.6 agrega un smoke controlado contra Factura.com sandbox, apagado por defecto:
+
+- `scripts/lib/factura-com-live-client.js`
+- `scripts/smoke-factura-com-sandbox.js`
+- `scripts/analyze-factura-com-sandbox-results.js`
+- `.env.pac.sandbox.example`
+
+Dry-run sin llamada real:
+
+```powershell
+node scripts/smoke-factura-com-sandbox.js
+```
+
+Debe responder:
+
+```text
+SKIPPED: live disabled
+```
+
+Para live sandbox, copia la plantilla a un archivo local ignorado:
+
+```powershell
+Copy-Item .env.pac.sandbox.example .env.pac.sandbox.local
+```
+
+Variables requeridas:
+
+```text
+FACTURACOM_SANDBOX_LIVE=1
+FACTURACOM_BASE_URL=https://sandbox.factura.com/api
+FACTURACOM_API_KEY=REEMPLAZAR_LOCALMENTE
+FACTURACOM_SECRET_KEY=REEMPLAZAR_LOCALMENTE
+FACTURACOM_PLUGIN=REEMPLAZAR_LOCALMENTE
+FACTURACOM_SANDBOX_SERIE=REEMPLAZAR_LOCALMENTE
+FACTURACOM_SANDBOX_USO_CFDI=G03
+FACTURACOM_SANDBOX_FORMA_PAGO=03
+FACTURACOM_SANDBOX_METODO_PAGO=PUE
+FACTURACOM_SANDBOX_MONEDA=MXN
+FACTURACOM_SANDBOX_LUGAR_EXPEDICION=00000
+```
+
+Flags opcionales:
+
+```text
+FACTURACOM_SANDBOX_CREATE_CLIENTS=0|1
+FACTURACOM_SANDBOX_CANCEL_TEST=0|1
+FACTURACOM_SANDBOX_DOWNLOAD_TEST=0|1
+FACTURACOM_SANDBOX_BATCH_SIZE=1|5
+```
+
+Ejecuta live sandbox solo despues de cargar variables localmente:
+
+```powershell
+node scripts/smoke-factura-com-sandbox.js
+node scripts/analyze-factura-com-sandbox-results.js
+```
+
+Los artifacts quedan en:
+
+```text
+runtime/facturacom-sandbox/
+```
+
+No subas `.env.pac.sandbox.local`, credenciales, XML/PDF, responses, manifests,
+runtime, estados de cuenta ni clientes reales. Produccion sigue bloqueada por
+codigo; `https://api.factura.com` no es aceptado por el cliente live.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

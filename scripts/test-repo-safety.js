@@ -71,8 +71,9 @@ const tokenPatterns = [
   { name: "telegram_token_assignment", pattern: /TELEGRAM_BOT_TOKEN\s*=\s*(?!REEMPLAZAR|CHANGE|PLACEHOLDER)[^\s#]+/i },
   { name: "json_token_value", pattern: /["']token["']\s*:\s*["'](?!REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_|CAMBIAR)[^"']{12,}["']/i },
   { name: "postgres_real_password_hint", pattern: /POSTGRES_PASSWORD\s*=\s*(?!CAMBIAR|REEMPLAZAR|CHANGE|PLACEHOLDER)[^\s#]+/i },
-  { name: "facturacom_api_key_assignment", pattern: /FACTURACOM_SANDBOX_API_KEY\s*=\s*(?!["']?(?:REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_))["']?[^\s#]+/i },
-  { name: "facturacom_secret_key_assignment", pattern: /FACTURACOM_SANDBOX_SECRET_KEY\s*=\s*(?!["']?(?:REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_))["']?[^\s#]+/i },
+  { name: "facturacom_api_key_assignment", pattern: /FACTURACOM(?:_SANDBOX)?_API_KEY\s*=\s*(?!["']?(?:REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_))["']?[^\s#]+/i },
+  { name: "facturacom_secret_key_assignment", pattern: /FACTURACOM(?:_SANDBOX)?_SECRET_KEY\s*=\s*(?!["']?(?:REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_))["']?[^\s#]+/i },
+  { name: "facturacom_plugin_assignment", pattern: /FACTURACOM(?:_SANDBOX)?_PLUGIN\s*=\s*(?!["']?(?:REEMPLAZAR|CHANGE|PLACEHOLDER|TEST_))["']?[^\s#]+/i },
 ];
 
 function toRepoPath(filePath) {
@@ -187,7 +188,7 @@ checks.push({
 
 let gitignore = "";
 if (exists(".gitignore")) gitignore = readText(".gitignore");
-for (const required of [".env", ".env.local", "runtime/*.jsonl", "runtime/*.json", "runtime/runner-offset.json", "runner/*.log", "logs/", "data/base_cfdi_resico_n8n_emberhub_2026.xlsx"]) {
+for (const required of [".env", ".env.local", ".env.pac.sandbox.local", "runtime/*.jsonl", "runtime/*.json", "runtime/runner-offset.json", "runner/*.log", "logs/", "data/base_cfdi_resico_n8n_emberhub_2026.xlsx"]) {
   checks.push({
     name: `gitignore_contains:${required}`,
     pass: gitignore.includes(required),
