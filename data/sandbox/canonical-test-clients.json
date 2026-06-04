@@ -1,0 +1,58 @@
+[
+  {
+    "client_id": "CLIENT-DEMO-PF-GENERIC",
+    "display_name": "Cliente Persona Fisica DEMO",
+    "legal_name": "PERSONA FISICA GENERICA DEMO",
+    "rfc": "XAXX010101000",
+    "tax_regime": "612",
+    "fiscal_zip": "00000",
+    "person_type": "FISICA",
+    "validated_by_human": true,
+    "validation_warnings": ["DEMO_SANDBOX_ONLY"]
+  },
+  {
+    "client_id": "CLIENT-DEMO-PM-GENERIC",
+    "display_name": "Cliente Persona Moral DEMO",
+    "legal_name": "PERSONA MORAL GENERICA DEMO",
+    "rfc": "AAA010101AAA",
+    "tax_regime": "601",
+    "fiscal_zip": "00000",
+    "person_type": "MORAL",
+    "validated_by_human": true,
+    "validation_warnings": ["DEMO_SANDBOX_ONLY"]
+  },
+  {
+    "client_id": "CLIENT-DEMO-PM-NO-LUCRATIVA",
+    "display_name": "Cliente PM No Lucrativa DEMO",
+    "legal_name": "PM NO LUCRATIVA GENERICA DEMO",
+    "rfc": "BBB010101BBB",
+    "tax_regime": "603",
+    "fiscal_zip": "00000",
+    "person_type": "MORAL_SIN_FINES_LUCRO",
+    "validated_by_human": true,
+    "validation_warnings": ["DEMO_SANDBOX_ONLY"]
+  },
+  {
+    "client_id": "CLIENT-DEMO-INCOMPLETE",
+    "display_name": "Cliente Incompleto DEMO",
+    "legal_name": null,
+    "rfc": null,
+    "tax_regime": null,
+    "fiscal_zip": null,
+    "person_type": "DESCONOCIDO",
+    "validated_by_human": false,
+    "validation_warnings": ["INCOMPLETE_DEMO_NEEDS_REVIEW"]
+  },
+  {
+    "client_id": "CLIENT-DEMO-FOREIGN-FUTURE",
+    "display_name": "Cliente Extranjero GENERIC FUTURE_CASE",
+    "legal_name": "FOREIGN GENERIC CLIENT DEMO",
+    "rfc": "XEXX010101000",
+    "tax_regime": "616",
+    "fiscal_zip": "00000",
+    "person_type": "FOREIGN_FUTURE",
+    "validated_by_human": false,
+    "future_case": true,
+    "validation_warnings": ["FUTURE_CASE_DEMO_NEEDS_POLICY_REVIEW"]
+  }
+]

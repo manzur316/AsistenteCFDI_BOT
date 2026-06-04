@@ -200,6 +200,15 @@ Ver:
 
 La fase 6A.2 formaliza contratos internos primero y adapters PAC despues. Storage, reporting, Telegram y Miniapp deben leer contratos canonicos, no formatos particulares de Factura.com, Facturama, Facturapi, SW, Finkok u otros PAC. Las cancelaciones se modelan como cambios de estado con audit trail; nunca como borrado de registros.
 
+La fase 6A.4 agrega builders ejecutables para convertir previews/drafts actuales en contratos canonicos internos:
+
+- `scripts/lib/canonical-draft-builder.js`
+- `scripts/lib/canonical-invoice-builder.js`
+- `data/sandbox/canonical-test-clients.json`
+- `data/sandbox/canonical-test-drafts.json`
+
+El Canonical Draft Builder transforma cliente, concepto, line items, impuestos y blockers en `CanonicalDraft`. El Canonical Invoice Builder promueve solo drafts confirmados, sin blockers y con revision humana a `CanonicalInvoiceDocument` sandbox-ready y `CanonicalPacRequest` neutral. No llama PAC, no crea XML/PDF y no abre produccion. La siguiente fase tecnica es Factura.com Payload Mapper, pero antes de cualquier smoke real sigue pendiente 6A.3B para enforcement de seguridad en workflow.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

@@ -1,0 +1,159 @@
+[
+  {
+    "draft_id": "DRAFT-DEMO-CCTV-SERVICE",
+    "emitter_id": "EMITTER-DEMO",
+    "client_id": "CLIENT-DEMO-PF-GENERIC",
+    "source_channel": "TELEGRAM",
+    "source_message_id": "UPDATE-DEMO-1001",
+    "original_text": "Cliente demo, servicio tecnico CCTV por 1000 + IVA",
+    "confirmed_by_human": true,
+    "ready_to_copy": true,
+    "blockers": [],
+    "client_ref": "CLIENT-DEMO-PF-GENERIC",
+    "concept": {
+      "id": "SVC-CCTV-DEMO-001",
+      "concepto_factura": "SERVICIO TECNICO DE SISTEMA CCTV DEMO",
+      "clave_prod_serv": "81111811",
+      "clave_unidad": "E48",
+      "unidad": "Unidad de servicio",
+      "familia": "CCTV",
+      "tipo": "SERVICIO",
+      "operacion": "SERVICIO"
+    },
+    "amount": 1000,
+    "subtotal": 1000,
+    "iva_amount": 160,
+    "total": 1160
+  },
+  {
+    "draft_id": "DRAFT-DEMO-CCTV-PRODUCT",
+    "emitter_id": "EMITTER-DEMO",
+    "client_id": "CLIENT-DEMO-PM-GENERIC",
+    "source_channel": "TELEGRAM",
+    "source_message_id": "UPDATE-DEMO-1002",
+    "original_text": "Cliente demo, venta de producto CCTV por 1500 + IVA",
+    "confirmed_by_human": true,
+    "ready_to_copy": true,
+    "blockers": [],
+    "client_ref": "CLIENT-DEMO-PM-GENERIC",
+    "concept": {
+      "id": "PROD-CCTV-DEMO-001",
+      "concepto_factura": "VENTA DE EQUIPO CCTV DEMO",
+      "clave_prod_serv": "45121500",
+      "clave_unidad": "H87",
+      "unidad": "Pieza",
+      "familia": "CCTV",
+      "tipo": "PRODUCTO",
+      "operacion": "PRODUCTO"
+    },
+    "amount": 1500,
+    "subtotal": 1500,
+    "iva_amount": 240,
+    "total": 1740
+  },
+  {
+    "draft_id": "DRAFT-DEMO-ACCESS-INSTALL",
+    "emitter_id": "EMITTER-DEMO",
+    "client_id": "CLIENT-DEMO-PM-NO-LUCRATIVA",
+    "source_channel": "TELEGRAM",
+    "source_message_id": "UPDATE-DEMO-1003",
+    "original_text": "Cliente demo, instalacion de control de acceso por 2500 + IVA",
+    "confirmed_by_human": true,
+    "ready_to_copy": true,
+    "blockers": [],
+    "client_ref": "CLIENT-DEMO-PM-NO-LUCRATIVA",
+    "concept": {
+      "id": "SVC-AC-DEMO-003",
+      "concepto_factura": "SERVICIO DE INSTALACION DE CONTROL DE ACCESO DEMO",
+      "clave_prod_serv": "72151701",
+      "clave_unidad": "E48",
+      "unidad": "Unidad de servicio",
+      "familia": "CONTROL_ACCESO",
+      "tipo": "SERVICIO",
+      "operacion": "SERVICIO_INSTALACION"
+    },
+    "amount": 2500,
+    "subtotal": 2500,
+    "iva_amount": 400,
+    "total": 2900
+  },
+  {
+    "draft_id": "DRAFT-DEMO-BARRIER-MAINTENANCE",
+    "emitter_id": "EMITTER-DEMO",
+    "client_id": "CLIENT-DEMO-PF-GENERIC",
+    "source_channel": "TELEGRAM",
+    "source_message_id": "UPDATE-DEMO-1004",
+    "original_text": "Cliente demo, mantenimiento de barrera vehicular por 900 + IVA",
+    "confirmed_by_human": true,
+    "ready_to_copy": true,
+    "blockers": [],
+    "client_ref": "CLIENT-DEMO-PF-GENERIC",
+    "concept": {
+      "id": "SVC-BARRIER-DEMO-001",
+      "concepto_factura": "SERVICIO DE MANTENIMIENTO DE BARRERA VEHICULAR DEMO",
+      "clave_prod_serv": "72151704",
+      "clave_unidad": "E48",
+      "unidad": "Unidad de servicio",
+      "familia": "BARRERA",
+      "tipo": "SERVICIO",
+      "operacion": "SERVICIO"
+    },
+    "amount": 900,
+    "subtotal": 900,
+    "iva_amount": 144,
+    "total": 1044
+  },
+  {
+    "draft_id": "DRAFT-DEMO-MULTILINE-MATERIAL-SERVICE",
+    "emitter_id": "EMITTER-DEMO",
+    "client_id": "CLIENT-DEMO-PM-GENERIC",
+    "source_channel": "TELEGRAM",
+    "source_message_id": "UPDATE-DEMO-1005",
+    "original_text": "Cliente demo, material CCTV 700 + IVA y servicio de instalacion 800 + IVA",
+    "confirmed_by_human": true,
+    "ready_to_copy": true,
+    "blockers": [],
+    "client_ref": "CLIENT-DEMO-PM-GENERIC",
+    "line_items": [
+      {
+        "line_id": "LINE-DEMO-MATERIAL-001",
+        "line_number": 1,
+        "concept": {
+          "id": "PROD-CCTV-DEMO-002",
+          "concepto_factura": "MATERIAL CCTV DEMO",
+          "clave_prod_serv": "45121500",
+          "clave_unidad": "H87",
+          "unidad": "Pieza",
+          "familia": "CCTV",
+          "tipo": "PRODUCTO",
+          "operacion": "PRODUCTO"
+        },
+        "quantity": 1,
+        "unit_price": 700,
+        "subtotal": 700,
+        "iva_amount": 112
+      },
+      {
+        "line_id": "LINE-DEMO-SERVICE-001",
+        "line_number": 2,
+        "concept": {
+          "id": "SVC-CCTV-DEMO-002",
+          "concepto_factura": "SERVICIO DE INSTALACION CCTV DEMO",
+          "clave_prod_serv": "72151605",
+          "clave_unidad": "E48",
+          "unidad": "Unidad de servicio",
+          "familia": "CCTV",
+          "tipo": "SERVICIO",
+          "operacion": "SERVICIO_INSTALACION"
+        },
+        "quantity": 1,
+        "unit_price": 800,
+        "subtotal": 800,
+        "iva_amount": 128
+      }
+    ],
+    "subtotal": 1500,
+    "iva_amount": 240,
+    "total": 1740
+  }
+]
