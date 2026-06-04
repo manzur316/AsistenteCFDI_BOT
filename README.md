@@ -35,11 +35,12 @@ Base de seguridad:
 
 - `docs/SECURITY_PRIVATE_ACCESS_MODEL.md`
 - `sql/005_security_access_control.sql`
+- `sql/006_seed_authorized_user.example.sql`
 - `scripts/lib/security-access-control.js`
 
-Para preparar PostgreSQL local, ejecuta el SQL `sql/005_security_access_control.sql` despues de las migraciones base. El SQL solo crea schema; no inserta usuarios reales. No subas credenciales, estados de cuenta, XML/PDF, runtime ni clientes reales al repositorio.
+Para preparar PostgreSQL local, ejecuta el SQL `sql/005_security_access_control.sql` despues de las migraciones base. Luego copia `sql/006_seed_authorized_user.example.sql` a un archivo local no versionado, reemplaza `REEMPLAZAR_USER_ID`, `REEMPLAZAR_TELEGRAM_CHAT_ID` y `REEMPLAZAR_TELEGRAM_USER_ID`, y ejecuta esa copia local. No subas chat_id, telegram_user_id, credenciales, estados de cuenta, XML/PDF, runtime ni clientes reales al repositorio.
 
-PAC real, produccion, estados de cuenta y storage sensible quedan bloqueados hasta que exista enforcement activo en el workflow local ingest. La siguiente fase recomendada es 6A.3B: validar `telegram_chat_id` + `telegram_user_id`, registrar `cfdi_security_events` y cortar el flujo con `Acceso no autorizado` antes de comandos, scoring, drafts o tokens.
+El workflow local ingest valida `telegram_chat_id` + `telegram_user_id` contra `cfdi_authorized_users` antes de comandos, scoring, drafts, action tokens y callbacks. Si no hay usuario autorizado o el rol no tiene permiso, responde `Acceso no autorizado.`, registra `cfdi_security_events`, no ejecuta scoring, no crea drafts y no marca tokens como usados. PAC real, produccion, estados de cuenta y storage sensible siguen bloqueados por fase.
 
 ## Pruebas del motor
 
@@ -92,6 +93,8 @@ La memoria, historial, drafts y logs viven en PostgreSQL local (`cfdi_bot`). Ver
 - `sql/003_clients_amounts_tax.sql`
 - `sql/003_seed_clients.example.sql`
 - `sql/004_action_tokens.sql`
+- `sql/005_security_access_control.sql`
+- `sql/006_seed_authorized_user.example.sql`
 
 Este modo con Schedule Trigger queda como legacy. Funciona, pero puede sentirse lento porque depende del intervalo del Schedule.
 
@@ -180,6 +183,8 @@ Flujo recomendado:
 El workflow no crea el draft `PENDIENTE` final hasta recibir `confirmar`. Si el cliente no existe, ofrece crear cliente basico, continuar sin cliente o cancelar. El alta manual con `/nuevocliente` usa plantilla escrita y deja `validated_by_human=false` hasta ejecutar `/validarcliente CLIENT_ID`.
 
 El workflow local ingest tambien puede mostrar botones inline de Telegram para `Confirmar`, `Editar`, `Cancelar` y `Ver detalle`. Cada boton usa `callback_data` corto `cfdi:<token>` guardado en PostgreSQL (`cfdi_action_tokens`); no contiene datos fiscales, claves SAT, cliente ni monto. Los botones ejecutan las mismas rutas conservadoras que los comandos de texto y no timbran CFDI.
+
+El bot es privado. Antes de probar Telegram local, debe existir al menos un registro autorizado en `cfdi_authorized_users`. Para obtener los IDs, puedes enviar un mensaje de prueba con el runner local y revisar logs/runtime locales o la consola de n8n; no copies esos valores a archivos versionados. Sin usuario autorizado, cualquier mensaje o callback debe responder `Acceso no autorizado.`.
 
 ## Roadmap PAC, Storage y Reporting
 

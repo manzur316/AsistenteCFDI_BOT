@@ -22,6 +22,7 @@ Opcion recomendada: ejecutar el init SQL conectado como `cfdi_bot_user`, para qu
 psql -h localhost -p 5432 -U cfdi_bot_user -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/001_init_cfdi_bot.sql"
 psql -h localhost -p 5432 -U cfdi_bot_user -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/003_clients_amounts_tax.sql"
 psql -h localhost -p 5432 -U cfdi_bot_user -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/004_action_tokens.sql"
+psql -h localhost -p 5432 -U cfdi_bot_user -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/005_security_access_control.sql"
 ```
 
 Opcion alternativa: si ejecutas el init SQL como `postgres`, confirma despues los permisos para `cfdi_bot_user`:
@@ -30,12 +31,40 @@ Opcion alternativa: si ejecutas el init SQL como `postgres`, confirma despues lo
 psql -h localhost -p 5432 -U postgres -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/001_init_cfdi_bot.sql"
 psql -h localhost -p 5432 -U postgres -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/003_clients_amounts_tax.sql"
 psql -h localhost -p 5432 -U postgres -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/004_action_tokens.sql"
+psql -h localhost -p 5432 -U postgres -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/005_security_access_control.sql"
 psql -h localhost -p 5432 -U postgres -d cfdi_bot -c "GRANT USAGE ON SCHEMA public TO cfdi_bot_user;"
 psql -h localhost -p 5432 -U postgres -d cfdi_bot -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cfdi_bot_user;"
 psql -h localhost -p 5432 -U postgres -d cfdi_bot -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO cfdi_bot_user;"
 ```
 
-Los archivos `sql/001_init_cfdi_bot.sql`, `sql/003_clients_amounts_tax.sql` y `sql/004_action_tokens.sql` tambien incluyen estos `GRANT` al final como respaldo cuando `cfdi_bot_user` ya existe.
+Los archivos `sql/001_init_cfdi_bot.sql`, `sql/003_clients_amounts_tax.sql`, `sql/004_action_tokens.sql` y `sql/005_security_access_control.sql` tambien incluyen estos `GRANT` al final como respaldo cuando `cfdi_bot_user` ya existe.
+
+## Usuario Autorizado Privado
+
+El workflow local ingest es privado por defecto. Si no existe un usuario en `cfdi_authorized_users`, el bot responde:
+
+```text
+Acceso no autorizado.
+```
+
+No procesa comandos, scoring, drafts, action tokens ni callbacks de usuarios no autorizados.
+
+Para habilitar tu usuario local:
+
+1. Copia `sql/006_seed_authorized_user.example.sql` a un archivo local no versionado, por ejemplo `sql/006_seed_authorized_user.local.sql`.
+2. Reemplaza:
+   - `REEMPLAZAR_USER_ID`
+   - `REEMPLAZAR_TELEGRAM_CHAT_ID`
+   - `REEMPLAZAR_TELEGRAM_USER_ID`
+3. Ejecuta la copia local:
+
+```powershell
+psql -h localhost -p 5432 -U cfdi_bot_user -d cfdi_bot -f "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/sql/006_seed_authorized_user.local.sql"
+```
+
+No subas la copia local. No guardes chat_id real, telegram_user_id real, tokens ni nombres reales en Git.
+
+Para obtener `chat_id` y `telegram_user_id`, envia un mensaje de prueba y revisa la consola local de n8n o logs/runtime locales. Esos datos son privados y deben quedarse fuera del repositorio.
 
 ## Cliente Demo Opcional
 
