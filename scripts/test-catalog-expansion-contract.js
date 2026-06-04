@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
-const { MISSING_MESSAGE, listOfficialFiles } = require("./import-sat-catalog");
+const { MISSING_MESSAGE } = require("./import-sat-catalog");
 const { REQUIRED_FIELDS } = require("./propose-resico-catalog-expansion");
 
 const root = path.resolve(__dirname, "..");
@@ -43,16 +43,16 @@ function officialKeySets() {
   if (!fs.existsSync(satImportedPath)) return { productServices: new Set(), units: new Set() };
   const sat = readJson(satImportedPath);
   return {
-    productServices: new Set((sat.product_services || []).map((item) => String(item.key))),
-    units: new Set((sat.units || []).map((item) => String(item.key))),
+    productServices: new Set((sat.product_services || sat.clave_prod_serv || []).map((item) => String(item.key || item.clave))),
+    units: new Set((sat.units || sat.clave_unidad || []).map((item) => String(item.key || item.clave))),
   };
 }
 
 const checks = [];
-const officialFiles = listOfficialFiles();
 let proposed = null;
 let candidate = null;
 let base = null;
+let imported = null;
 
 for (const file of [satReadmePath, proposedPath, candidatePath, policyPath, gapsPath]) {
   checks.push({ name: `file_exists:${path.relative(root, file).replace(/\\/g, "/")}`, pass: fs.existsSync(file), value: path.relative(root, file).replace(/\\/g, "/") });
@@ -62,21 +62,24 @@ try {
   proposed = readJson(proposedPath);
   candidate = readJson(candidatePath);
   base = readJson(basePath);
-  checks.push({ name: "json_parse", pass: true, value: "proposed/candidate/base" });
+  imported = fs.existsSync(satImportedPath) ? readJson(satImportedPath) : null;
+  checks.push({ name: "json_parse", pass: true, value: "proposed/candidate/base/imported" });
 } catch (error) {
   checks.push({ name: "json_parse", pass: false, value: error.message });
 }
 
 if (proposed && candidate && base) {
-  const missingOfficial = officialFiles.length === 0;
+  const missingProductServices = !imported || (imported.clave_prod_serv || imported.product_services || []).length === 0;
   checks.push({
-    name: "official_sat_missing_blocks_generation",
-    pass: missingOfficial ? proposed.status === "BLOCKED_MISSING_SAT_OFFICIAL_CATALOG" && proposed.message === MISSING_MESSAGE : proposed.source === "SAT_OFFICIAL_LOCAL",
-    value: missingOfficial ? proposed.status : proposed.source,
+    name: "official_claveprodserv_missing_blocks_generation",
+    pass: missingProductServices
+      ? proposed.status === "BLOCKED_MISSING_OFFICIAL_CLAVE_PROD_SERV" && /ClaveProdServ/i.test(proposed.message)
+      : proposed.source === "SAT_OFFICIAL_LOCAL",
+    value: missingProductServices ? proposed.status : proposed.source,
   });
   checks.push({
-    name: "no_suggestible_concepts_without_sat",
-    pass: missingOfficial ? (proposed.concepts || []).length === 0 : true,
+    name: "no_suggestible_concepts_without_official_claveprodserv",
+    pass: missingProductServices ? (proposed.concepts || []).length === 0 : true,
     value: `concepts=${(proposed.concepts || []).length}`,
   });
   checks.push({
@@ -86,7 +89,7 @@ if (proposed && candidate && base) {
   });
   checks.push({
     name: "candidate_preserves_base_count_when_blocked",
-    pass: missingOfficial ? (candidate.concepts || []).length === (base.concepts || []).length && candidate.proposed_additions_count === 0 : true,
+    pass: missingProductServices ? (candidate.concepts || []).length === (base.concepts || []).length && candidate.proposed_additions_count === 0 : true,
     value: `${(candidate.concepts || []).length}/${(base.concepts || []).length}`,
   });
   checks.push({
@@ -149,6 +152,19 @@ checks.push({
   pass: ["familia", "score", "keywords", "notas internas", "source row", "precision internals"].every((text) => policy.includes(text)),
   value: "public preview",
 });
+
+if (imported) {
+  checks.push({
+    name: "sat_auxiliary_catalogs_imported",
+    pass: (imported.clave_unidad || []).length > 0 && (imported.objeto_impuesto || []).length > 0 && (imported.uso_cfdi || []).length > 0,
+    value: `unidad=${(imported.clave_unidad || []).length}/uso=${(imported.uso_cfdi || []).length}`,
+  });
+  checks.push({
+    name: "compact_reference_not_official_source",
+    pass: imported.compact_reference?.source_role === "REFERENCE_ONLY" && (imported.warnings || []).some((warning) => warning.code === "MISSING_OFFICIAL_CLAVE_PROD_SERV"),
+    value: imported.compact_reference?.source_role || "N/A",
+  });
+}
 
 console.log("Catalog expansion contract");
 for (const check of checks) printCheck(check.name, check.pass, check.value);

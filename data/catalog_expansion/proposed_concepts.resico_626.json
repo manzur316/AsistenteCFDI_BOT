@@ -1,9 +1,126 @@
 {
   "schema_version": "1.0.0",
-  "status": "BLOCKED_MISSING_SAT_OFFICIAL_CATALOG",
-  "message": "Falta catálogo oficial SAT. Coloca el archivo oficial catCFDI del SAT en data/sat_official/ y vuelve a ejecutar.",
-  "generated_at": "2026-06-04T02:08:28.671Z",
-  "source": "NO_SAT_OFFICIAL_LOCAL",
+  "status": "BLOCKED_MISSING_OFFICIAL_CLAVE_PROD_SERV",
+  "message": "Falta catalogo oficial SAT c_ClaveProdServ local. Compact queda como referencia, no como fuente oficial unica.",
+  "generated_at": "2026-06-04T02:55:27.073Z",
+  "source": "SAT_AUXILIARY_LOCAL_WITHOUT_CLAVE_PROD_SERV",
+  "source_catalog_file": [
+    {
+      "file": "Catalogo_SAT_Clave_Unidad.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Codigo_Postal.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Colonia.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Estado.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Exportacion.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Forma_de_Pago.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Impuesto.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Localidad.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Meses.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Metodo_Pago.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Moneda.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Municipio.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_objeto_impuesto.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Pais.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Periodicidad.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Regimen_Fiscal.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Tasa_O_Cuota.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Tipo_De_Comprobante.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Tipo_Factor.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Tipo_Relacion.xlsx",
+      "role": "SECUNDARIO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catalogo_SAT_Uso_CFDI.xlsx",
+      "role": "CRITICO",
+      "origin": "SAT"
+    },
+    {
+      "file": "Catálogo+Claves+y+Servicios_versión1_2024.pdf",
+      "role": "SECUNDARIO",
+      "origin": "referencia"
+    },
+    {
+      "file": "PDF Compact.pdf",
+      "role": "UTIL",
+      "origin": "Compact"
+    }
+  ],
   "desired_concepts": [
     {
       "id": "EXP-PROD-CCTV-CAMERA",
@@ -727,7 +844,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-CCTV-DVR-NVR",
@@ -739,7 +856,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-CCTV-POWER",
@@ -751,7 +868,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-CCTV-DISK",
@@ -763,7 +880,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-CCTV-ACCESSORY",
@@ -775,7 +892,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-CCTV-CABLE",
@@ -787,7 +904,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-CCTV-CAMERA-INSTALL",
@@ -799,7 +916,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-CCTV-SYSTEM-INSTALL",
@@ -811,7 +928,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-CCTV-DVR-INSTALL",
@@ -823,7 +940,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-CCTV-MAINT",
@@ -835,7 +952,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-CCTV-DIAG",
@@ -847,7 +964,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-CCTV-CONFIG",
@@ -859,7 +976,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-CCTV-CABLING",
@@ -871,7 +988,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-AC-LOCK-INSTALL",
@@ -883,7 +1000,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-AC-READER-INSTALL",
@@ -895,7 +1012,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-AC-ACCESSORY-INSTALL",
@@ -907,7 +1024,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-AC-MAINT",
@@ -919,7 +1036,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-AC-LOCK",
@@ -931,7 +1048,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-AC-READER",
@@ -943,7 +1060,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-AC-TAG",
@@ -955,7 +1072,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-AC-ACCESSORY",
@@ -967,7 +1084,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-AC-CONFIG",
@@ -979,7 +1096,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-BARRERA-MAINT",
@@ -991,7 +1108,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-BARRERA-DIAG",
@@ -1003,7 +1120,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-BARRERA-ADJUST",
@@ -1015,7 +1132,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-BARRERA-INSTALL",
@@ -1027,7 +1144,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-BARRERA-PART",
@@ -1039,7 +1156,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-RED-ROUTER",
@@ -1051,7 +1168,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-RED-SWITCH",
@@ -1063,7 +1180,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-RED-AP",
@@ -1075,7 +1192,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-RED-WIFI",
@@ -1087,7 +1204,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-RED-DIAG",
@@ -1099,7 +1216,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-RED-CABLING",
@@ -1111,7 +1228,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-RED-ROUTER",
@@ -1123,7 +1240,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-RED-SWITCH",
@@ -1135,7 +1252,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-RED-AP",
@@ -1147,7 +1264,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-RED-CABLE",
@@ -1159,7 +1276,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-RED-EQUIPMENT",
@@ -1171,7 +1288,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-PC-COMPUTER",
@@ -1183,7 +1300,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-PC-LAPTOP",
@@ -1195,7 +1312,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-PC-SSD",
@@ -1207,7 +1324,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-PC-RAM",
@@ -1219,7 +1336,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-PC-POWER",
@@ -1231,7 +1348,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-PROD-PC-PERIPHERAL",
@@ -1243,7 +1360,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-PC-MAINT",
@@ -1255,7 +1372,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-PC-REPAIR",
@@ -1267,7 +1384,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-PC-DIAG",
@@ -1279,7 +1396,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-PC-FORMAT",
@@ -1291,7 +1408,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     },
     {
       "id": "EXP-SVC-PC-COMPONENT",
@@ -1303,7 +1420,7 @@
       "precision_level": "GAP_REQUIRES_REVIEW",
       "requires_human_review": true,
       "suggestible": false,
-      "reason": "MISSING_SAT_OFFICIAL_CATALOG"
+      "reason": "MISSING_OFFICIAL_CLAVE_PROD_SERV"
     }
   ]
 }

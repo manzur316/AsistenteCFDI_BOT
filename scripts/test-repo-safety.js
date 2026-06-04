@@ -11,6 +11,7 @@ const safeFiles = [
   ".env.local.example",
   "data/concepts.normalized.json",
   "data/sat_official/README.md",
+  "data/sat_official/imported_sat_catalog.normalized.json",
   "data/catalog_expansion/proposed_concepts.resico_626.json",
   "data/catalog_expansion/concepts.normalized.candidate.json",
   "runtime/.gitkeep",
@@ -35,7 +36,7 @@ const forbiddenVersionedPaths = [
   /^backups\//i,
   /^data\/base_cfdi_resico_n8n_emberhub_2026\.xlsx$/i,
   /\.(token|secret|key|pem|p12|pfx|cer|zip|7z|rar|pdf)$/i,
-  /^data\/sat_official\/(?!README\.md$).+/i,
+  /^data\/sat_official\/(?!README\.md$|imported_sat_catalog\.normalized\.json$).+/i,
 ];
 
 const scanFiles = [
@@ -50,7 +51,9 @@ const scanFiles = [
   ...listFiles("docs"),
   "data/concepts.normalized.json",
   "data/sat_official/README.md",
+  "data/sat_official/imported_sat_catalog.normalized.json",
   "data/catalog_expansion/proposed_concepts.resico_626.json",
+  "data/catalog_expansion/concepts.normalized.candidate.json",
 ];
 
 const tokenPatterns = [
@@ -179,7 +182,7 @@ for (const required of [".env", ".env.local", "runtime/*.jsonl", "runtime/*.json
     value: required,
   });
 }
-for (const required of ["data/sat_official/*", "!data/sat_official/README.md", "data/sat_official/imported_sat_catalog.normalized.json"]) {
+for (const required of ["data/sat_official/*", "!data/sat_official/README.md", "!data/sat_official/imported_sat_catalog.normalized.json"]) {
   checks.push({
     name: `gitignore_contains:${required}`,
     pass: gitignore.includes(required),

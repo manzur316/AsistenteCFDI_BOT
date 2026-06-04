@@ -112,7 +112,7 @@ checks.push({
 });
 checks.push({
   name: "no_official_sat_means_no_suggestible_proposals",
-  pass: proposed.status === "BLOCKED_MISSING_SAT_OFFICIAL_CATALOG" ? (proposed.concepts || []).length === 0 : true,
+  pass: /^BLOCKED_MISSING_/.test(proposed.status || "") ? (proposed.concepts || []).length === 0 : true,
   value: proposed.status || "N/A",
 });
 

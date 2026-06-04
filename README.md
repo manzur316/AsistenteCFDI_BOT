@@ -227,7 +227,7 @@ Falta catálogo oficial SAT. Coloca el archivo oficial catCFDI del SAT en data/s
 Flujo:
 
 ```bash
-node scripts/import-sat-catalog.js
+node scripts/import-sat-catalog.js --source "C:/Users/Juandi Gamer/Desktop/CATALOGOS SAT BD"
 node scripts/propose-resico-catalog-expansion.js
 node scripts/audit-catalog-gaps.js
 ```
@@ -236,9 +236,15 @@ Salidas:
 
 - `data/catalog_expansion/proposed_concepts.resico_626.json`
 - `data/catalog_expansion/concepts.normalized.candidate.json`
+- `data/sat_official/imported_sat_catalog.normalized.json`
+- `docs/SAT_COMPACT_FILES_INVENTORY.md`
+- `docs/COMPACT_CATALOG_ANALYSIS.md`
+- `docs/SAT_CATALOG_RELATIONSHIP_MAP.md`
 - `docs/CATALOG_GAPS_REPORT.md`
 
 El candidate queda sin activar hasta revision humana. No se inventan claves SAT; todo concepto sugerible nuevo debe venir con `source=SAT_OFFICIAL`, `clave_prod_serv`, `clave_unidad` y trazabilidad al archivo SAT local. La vista normal del borrador oculta campos internos como familia, tipo, score, keywords y notas de guardrail.
+
+Si la carpeta trae catalogos auxiliares SAT pero no trae `c_ClaveProdServ` oficial, la propuesta queda bloqueada como `BLOCKED_MISSING_OFFICIAL_CLAVE_PROD_SERV`. El PDF Compact solo se usa como referencia; sus claves quedan como `NEEDS_OFFICIAL_CONFIRMATION` hasta cruzarlas contra un catalogo SAT oficial local de producto/servicio.
 
 Comandos utiles durante edicion:
 

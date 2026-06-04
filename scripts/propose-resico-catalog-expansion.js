@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { MISSING_MESSAGE, OUTPUT_PATH: SAT_IMPORT_PATH, importSatCatalog, listOfficialFiles, normalizeText } = require("./import-sat-catalog");
+const { MISSING_MESSAGE, OUTPUT_PATH: SAT_IMPORT_PATH, importSatCatalog, normalizeText } = require("./import-sat-catalog");
 
 const root = path.resolve(__dirname, "..");
 const BASE_CATALOG_PATH = path.join(root, "data", "concepts.normalized.json");
@@ -107,10 +107,17 @@ function loadJson(filePath, fallback = null) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function satProductServices(sat) {
+  return sat?.product_services || sat?.clave_prod_serv || [];
+}
+
+function satUnits(sat) {
+  return sat?.units || sat?.clave_unidad || [];
+}
+
 function officialCatalogAvailable() {
-  if (!listOfficialFiles().length) return false;
   const imported = loadJson(SAT_IMPORT_PATH);
-  return Boolean(imported && (imported.product_services || []).length && (imported.units || []).length);
+  return Boolean(imported && satProductServices(imported).length && satUnits(imported).length);
 }
 
 function scoreOfficialDescription(description, terms) {
@@ -124,16 +131,16 @@ function scoreOfficialDescription(description, terms) {
 }
 
 function findOfficialProductService(template, sat) {
-  const candidates = (sat.product_services || [])
-    .map((item) => ({ item, score: scoreOfficialDescription(item.description, template.search_terms) }))
+  const candidates = satProductServices(sat)
+    .map((item) => ({ item, score: scoreOfficialDescription(item.description || item.descripcion || item.nombre, template.search_terms) }))
     .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score || String(a.item.key).localeCompare(String(b.item.key)));
+    .sort((a, b) => b.score - a.score || String(a.item.key || a.item.clave).localeCompare(String(b.item.key || b.item.clave)));
   return candidates[0]?.item || null;
 }
 
 function findOfficialUnit(template, sat) {
   const desired = template.tipo === "PRODUCTO" ? "H87" : "E48";
-  return (sat.units || []).find((item) => String(item.key).toUpperCase() === desired) || null;
+  return satUnits(sat).find((item) => String(item.key || item.clave).toUpperCase() === desired) || null;
 }
 
 function currentActivitySupport(template) {
@@ -160,6 +167,10 @@ function buildGap(template, reason, details = {}) {
 }
 
 function buildConcept(template, satProduct, satUnit) {
+  const productKey = satProduct.key || satProduct.clave;
+  const unitKey = satUnit.key || satUnit.clave;
+  const productDescription = satProduct.description || satProduct.descripcion || satProduct.nombre || "";
+  const unitDescription = satUnit.description || satUnit.descripcion || satUnit.nombre || "";
   const concept = {
     id: template.id,
     familia: template.familia,
@@ -167,10 +178,10 @@ function buildConcept(template, satProduct, satUnit) {
     tipo: template.tipo,
     operation_type: template.operation_type,
     concepto_factura_recomendado: template.concepto_factura_recomendado,
-    descripcion_clave_sat: satProduct.description,
-    clave_prod_serv: satProduct.key,
-    clave_unidad: satUnit.key,
-    unidad: satUnit.description,
+    descripcion_clave_sat: productDescription,
+    clave_prod_serv: productKey,
+    clave_unidad: unitKey,
+    unidad: unitDescription,
     objeto_imp: "02",
     iva_sugerido: "16%",
     resico_626_ok: true,
@@ -185,8 +196,8 @@ function buildConcept(template, satProduct, satUnit) {
     notas_guardrail: "Propuesto, no activado. Validar contra constancia y operacion real antes de usar.",
     precision_level: template.desired_precision_level,
     source: "SAT_OFFICIAL",
-    source_catalog_file: satProduct.source_catalog_file,
-    source_catalog_row_or_key: satProduct.source_catalog_row_or_key || satProduct.key,
+    source_catalog_file: satProduct.source_catalog_file || satProduct.source_file,
+    source_catalog_row_or_key: satProduct.source_catalog_row_or_key || satProduct.source_row || productKey,
     internal_only_notes: "Generado por propose-resico-catalog-expansion.js desde catalogo oficial SAT local. No activar sin revision humana.",
   };
   for (const field of REQUIRED_FIELDS) {
@@ -247,24 +258,31 @@ function proposeExpansion() {
     sat = loadJson(SAT_IMPORT_PATH);
   }
 
-  if (!sat || !(sat.product_services || []).length || !(sat.units || []).length) {
+  const hasUnits = Boolean(satUnits(sat).length);
+  const hasProductServices = Boolean(satProductServices(sat).length);
+  if (!sat || !hasProductServices || !hasUnits) {
+    const missingCode = !hasProductServices ? "BLOCKED_MISSING_OFFICIAL_CLAVE_PROD_SERV" : "BLOCKED_MISSING_CLAVE_UNIDAD";
+    const missingMessage = !hasProductServices
+      ? "Falta catalogo oficial SAT c_ClaveProdServ local. Compact queda como referencia, no como fuente oficial unica."
+      : MISSING_MESSAGE;
     const proposed = {
       schema_version: "1.0.0",
-      status: "BLOCKED_MISSING_SAT_OFFICIAL_CATALOG",
-      message: MISSING_MESSAGE,
+      status: missingCode,
+      message: missingMessage,
       generated_at: new Date().toISOString(),
-      source: "NO_SAT_OFFICIAL_LOCAL",
+      source: !hasProductServices ? "SAT_AUXILIARY_LOCAL_WITHOUT_CLAVE_PROD_SERV" : "NO_SAT_OFFICIAL_LOCAL",
+      source_catalog_file: sat?.source_files || [],
       desired_concepts: DESIRED_CONCEPTS,
       concepts: [],
-      gaps: DESIRED_CONCEPTS.map((template) => buildGap(template, "MISSING_SAT_OFFICIAL_CATALOG")),
+      gaps: DESIRED_CONCEPTS.map((template) => buildGap(template, !hasProductServices ? "MISSING_OFFICIAL_CLAVE_PROD_SERV" : "MISSING_SAT_OFFICIAL_CATALOG")),
     };
     const candidate = {
       schema_version: base.schema_version || "1.0.0",
-      candidate_status: "NOT_ACTIVATED_MISSING_SAT_OFFICIAL_CATALOG",
+      candidate_status: !hasProductServices ? "NOT_ACTIVATED_MISSING_OFFICIAL_CLAVE_PROD_SERV" : "NOT_ACTIVATED_MISSING_SAT_OFFICIAL_CATALOG",
       base_catalog_path: "data/concepts.normalized.json",
       base_catalog_unchanged: true,
       proposed_additions_count: 0,
-      message: MISSING_MESSAGE,
+      message: missingMessage,
       concepts: base.concepts || [],
     };
     writeJson(PROPOSED_PATH, proposed);
