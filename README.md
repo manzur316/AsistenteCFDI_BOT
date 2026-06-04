@@ -197,6 +197,19 @@ Ariatza, instalacion de camara CCTV 800 + IVA, servicio de mantenimiento Equipo 
 
 En ese caso el bot conserva las partidas como line items separados. Cada linea se scorea contra `data/concepts.normalized.json`, usa su propia clave SAT/unidad, calcula impuestos por linea y muestra un preview `BORRADOR CFDI MULTILINEA`. No crea `cfdi_drafts` ni `cfdi_draft_line_items` hasta que respondas `confirmar`.
 
+### Guardrails fiscales 5E
+
+La matriz fiscal del MVP esta documentada en:
+
+- `docs/FISCAL_ACTIVITY_GUARDRAILS.md`
+- `docs/BUSINESS_SCENARIO_MATRIX.md`
+
+El bot asume emisor RESICO regimen `626` y solo permite familias relacionadas con las actividades actuales: CCTV, control de acceso, barreras, red/comunicacion y computo. Categorias como software, apps, web, SaaS, n8n, IA, marketing, diseno, video, consultoria profesional, comida, construccion general, plomeria, pintura, renta de equipo y electricidad general no ligada al equipo actual se bloquean o piden revision fiscal.
+
+Si un mensaje mezcla material y mano de obra en un solo monto, el bot entra a `NEEDS_MATERIAL_LABOR_DECISION` y pregunta si se separa, si se trata como servicio integral, si es producto con instalacion incluida o si se cancela. Si varias actividades comparten un monto global, entra a `NEEDS_GLOBAL_AMOUNT_DECISION` y pide dividir por linea o tratarlo como servicio integral. En ambos casos no crea draft final hasta que el usuario resuelva la decision y confirme el preview.
+
+Las facturas largas deben soportar al menos 10 partidas. Si hay mas de 10, el preview se compacta y sugiere usar `/ver`; el contexto completo se conserva para confirmar o editar. Todo sigue siendo BORRADOR SUJETO A REVISION HUMANA.
+
 Comandos utiles durante edicion:
 
 - `/editlinea N TEXTO`
