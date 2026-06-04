@@ -249,6 +249,21 @@ Si el preflight de autenticacion falla, el analyzer reporta
 `auth_preflight_ok` y `auth_preflight_response_shape`. En ese caso el diagnostico
 correcto es proveedor/cuenta/ambiente, no payload CFDI.
 
+Regla local 6A.7J: el RFC del receptor se normaliza antes de construir
+`POST /v1/clients/create`. La normalizacion elimina BOM, espacios, saltos y
+comillas envolventes, convierte a mayusculas y solo persiste metadatos seguros
+como forma y longitud. Si la forma normalizada no corresponde a PF, PM o RFC
+generico permitido, el intento queda `LOCAL_INVALID_RFC_SHAPE` y no se llama a
+Factura.com.
+
+El guard receptor/UsoCFDI se evalua otra vez sobre el `body` final exacto de
+`POST /v4/cfdi40/create`, antes de escribir `CFDI_CREATE_REQUEST`. El reporte
+`receptor_compatibility` debe existir aunque el guard pase. Cuando hay
+`CLIENT_CREATE_RESPONSE`, el smoke compara campos seguros de cliente
+(`RegimenId`, `UsoCFDI`, presencia de UID y forma RFC) contra el CFDI final; si
+un mismatch afecta regimen/UsoCFDI/persona, corta como `CFDI_LOCAL_RULE_ERROR`
+con `CLIENT_CFDI_RECEPTOR_MISMATCH`.
+
 Los mensajes de error pueden venir como texto plano, objeto JSON o HTML corto
 dentro de `message`. Para diagnostico local, 6A.7E convierte HTML simple
 (`<br>`, `<b>`, `<strong>`, listas y parrafos) a texto plano seguro, decodifica

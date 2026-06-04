@@ -33,7 +33,8 @@ const { inspectRuntime } = require("./inspect-facturacom-sandbox-response-shape"
 
 const root = path.resolve(__dirname, "..");
 const tempRoot = path.join(root, "runtime", "test-facturacom-sandbox-smoke-safety");
-const sampleInvalidPfRfc = `${["XAMA", "620210", "DQ5"].join("")}Z`;
+const samplePfRfc = ["XAMA", "620210", "DQ5"].join("");
+const sampleInvalidPfRfc = `${samplePfRfc}Z`;
 
 function printCheck(name, pass, value = "") {
   const suffix = value === "" ? "" : ` (${value})`;
@@ -64,6 +65,23 @@ function cleanTemp() {
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function withPatchedClients(mutator, fn) {
+  const originalReadFileSync = fs.readFileSync;
+  fs.readFileSync = function patchedReadFileSync(filePath, ...args) {
+    if (String(filePath).endsWith(path.join("data", "sandbox", "canonical-test-clients.json"))) {
+      const clients = JSON.parse(originalReadFileSync.call(fs, filePath, "utf8"));
+      mutator(clients);
+      return JSON.stringify(clients);
+    }
+    return originalReadFileSync.call(fs, filePath, ...args);
+  };
+  try {
+    return await fn();
+  } finally {
+    fs.readFileSync = originalReadFileSync;
+  }
 }
 
 function validLiveEnv(overrides = {}) {
@@ -1280,6 +1298,77 @@ checkAsync("client_create_validation_error_no_intenta_cfdi", async () => {
   return "validation cutoff";
 });
 
+checkAsync("client_create_usa_rfc_normalizado_no_raw", async () => {
+  const runtimeDir = path.join(tempRoot, "client-create-rfc-normalized-runtime");
+  let capturedBody = null;
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+  });
+  const requestFn = async ({ method, path: requestPath, body }) => {
+    if (method === "POST" && requestPath === "/v1/clients/create") {
+      capturedBody = body;
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          response: "success",
+          Data: { UID: "UID-CLIENT-CREATED", RFC: samplePfRfc, RegimenId: "612", UsoCFDI: "G03" },
+        },
+      };
+    }
+    if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+      return { ok: true, status: 200, data: { response: "success", Data: { UID: "CFDI-UID-NORMALIZED" } } };
+    }
+    if (method === "GET" && requestPath === "/v4/cfdi/uid/CFDI-UID-NORMALIZED") {
+      return { ok: true, status: 200, data: { response: "success", Data: { UID: "CFDI-UID-NORMALIZED" } } };
+    }
+    throw new Error(`unexpected request: ${method} ${requestPath}`);
+  };
+
+  await withPatchedClients((clients) => {
+    clients[0].rfc = `\uFEFF"${samplePfRfc} "`;
+    clients[0].tax_regime = "612";
+  }, async () => {
+    const result = await runSmoke(env, { requestFn });
+    assert.strictEqual(capturedBody.rfc, samplePfRfc);
+    assert.notStrictEqual(capturedBody.rfc, `\uFEFF"${samplePfRfc} "`);
+    assert.strictEqual(result.summary.rfc_hidden_characters_detected, 1);
+    const createArtifact = result.manifest.artifacts.find((artifact) => artifact.type === "CLIENT_CREATE_REQUEST");
+    const artifactBody = fs.readFileSync(path.join(root, createArtifact.path), "utf8");
+    assert(!artifactBody.includes(samplePfRfc), "artifact no debe exponer RFC completo");
+    assert(artifactBody.includes("[REDACTED_RFC]"), artifactBody);
+  });
+  return "normalized";
+});
+
+checkAsync("rfc_len_14_invalido_corta_antes_de_client_create", async () => {
+  const runtimeDir = path.join(tempRoot, "client-create-invalid-rfc-shape-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+  });
+  await withPatchedClients((clients) => {
+    clients[0].rfc = sampleInvalidPfRfc;
+    clients[0].tax_regime = "612";
+  }, async () => {
+    const result = await runSmoke(env, {
+      requestFn: async ({ method, path: requestPath }) => {
+        calls.push({ method, path: requestPath });
+        throw new Error(`no debe llamar Factura.com con RFC invalido: ${method} ${requestPath}`);
+      },
+    });
+    const attempt = result.manifest.attempts[0];
+    assert.strictEqual(attempt.status, "LOCAL_INVALID_RFC_SHAPE");
+    assert.strictEqual(result.summary.invalid_rfc_shape_detected, 1);
+    assert.strictEqual(calls.length, 0);
+    assert(!result.manifest.artifacts.some((artifact) => artifact.type === "CLIENT_CREATE_REQUEST"));
+    assert(!result.manifest.artifacts.some((artifact) => artifact.type === "CFDI_CREATE_REQUEST"));
+  });
+  return "client create blocked";
+});
+
 checkAsync("create_api_error_http_200_no_hace_lookup_ni_identity_missing", async () => {
   const runtimeDir = path.join(tempRoot, "create-api-error-runtime");
   const calls = [];
@@ -1350,6 +1439,81 @@ checkAsync("local_cfdi40161_corta_antes_de_cfdi_create", async () => {
   return "local rule cutoff";
 });
 
+checkAsync("final_cfdi_body_guard_pass_persiste_effective_fields", async () => {
+  const runtimeDir = path.join(tempRoot, "final-body-guard-pass-runtime");
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
+  });
+  await withPatchedClients((clients) => {
+    clients[0].rfc = `${samplePfRfc} `;
+    clients[0].tax_regime = "612";
+  }, async () => {
+    const result = await runSmoke(env, {
+      requestFn: async ({ method, path: requestPath }) => {
+        if (method === "POST" && requestPath === "/v4/cfdi40/create") {
+          return { ok: true, status: 200, data: { response: "success", Data: { UID: "CFDI-UID-GUARD-PASS" } } };
+        }
+        if (method === "GET" && requestPath === "/v4/cfdi/uid/CFDI-UID-GUARD-PASS") {
+          return { ok: true, status: 200, data: { response: "success", Data: { UID: "CFDI-UID-GUARD-PASS" } } };
+        }
+        throw new Error(`unexpected request: ${method} ${requestPath}`);
+      },
+    });
+    const attempt = result.manifest.attempts[0];
+    assert.strictEqual(attempt.receptor_compatibility.compatibility_status, "PASS");
+    assert.strictEqual(attempt.receptor_compatibility.effective_uso_cfdi, "G03");
+    assert.strictEqual(attempt.receptor_compatibility.effective_regimen_fiscal_receptor, "612");
+    assert.strictEqual(attempt.receptor_compatibility.effective_person_type, "PF");
+    assert.strictEqual(attempt.receptor_compatibility.normalized_rfc_length, 13);
+    const analysis = analyze(runtimeDir);
+    assert.strictEqual(analysis.effective_uso_cfdi, "G03");
+    assert.strictEqual(analysis.effective_regimen_fiscal_receptor, "612");
+    assert.strictEqual(analysis.effective_person_type, "PF");
+    assert.strictEqual(analysis.normalized_rfc_length, "13");
+    assert.strictEqual(analysis.rfc_has_hidden_characters, true);
+    assert.strictEqual(analysis.receptor_guard_not_evaluated_bug.length, 0);
+  });
+  return "guard pass";
+});
+
+checkAsync("client_response_cfdi_mismatch_corta_antes_de_cfdi_create", async () => {
+  const runtimeDir = path.join(tempRoot, "client-cfdi-mismatch-runtime");
+  const calls = [];
+  const env = validLiveEnv({
+    FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
+    FACTURACOM_SANDBOX_CREATE_CLIENTS: "1",
+  });
+  await withPatchedClients((clients) => {
+    clients[0].rfc = samplePfRfc;
+    clients[0].tax_regime = "612";
+  }, async () => {
+    const result = await runSmoke(env, {
+      requestFn: async ({ method, path: requestPath }) => {
+        calls.push({ method, path: requestPath });
+        if (method === "POST" && requestPath === "/v1/clients/create") {
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              response: "success",
+              Data: { UID: "UID-CLIENT-MISMATCH", RFC: samplePfRfc, RegimenId: "616", UsoCFDI: "S01" },
+            },
+          };
+        }
+        throw new Error(`no debe llegar a CFDI create con mismatch: ${method} ${requestPath}`);
+      },
+    });
+    const attempt = result.manifest.attempts[0];
+    assert.strictEqual(attempt.status, "CFDI_LOCAL_RULE_ERROR");
+    assert(attempt.local_config_errors.includes("CLIENT_CFDI_RECEPTOR_MISMATCH"));
+    assert.strictEqual(result.summary.client_cfdi_receptor_mismatch, 1);
+    assert(!calls.some((call) => call.path === "/v4/cfdi40/create"), "no debe intentar CFDI_CREATE");
+    assert(!result.manifest.artifacts.some((artifact) => artifact.type === "CFDI_CREATE_REQUEST"));
+  });
+  return "mismatch blocked";
+});
+
 checkAsync("invalid_rfc_shape_corta_antes_de_cfdi_create", async () => {
   const runtimeDir = path.join(tempRoot, "invalid-rfc-runtime");
   const calls = [];
@@ -1382,6 +1546,38 @@ checkAsync("invalid_rfc_shape_corta_antes_de_cfdi_create", async () => {
     fs.readFileSync = originalReadFileSync;
   }
   return "invalid rfc cutoff";
+});
+
+check("analyzer_detecta_cfdi_create_sin_guard_como_bug", () => {
+  const runtimeDir = path.join(tempRoot, "unguarded-cfdi-request-runtime");
+  const requestPath = path.join(runtimeDir, "DRAFT-UNGUARDED-create-cfdi-request.json");
+  writeJson(requestPath, {
+    method: "POST",
+    path: "/v4/cfdi40/create",
+    body: {
+      Receptor: { UID: "UID-CLIENT-UNGUARDED", RegimenFiscalR: "612" },
+      UsoCFDI: "G03",
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [{
+      type: "CFDI_CREATE_REQUEST",
+      draft_id: "DRAFT-UNGUARDED",
+      path: path.relative(root, requestPath).replace(/\\/g, "/"),
+    }],
+    attempts: [{ draft_id: "DRAFT-UNGUARDED", status: "STARTED" }],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 1,
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.receptor_guard_not_evaluated_bug.length, 1);
+  assert(result.sensitive_findings.some((finding) => finding.includes("RECEPTOR_GUARD_NOT_EVALUATED_BUG")));
+  return "bug detected";
 });
 
 checkAsync("identity_se_completa_desde_lookup_si_create_no_trae_uuid", async () => {

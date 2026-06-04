@@ -230,6 +230,8 @@ function analyze(runtimeArg = process.argv[2]) {
   let authPreflightArtifactMessage = null;
   let authPreflightArtifactStatus = null;
   const receptorCompatibilityRecords = [];
+  const cfdiCreateRequestDrafts = new Set();
+  const guardedCfdiRequestDrafts = new Set();
   let clientCreateArtifactErrors = 0;
   let clientLookupArtifactErrors = 0;
   const headerIdentityCandidates = [];
@@ -240,8 +242,14 @@ function analyze(runtimeArg = process.argv[2]) {
     if (!isInside(runtimeDir, abs)) continue;
     if (artifact.type === "CFDI_CREATE_REQUEST") {
       const requestJson = readJsonIfPossible(abs);
+      const draftId = artifact.draft_id || "UNKNOWN";
+      cfdiCreateRequestDrafts.add(draftId);
       const receptorUid = getNested(requestJson, ["body", "Receptor", "UID"]);
-      if (receptorUid) createRequestReceptorUidsByDraft[artifact.draft_id || "UNKNOWN"] = receptorUid;
+      if (receptorUid) createRequestReceptorUidsByDraft[draftId] = receptorUid;
+      if (requestJson?.receptor_compatibility) {
+        receptorCompatibilityRecords.push(requestJson.receptor_compatibility);
+        guardedCfdiRequestDrafts.add(draftId);
+      }
     }
     if (artifact.type === "CFDI_CREATE_RESPONSE" || artifact.type === "CFDI_LOOKUP_RESPONSE") {
       const responseJson = readJsonIfPossible(abs);
@@ -370,7 +378,10 @@ function analyze(runtimeArg = process.argv[2]) {
     ? summary.auth_preflight_ok
     : authPreflightArtifactOk;
   for (const attempt of attempts) {
-    if (attempt.receptor_compatibility) receptorCompatibilityRecords.push(attempt.receptor_compatibility);
+    if (attempt.receptor_compatibility) {
+      receptorCompatibilityRecords.push(attempt.receptor_compatibility);
+      if (attempt.draft_id) guardedCfdiRequestDrafts.add(attempt.draft_id);
+    }
     increment(documentsByDraftId, attempt.draft_id);
     increment(documentsByInvoiceId, attempt.cfdi_uid || attempt.uuid || attempt.pac_invoice_id || attempt.internal_invoice_id);
     increment(cfdiIdentitySource, attempt.cfdi_identity_source || (attempt.identity_ambiguous ? "ambiguous" : "missing"));
@@ -384,6 +395,22 @@ function analyze(runtimeArg = process.argv[2]) {
 
   const errors = [...scan.findings];
   if (outsideArtifacts.length > 0) errors.push(`artifacts_outside_runtime:${outsideArtifacts.join(",")}`);
+  const receptorGuardNotEvaluatedBug = Array.from(cfdiCreateRequestDrafts)
+    .filter((draftId) => !guardedCfdiRequestDrafts.has(draftId))
+    .map((draftId) => ({
+      draft_id: draftId,
+      code: "RECEPTOR_GUARD_NOT_EVALUATED_BUG",
+    }));
+  if (receptorGuardNotEvaluatedBug.length > 0) {
+    errors.push(`RECEPTOR_GUARD_NOT_EVALUATED_BUG:${receptorGuardNotEvaluatedBug.map((item) => item.draft_id).join(",")}`);
+  }
+  const normalizedRfcLengths = unique([
+    ...(summary.normalized_rfc_lengths || []),
+    ...receptorCompatibilityRecords.map((item) => item.normalized_rfc_length ? String(item.normalized_rfc_length) : null),
+  ]);
+  const clientCfdiReceptorMismatches = receptorCompatibilityRecords
+    .flatMap((item) => Array.isArray(item.client_cfdi_receptor_mismatch) ? item.client_cfdi_receptor_mismatch : [])
+    .filter(Boolean);
 
   const result = {
     runtime_dir: rel(runtimeDir),
@@ -438,6 +465,13 @@ function analyze(runtimeArg = process.argv[2]) {
     effective_regimen_fiscal_receptor: unique([...(summary.effective_regimen_fiscal_receptor_values || []), ...receptorCompatibilityRecords.map((item) => item.effective_regimen_fiscal_receptor)])[0] || null,
     effective_person_type: unique([...(summary.effective_person_type_values || []), ...receptorCompatibilityRecords.map((item) => item.effective_person_type)])[0] || null,
     rfc_shape: unique([...(summary.rfc_shape_values || []), ...receptorCompatibilityRecords.map((item) => item.rfc_shape)])[0] || null,
+    normalized_rfc_length: normalizedRfcLengths[0] || null,
+    rfc_has_hidden_characters: Number(summary.rfc_hidden_characters_detected || 0) > 0
+      || receptorCompatibilityRecords.some((item) => item.rfc_has_hidden_characters === true),
+    client_cfdi_receptor_mismatch: Number(summary.client_cfdi_receptor_mismatch || 0) + clientCfdiReceptorMismatches.length,
+    client_cfdi_receptor_mismatch_details: clientCfdiReceptorMismatches,
+    receptor_guard_not_evaluated_bug: receptorGuardNotEvaluatedBug,
+    receptor_compatibility_status: unique(receptorCompatibilityRecords.map((item) => item.compatibility_status))[0] || null,
     local_cfdi_rule_response_shape: localCfdiRuleResponseShape,
     client_create_errors: Number(summary.client_create_errors ?? clientCreateArtifactErrors),
     client_lookup_errors: Number(summary.client_lookup_errors ?? clientLookupArtifactErrors),
@@ -512,6 +546,11 @@ function printResult(result) {
   console.log(`Effective RegimenFiscalR: ${result.effective_regimen_fiscal_receptor || "none"}`);
   console.log(`Effective person type: ${result.effective_person_type || "none"}`);
   console.log(`RFC shape: ${result.rfc_shape || "none"}`);
+  console.log(`Normalized RFC length: ${result.normalized_rfc_length || "none"}`);
+  console.log(`RFC hidden characters: ${result.rfc_has_hidden_characters ? "true" : "false"}`);
+  console.log(`Receptor compatibility status: ${result.receptor_compatibility_status || "none"}`);
+  console.log(`Client/CFDI receptor mismatch: ${result.client_cfdi_receptor_mismatch || 0}`);
+  console.log(`Receptor guard not evaluated bug: ${result.receptor_guard_not_evaluated_bug.length ? JSON.stringify(result.receptor_guard_not_evaluated_bug) : "none"}`);
   console.log(`Local CFDI rule errors: ${result.local_cfdi_rule_errors}`);
   console.log(`Receptor compatibility errors: ${result.receptor_compatibility_errors}`);
   console.log(`Invalid RFC shape detected: ${result.invalid_rfc_shape_detected}`);

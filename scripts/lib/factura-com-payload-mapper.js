@@ -5,6 +5,7 @@ const {
   validateCanonicalPacResult,
 } = require("./canonical-cfdi-contracts");
 const {
+  buildSafeReceptorCompatibilityReport,
   explainUsoCfdiCompatibilityFailure,
   validateReceptorForCfdi,
 } = require("./cfdi-receptor-compatibility-validator");
@@ -280,18 +281,7 @@ function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, conce
     ].filter(Boolean),
     local_config_errors: localConfigErrors,
     local_config_warnings: localConfigWarnings,
-    receptor_compatibility: {
-      ok: receptorCompatibility.ok,
-      errors: receptorCompatibility.errors,
-      warnings: receptorCompatibility.warnings,
-      effective_uso_cfdi: receptorCompatibility.effective_uso_cfdi,
-      effective_regimen_fiscal_receptor: receptorCompatibility.effective_regimen_fiscal_receptor,
-      effective_person_type: receptorCompatibility.effective_person_type,
-      rfc_shape: receptorCompatibility.rfc_shape,
-      normalized_rfc_shape: receptorCompatibility.normalized_rfc_shape,
-      normalized_rfc_length: receptorCompatibility.normalized_rfc_length,
-      rfc_has_hidden_characters: receptorCompatibility.rfc_has_hidden_characters,
-    },
+    receptor_compatibility: buildSafeReceptorCompatibilityReport(receptorCompatibility),
   };
 }
 

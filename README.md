@@ -388,6 +388,24 @@ produccion contra sandbox. `F-PLUGIN` sigue siendo requerido y universal para la
 cuenta. No avances contratos canonicos CFDI ni storage/reporting con live smoke
 hasta que el preflight marque `AUTH_OK`.
 
+Fase 6A.7J endurece el corte local antes del PAC para evitar `CFDI40161` por
+payload final no evaluado. Antes de `POST /v1/clients/create`, el smoke
+normaliza el RFC del fixture y valida su forma; si queda invalido, el intento
+termina como `LOCAL_INVALID_RFC_SHAPE`, no se crea `CLIENT_CREATE_REQUEST` y no
+hay llamada a Factura.com. Justo antes de escribir y enviar
+`CFDI_CREATE_REQUEST`, el smoke valida el `body` final real:
+`UsoCFDI`, `Receptor.RegimenFiscalR`, `Receptor.UID` y la forma RFC normalizada
+del receptor. El reporte seguro `receptor_compatibility` se guarda tambien en
+casos `PASS`.
+
+El analyzer ahora debe mostrar `Effective UsoCFDI`,
+`Effective RegimenFiscalR`, `Effective person type`, `Normalized RFC length`,
+`RFC hidden characters`, `Receptor compatibility status` y
+`Client/CFDI receptor mismatch`. Si existe `CFDI_CREATE_REQUEST` pero no existe
+reporte de guard en el artifact o en el intento, reporta
+`RECEPTOR_GUARD_NOT_EVALUATED_BUG`; ese caso no debe ignorarse antes de repetir
+un smoke live.
+
 Fase 6A.7I agrega un guard local para CFDI40161 antes de
 `POST /v4/cfdi40/create`. El mapper valida `Receptor.UID`,
 `Receptor.RegimenFiscalR`, `UsoCFDI` y forma de RFC receptor contra la matriz

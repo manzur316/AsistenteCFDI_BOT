@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { safeApiMessagePreview } = require("./lib/factura-com-live-client");
+const { validateRfcShape } = require("./lib/cfdi-receptor-compatibility-validator");
 
 const root = path.resolve(__dirname, "..");
 const DEFAULT_RUNTIME_DIR = path.join(root, "runtime", "facturacom-sandbox");
@@ -94,6 +95,14 @@ function describeValue(value, pathLabel = "") {
   if (Array.isArray(value)) return `array(len=${value.length})`;
   if (typeof value === "string") {
     const markers = classifyString(value, pathLabel);
+    if (/(^|\.)rfc$/i.test(pathLabel) || /(^|\.)(RFC|Rfc)$/.test(pathLabel)) {
+      const validation = validateRfcShape(value);
+      markers.push(
+        `rfc_shape=${validation.rfc_shape}`,
+        `normalized_rfc_length=${validation.normalized_rfc_length}`,
+        `rfc_hidden=${validation.has_hidden_characters ? "true" : "false"}`,
+      );
+    }
     const preview = allowsSafePreview(pathLabel) ? safePreview(value) : null;
     const previewText = preview ? `, preview="${preview.replace(/"/g, "'")}"` : "";
     const suffix = markers.length ? `(len=${value.length}${previewText}, ${markers.join(", ")})` : `(len=${value.length}${previewText})`;

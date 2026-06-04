@@ -147,6 +147,14 @@ ambiente proveedor. Para Factura.com, el preflight usa
 El mensaje `La cuenta que intenta autenticarse no existe` es un problema de
 auth/cuenta/ambiente proveedor, no un error del contrato canonico CFDI.
 
+Regla 6A.7J: antes de cualquier intento sandbox de CFDI, el adapter debe validar
+localmente el receptor final. La creacion de cliente usa RFC normalizado y corta
+sin llamar al PAC si la forma es invalida. El request final CFDI debe incluir un
+reporte local `receptor_compatibility=PASS|FAIL`; si el analyzer detecta un
+`CFDI_CREATE_REQUEST` sin ese reporte, se considera bug de integracion
+(`RECEPTOR_GUARD_NOT_EVALUATED_BUG`). Esta regla aplica al Hub neutral de PAC,
+no solo a Factura.com.
+
 ## Storage Engine
 
 El Storage Engine debe organizar documentos y metadatos por una ruta logica

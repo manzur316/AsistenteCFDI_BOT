@@ -177,6 +177,43 @@ function validateReceptorForCfdi({ rfc, regimenFiscalReceptor, usoCfdi, clientUi
   };
 }
 
+function safeCatalogEntry(entry = null) {
+  if (!entry) return null;
+  return {
+    uso_cfdi: entry.uso_cfdi || null,
+    descripcion: entry.descripcion || null,
+    persona_fisica_allowed: entry.persona_fisica_allowed === true,
+    persona_moral_allowed: entry.persona_moral_allowed === true,
+    regimenes_allowed_count: Array.isArray(entry.regimenes_allowed) ? entry.regimenes_allowed.length : 0,
+    source: entry.source || null,
+    generated_from: entry.generated_from || null,
+  };
+}
+
+function buildSafeReceptorCompatibilityReport(validation = {}) {
+  const errors = Array.isArray(validation.errors) ? validation.errors : [];
+  const warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
+  return {
+    ok: validation.ok === true,
+    compatibility_status: validation.ok === true ? "PASS" : "FAIL",
+    errors,
+    warnings,
+    client_uid_present: validation.client_uid_present === true,
+    effective_uso_cfdi: validation.effective_uso_cfdi || null,
+    effective_regimen_fiscal_receptor: validation.effective_regimen_fiscal_receptor || null,
+    effective_person_type: validation.effective_person_type || null,
+    rfc_shape: validation.rfc_shape || null,
+    normalized_rfc_shape: validation.normalized_rfc_shape || validation.rfc_shape || null,
+    normalized_rfc_length: Number(validation.normalized_rfc_length || 0),
+    rfc_has_hidden_characters: validation.rfc_has_hidden_characters === true || validation.has_hidden_characters === true,
+    catalog_entry: safeCatalogEntry(validation.catalog_entry),
+  };
+}
+
+function evaluateReceptorForCfdi(input = {}) {
+  return buildSafeReceptorCompatibilityReport(validateReceptorForCfdi(input));
+}
+
 function explainUsoCfdiCompatibilityFailure(input = {}) {
   const result = validateReceptorForCfdi(input);
   if (result.ok) {
@@ -200,6 +237,8 @@ function explainUsoCfdiCompatibilityFailure(input = {}) {
 
 module.exports = {
   DEFAULT_COMPATIBILITY_PATH,
+  buildSafeReceptorCompatibilityReport,
+  evaluateReceptorForCfdi,
   explainUsoCfdiCompatibilityFailure,
   inferPersonTypeFromRfc,
   loadCompatibilityIndex,

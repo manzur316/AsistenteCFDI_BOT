@@ -3,6 +3,12 @@ const path = require("path");
 const { buildCanonicalDraftFromBotPreview } = require("./lib/canonical-draft-builder");
 const { buildCanonicalPacRequest, promoteCanonicalDraftToInvoiceDocument } = require("./lib/canonical-invoice-builder");
 const { mapCanonicalInvoiceToFacturaComPayload } = require("./lib/factura-com-payload-mapper");
+const {
+  buildSafeReceptorCompatibilityReport,
+  normalizeRfc,
+  validateReceptorForCfdi,
+  validateRfcShape,
+} = require("./lib/cfdi-receptor-compatibility-validator");
 const { runFacturaComAuthPreflight } = require("./preflight-facturacom-auth");
 const {
   assertFacturaComSandboxEnv,
@@ -197,8 +203,9 @@ function mapScenarioToFacturaCom(scenario, clientUid, config) {
 }
 
 function buildClientCreateBody(client = {}, config = {}) {
+  const normalizedRfc = normalizeRfc(client.rfc);
   return {
-    rfc: text(client.rfc),
+    rfc: normalizedRfc,
     razons: text(client.legal_name || client.display_name),
     codpos: text(client.fiscal_zip),
     email: "demo.facturacom@example.invalid",
@@ -216,6 +223,63 @@ function buildClientCreateBody(client = {}, config = {}) {
     numregidtrib: "",
     nombre: "DEMO",
     apellidos: "SANDBOX",
+  };
+}
+
+function collectObjects(value, output = []) {
+  if (!value || typeof value !== "object") return output;
+  if (!Array.isArray(value)) output.push(value);
+  if (Array.isArray(value)) {
+    for (const item of value) collectObjects(item, output);
+    return output;
+  }
+  for (const item of Object.values(value)) collectObjects(item, output);
+  return output;
+}
+
+function firstObjectValueDeep(value, names = []) {
+  for (const object of collectObjects(value)) {
+    const found = objectValue(object, names);
+    if (found !== null && found !== undefined && String(found).trim() !== "") return found;
+  }
+  return null;
+}
+
+function extractClientResponseFacts(response = {}, expectedClient = {}) {
+  const responseData = response.data || response.body || response;
+  const uidLookup = findClientUidInResponse(response, expectedClient);
+  const rfcValue = firstObjectValueDeep(responseData, ["RFC", "rfc", "Rfc"]);
+  const rfcValidation = validateRfcShape(rfcValue || expectedClient.rfc);
+  return {
+    uid: uidLookup.uid || null,
+    uid_present: Boolean(uidLookup.uid),
+    uid_reason: uidLookup.reason || null,
+    regimen_id: text(firstObjectValueDeep(responseData, ["RegimenId", "regimenId", "regimen_id", "regimen", "RegimenFiscal", "RegimenFiscalR"])),
+    uso_cfdi: text(firstObjectValueDeep(responseData, ["UsoCFDI", "usocfdi", "uso_cfdi", "UsoCfdi"])),
+    rfc_shape: rfcValidation.rfc_shape,
+    normalized_rfc_shape: rfcValidation.normalized_rfc_shape,
+    normalized_rfc_length: rfcValidation.normalized_rfc_length,
+    rfc_has_hidden_characters: rfcValidation.has_hidden_characters,
+  };
+}
+
+function buildLocalInvalidRfcResult(client = {}) {
+  const validation = validateRfcShape(client.rfc);
+  return {
+    uid: null,
+    reason: "LOCAL_INVALID_RFC_SHAPE",
+    local_status: "LOCAL_INVALID_RFC_SHAPE",
+    local_config_errors: validation.errors,
+    local_config_warnings: validation.warnings,
+    client_rfc_validation: {
+      ok: validation.ok,
+      errors: validation.errors,
+      warnings: validation.warnings,
+      rfc_shape: validation.rfc_shape,
+      normalized_rfc_shape: validation.normalized_rfc_shape,
+      normalized_rfc_length: validation.normalized_rfc_length,
+      rfc_has_hidden_characters: validation.has_hidden_characters,
+    },
   };
 }
 
@@ -498,8 +562,8 @@ function clientMatchScore(candidate = {}, expectedClient = {}) {
   const object = candidate.object || {};
   let score = candidate.clientLike ? 5 : 0;
 
-  const expectedRfc = normalizeComparable(expectedClient.rfc);
-  const candidateRfc = normalizeComparable(objectValue(object, ["RFC", "rfc", "Rfc"]));
+  const expectedRfc = normalizeComparable(normalizeRfc(expectedClient.rfc));
+  const candidateRfc = normalizeComparable(normalizeRfc(objectValue(object, ["RFC", "rfc", "Rfc"])));
   if (expectedRfc && candidateRfc && expectedRfc === candidateRfc) score += 100;
 
   const expectedClientId = normalizeComparable(expectedClient.client_id || expectedClient.id);
@@ -526,13 +590,13 @@ function findClientUidInResponse(response = {}, expectedClient = {}) {
   const candidates = collectUidCandidates(response);
   if (candidates.length === 0) return { uid: null, reason: "uid_not_found" };
 
-  const expectedRfc = normalizeComparable(expectedClient.rfc);
+  const expectedRfc = normalizeComparable(normalizeRfc(expectedClient.rfc));
   const withScores = candidates
     .map((candidate, index) => ({
       ...candidate,
       index,
       score: clientMatchScore(candidate, expectedClient),
-      candidateRfc: normalizeComparable(objectValue(candidate.object, ["RFC", "rfc", "Rfc"])),
+      candidateRfc: normalizeComparable(normalizeRfc(objectValue(candidate.object, ["RFC", "rfc", "Rfc"]))),
     }))
     .filter((candidate) => candidate.score > 0 || candidates.length === 1);
 
@@ -854,7 +918,7 @@ function finalizeAttemptIdentity(attempt, summary) {
 }
 
 async function lookupClientUidAfterCreate({ client, config, env, requestFn, manifest, summary }) {
-  const rfc = text(client?.rfc);
+  const rfc = normalizeRfc(client?.rfc);
   if (!rfc) return { uid: null, reason: "client_rfc_missing" };
 
   const lookupPaths = [
@@ -869,10 +933,8 @@ async function lookupClientUidAfterCreate({ client, config, env, requestFn, mani
       method: "GET",
       path: lookupPath,
     }, env);
-    const response = normalizeFacturaComHttpResponse(
-      await requestFn({ method: "GET", path: lookupPath, env }),
-      env,
-    );
+    const rawResponse = await requestFn({ method: "GET", path: lookupPath, env });
+    const response = normalizeFacturaComHttpResponse(rawResponse, env);
     const responseFile = writeJson(config.runtimeDir, `${artifactPrefix}-response.json`, response, env);
     manifest.artifacts.push({ type: "CLIENT_LOOKUP_REQUEST", client_id: client.client_id, path: path.relative(root, requestFile).replace(/\\/g, "/") });
     manifest.artifacts.push({ type: "CLIENT_LOOKUP_RESPONSE", client_id: client.client_id, path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: response.ok });
@@ -883,7 +945,7 @@ async function lookupClientUidAfterCreate({ client, config, env, requestFn, mani
       summary.warnings.push(`client_lookup_error:${client.client_id}:${failure.status}`);
       continue;
     }
-    const lookup = findClientUidInResponse(response, client);
+    const lookup = findClientUidInResponse(rawResponse, client);
     if (lookup.uid) return lookup;
     lastReason = lookup.reason;
     if (lookup.reason === "ambiguous_client_uid") break;
@@ -892,9 +954,24 @@ async function lookupClientUidAfterCreate({ client, config, env, requestFn, mani
 }
 
 async function maybeCreateClient({ client, config, env, uidMap, manifest, summary, requestFn = facturaComRequest }) {
+  const clientRfcValidation = validateRfcShape(client?.rfc);
   const existing = getClientUid(client, uidMap, env);
-  if (existing) return { uid: existing, reason: "existing" };
-  if (!config.createClients) return { uid: null, reason: "not_configured" };
+  if (existing) return { uid: existing, reason: "existing", client_rfc_validation: buildLocalInvalidRfcResult(client).client_rfc_validation };
+  if (!clientRfcValidation.ok) {
+    summary.invalid_rfc_shape_detected += 1;
+    summary.warnings.push(`client_rfc_invalid_shape:${client?.client_id || "UNKNOWN"}`);
+    return buildLocalInvalidRfcResult(client);
+  }
+  if (clientRfcValidation.warnings.length > 0) {
+    summary.warnings.push(`client_rfc_normalized:${client?.client_id || "UNKNOWN"}`);
+  }
+  if (!config.createClients) {
+    return {
+      uid: null,
+      reason: "not_configured",
+      client_rfc_validation: buildLocalInvalidRfcResult(client).client_rfc_validation,
+    };
+  }
 
   const body = buildClientCreateBody(client, config);
   const artifactPrefix = `client-${safeId(client.client_id)}`;
@@ -903,13 +980,12 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
     path: "/v1/clients/create",
     body,
   }, env);
-  const response = normalizeFacturaComHttpResponse(
-    await requestFn({ method: "POST", path: "/v1/clients/create", body, env }),
-    env,
-  );
+  const rawCreateResponse = await requestFn({ method: "POST", path: "/v1/clients/create", body, env });
+  const response = normalizeFacturaComHttpResponse(rawCreateResponse, env);
   const responseFile = writeJson(config.runtimeDir, `${artifactPrefix}-create-response.json`, response, env);
   manifest.artifacts.push({ type: "CLIENT_CREATE_REQUEST", path: path.relative(root, requestFile).replace(/\\/g, "/") });
   manifest.artifacts.push({ type: "CLIENT_CREATE_RESPONSE", path: path.relative(root, responseFile).replace(/\\/g, "/"), ok: response.ok });
+  const clientResponseFacts = extractClientResponseFacts(rawCreateResponse, client);
   if (!response.ok) {
     const failure = recordClientCreateFailure(summary, response, env);
     summary.warnings.push(`client_create_failed:${client.client_id}:${failure.status}`);
@@ -924,6 +1000,8 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
         reason: "found_after_client_create_error",
         client_create_status: failure.status,
         client_create_error: failure,
+        client_rfc_validation: buildLocalInvalidRfcResult(client).client_rfc_validation,
+        client_response_facts: clientResponseFacts,
       };
     }
     if (foundAfterFailure.reason === "ambiguous_client_uid") {
@@ -940,11 +1018,13 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
       lookup_reason: foundAfterFailure.reason,
       client_create_status: failure.status,
       client_create_error: failure,
+      client_rfc_validation: buildLocalInvalidRfcResult(client).client_rfc_validation,
+      client_response_facts: clientResponseFacts,
     };
   }
 
   summary.clients_created += 1;
-  let found = findClientUidInResponse(response, client);
+  let found = findClientUidInResponse(rawCreateResponse, client);
   if (!found.uid) {
     summary.warnings.push(`client_create_uid_lookup_needed:${client.client_id}:${found.reason}`);
     found = await lookupClientUidAfterCreate({ client, config, env, requestFn, manifest, summary });
@@ -964,7 +1044,15 @@ async function maybeCreateClient({ client, config, env, uidMap, manifest, summar
   uidMap[client.client_id] = found.uid;
   persistLocalClientUidMap(config.runtimeDir, uidMap, env);
   summary.client_uids_found += 1;
-  return found;
+  return {
+    ...found,
+    client_rfc_validation: buildLocalInvalidRfcResult(client).client_rfc_validation,
+    client_response_facts: {
+      ...clientResponseFacts,
+      uid: found.uid || clientResponseFacts.uid || null,
+      uid_present: Boolean(found.uid || clientResponseFacts.uid),
+    },
+  };
 }
 
 function normalizePostCreateSearchMatches(searchResult = {}) {
@@ -1111,12 +1199,75 @@ function updateLocalRuleSummary(summary, receptorCompatibility = {}, errors = []
   if (errors.includes("LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH")) {
     summary.uso_cfdi_regimen_persona_mismatch += 1;
   }
+  if (errors.includes("CLIENT_CFDI_RECEPTOR_MISMATCH")) {
+    summary.client_cfdi_receptor_mismatch += 1;
+  }
+  recordReceptorCompatibilitySummary(summary, receptorCompatibility);
+}
+
+function recordReceptorCompatibilitySummary(summary, receptorCompatibility = {}) {
   if (receptorCompatibility.effective_uso_cfdi) pushUnique(summary.effective_uso_cfdi_values, receptorCompatibility.effective_uso_cfdi);
   if (receptorCompatibility.effective_regimen_fiscal_receptor) {
     pushUnique(summary.effective_regimen_fiscal_receptor_values, receptorCompatibility.effective_regimen_fiscal_receptor);
   }
   if (receptorCompatibility.effective_person_type) pushUnique(summary.effective_person_type_values, receptorCompatibility.effective_person_type);
   if (receptorCompatibility.rfc_shape) pushUnique(summary.rfc_shape_values, receptorCompatibility.rfc_shape);
+  if (receptorCompatibility.normalized_rfc_length) pushUnique(summary.normalized_rfc_lengths, String(receptorCompatibility.normalized_rfc_length));
+  if (receptorCompatibility.rfc_has_hidden_characters === true) summary.rfc_hidden_characters_detected += 1;
+}
+
+function buildClientCfdiReceptorMismatches(body = {}, clientFacts = null, receptorCompatibility = {}) {
+  if (!clientFacts || typeof clientFacts !== "object") return [];
+  const mismatches = [];
+  const bodyRegimen = text(body?.Receptor?.RegimenFiscalR);
+  const bodyUso = text(body?.UsoCFDI);
+  const bodyUid = text(body?.Receptor?.UID);
+  if (clientFacts.regimen_id && bodyRegimen && clientFacts.regimen_id !== bodyRegimen) {
+    mismatches.push({ field: "RegimenFiscalR", client_value: clientFacts.regimen_id, cfdi_value: bodyRegimen, affects_cfdi40161: true });
+  }
+  if (clientFacts.uso_cfdi && bodyUso && clientFacts.uso_cfdi !== bodyUso) {
+    mismatches.push({ field: "UsoCFDI", client_value: clientFacts.uso_cfdi, cfdi_value: bodyUso, affects_cfdi40161: true });
+  }
+  if (clientFacts.uid && bodyUid && clientFacts.uid !== bodyUid) {
+    mismatches.push({ field: "Receptor.UID", client_value_present: true, cfdi_value_present: true, affects_cfdi40161: false });
+  }
+  if (clientFacts.rfc_shape && receptorCompatibility.rfc_shape && clientFacts.rfc_shape !== receptorCompatibility.rfc_shape) {
+    mismatches.push({
+      field: "RFC_SHAPE",
+      client_value: clientFacts.rfc_shape,
+      cfdi_value: receptorCompatibility.rfc_shape,
+      affects_cfdi40161: true,
+    });
+  }
+  return mismatches;
+}
+
+function validateFinalCfdiReceptorPayload({ body = {}, client = {}, clientUidResult = {} } = {}) {
+  const rawValidation = validateReceptorForCfdi({
+    rfc: client?.rfc,
+    regimenFiscalReceptor: body?.Receptor?.RegimenFiscalR,
+    usoCfdi: body?.UsoCFDI,
+    clientUid: body?.Receptor?.UID,
+  });
+  const receptorCompatibility = buildSafeReceptorCompatibilityReport(rawValidation);
+  receptorCompatibility.source = "final_cfdi_create_body";
+  const clientFacts = clientUidResult.client_response_facts || null;
+  const mismatches = buildClientCfdiReceptorMismatches(body, clientFacts, receptorCompatibility);
+  receptorCompatibility.client_response_facts = clientFacts ? {
+    uid_present: clientFacts.uid_present === true,
+    regimen_id: clientFacts.regimen_id || null,
+    uso_cfdi: clientFacts.uso_cfdi || null,
+    rfc_shape: clientFacts.rfc_shape || null,
+    normalized_rfc_length: Number(clientFacts.normalized_rfc_length || 0),
+    rfc_has_hidden_characters: clientFacts.rfc_has_hidden_characters === true,
+  } : null;
+  receptorCompatibility.client_cfdi_receptor_mismatch = mismatches;
+  const errors = [...receptorCompatibility.errors];
+  if (mismatches.some((item) => item.affects_cfdi40161)) errors.push("CLIENT_CFDI_RECEPTOR_MISMATCH");
+  receptorCompatibility.errors = Array.from(new Set(errors));
+  receptorCompatibility.ok = receptorCompatibility.errors.length === 0;
+  receptorCompatibility.compatibility_status = receptorCompatibility.ok ? "PASS" : "FAIL";
+  return receptorCompatibility;
 }
 
 function applyLocalCfdiRuleError({ attempt, summary, manifest, config, env, fixture, payload }) {
@@ -1206,6 +1357,33 @@ async function processDraft({
   }
 
   const clientUidResult = await maybeCreateClient({ client, config, env, uidMap, manifest, summary, requestFn });
+  attempt.client_rfc_validation = clientUidResult.client_rfc_validation || null;
+  attempt.client_response_facts = clientUidResult.client_response_facts || null;
+  if (clientUidResult.local_status === "LOCAL_INVALID_RFC_SHAPE") {
+    attempt.status = "LOCAL_INVALID_RFC_SHAPE";
+    attempt.local_config_errors = clientUidResult.local_config_errors || ["LOCAL_INVALID_RFC_SHAPE"];
+    attempt.local_config_warnings = clientUidResult.local_config_warnings || [];
+    attempt.warnings.push(...attempt.local_config_errors, ...attempt.local_config_warnings);
+    summary.errors += 1;
+    summary.needs_local_config += 1;
+    const diagnosticFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-local-invalid-rfc-shape.json`, {
+      draft_id: fixture.draft_id,
+      status: attempt.status,
+      local_config_errors: attempt.local_config_errors,
+      local_config_warnings: attempt.local_config_warnings,
+      client_rfc_validation: attempt.client_rfc_validation,
+      client_create_blocked: true,
+      pac_call_blocked: true,
+    }, env);
+    attempt.artifacts.push(path.relative(root, diagnosticFile).replace(/\\/g, "/"));
+    manifest.artifacts.push({
+      type: "LOCAL_INVALID_RFC_SHAPE",
+      draft_id: fixture.draft_id,
+      path: path.relative(root, diagnosticFile).replace(/\\/g, "/"),
+      ok: false,
+    });
+    return attempt;
+  }
   if (config.createClients && !clientUidResult.uid) {
     attempt.status = clientUidResult.reason === "ambiguous_client_uid" || clientUidResult.lookup_reason === "ambiguous_client_uid"
       ? "CLIENT_UID_AMBIGUOUS"
@@ -1232,10 +1410,27 @@ async function processDraft({
   }
 
   const body = payload.official_request.body;
+  const finalReceptorCompatibility = validateFinalCfdiReceptorPayload({ body, client, clientUidResult });
+  payload.official_request.receptor_compatibility = finalReceptorCompatibility;
+  payload.official_request.local_config_errors = Array.from(new Set([
+    ...(payload.official_request.local_config_errors || []),
+    ...finalReceptorCompatibility.errors,
+  ]));
+  payload.official_request.local_config_warnings = Array.from(new Set([
+    ...(payload.official_request.local_config_warnings || []),
+    ...finalReceptorCompatibility.warnings,
+  ]));
+  attempt.receptor_compatibility = finalReceptorCompatibility;
+  if (finalReceptorCompatibility.errors.length > 0) {
+    applyLocalCfdiRuleError({ attempt, summary, manifest, config, env, fixture, payload });
+    return attempt;
+  }
+  recordReceptorCompatibilitySummary(summary, finalReceptorCompatibility);
   const requestFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-create-cfdi-request.json`, {
     method: "POST",
     path: "/v4/cfdi40/create",
     body,
+    receptor_compatibility: finalReceptorCompatibility,
   }, env);
   attempt.artifacts.push(path.relative(root, requestFile).replace(/\\/g, "/"));
   manifest.artifacts.push({ type: "CFDI_CREATE_REQUEST", draft_id: fixture.draft_id, path: path.relative(root, requestFile).replace(/\\/g, "/") });
@@ -1422,6 +1617,9 @@ function buildSummary(config) {
     effective_regimen_fiscal_receptor_values: [],
     effective_person_type_values: [],
     rfc_shape_values: [],
+    normalized_rfc_lengths: [],
+    rfc_hidden_characters_detected: 0,
+    client_cfdi_receptor_mismatch: 0,
     client_create_errors: 0,
     client_lookup_errors: 0,
     client_create_error_messages: [],

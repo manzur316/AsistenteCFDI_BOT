@@ -87,6 +87,16 @@ check("xama_trailing_space_advierte_sin_exponer", () => {
   return validation.warnings.join(",");
 });
 
+check("xama_con_comillas_y_bom_normaliza_len_13", () => {
+  const validation = validateRfcShape(`\uFEFF"${samplePfRfc}"`);
+  assert.strictEqual(validation.ok, true, validation.errors.join(","));
+  assert(validation.warnings.includes("LOCAL_RFC_HAS_HIDDEN_CHARACTERS"));
+  assert.strictEqual(normalizeRfc(`\uFEFF"${samplePfRfc}"`), samplePfRfc);
+  assert.strictEqual(validation.normalized_rfc_length, 13);
+  assert(!JSON.stringify(validation).includes(samplePfRfc));
+  return `${validation.rfc_shape}/${validation.normalized_rfc_length}`;
+});
+
 check("rfc_len_14_invalido_si_no_es_normalizable", () => {
   const validation = validateRfcShape(sampleInvalidRfc);
   assert.strictEqual(validation.ok, false);

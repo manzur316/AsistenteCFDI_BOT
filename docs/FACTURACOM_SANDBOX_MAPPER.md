@@ -269,6 +269,30 @@ seguros (`UsoCFDI`, `RegimenFiscalR`, `FormaPago`, `MetodoPago`,
 `TasaOCuota`) pero mantiene redactados RFC completo, secretos, UID largos,
 XML/PDF y tokens.
 
+## Guard Final Receptor/Payload 6A.7J
+
+El mapper puede construir un payload valido en abstracto, pero el smoke debe
+validar el `body` final que realmente se va a guardar y enviar. Desde 6A.7J:
+
+- `buildClientCreateBody` usa RFC normalizado; el RFC raw nunca debe llegar al
+  cuerpo de `CLIENT_CREATE`.
+- Si el RFC normalizado queda con forma invalida, se corta en
+  `LOCAL_INVALID_RFC_SHAPE` antes de `CLIENT_CREATE_REQUEST`.
+- `validateFinalCfdiReceptorPayload` revisa `body.UsoCFDI`,
+  `body.Receptor.RegimenFiscalR`, `body.Receptor.UID` y la forma RFC segura
+  justo antes de `CFDI_CREATE_REQUEST`.
+- `attempt.receptor_compatibility` y el artifact `CFDI_CREATE_REQUEST` incluyen
+  el reporte seguro tambien cuando `compatibility_status=PASS`.
+- Si existe respuesta de cliente sandbox, se cruzan `RegimenId`, `UsoCFDI`,
+  presencia de UID y forma RFC contra el body final. Un mismatch que afecte
+  regimen/UsoCFDI/persona corta como `CLIENT_CFDI_RECEPTOR_MISMATCH`.
+
+El analyzer imprime longitud RFC normalizada, flag de caracteres ocultos,
+estado de compatibilidad y mismatch cliente/CFDI. Si encuentra
+`CFDI_CREATE_REQUEST` sin reporte del guard, emite
+`RECEPTOR_GUARD_NOT_EVALUATED_BUG`; no se debe repetir smoke live hasta
+corregirlo.
+
 Fase 6A.6C agrega normalizacion de identidad CFDI/PAC para preparar Storage
 Engine. Los smoke live sandbox ya validaron crear CFDI, descargar XML/PDF,
 cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:

@@ -4,6 +4,7 @@ const path = require("path");
 const { REVIEW_STATUSES } = require("./lib/canonical-cfdi-contracts");
 const { buildCanonicalDraftFromBotPreview } = require("./lib/canonical-draft-builder");
 const { buildCanonicalPacRequest, promoteCanonicalDraftToInvoiceDocument } = require("./lib/canonical-invoice-builder");
+const { normalizeRfc, validateRfcShape } = require("./lib/cfdi-receptor-compatibility-validator");
 
 const root = path.resolve(__dirname, "..");
 const clientsPath = path.join(root, "data", "sandbox", "canonical-test-clients.json");
@@ -78,6 +79,16 @@ check("fixtures_sin_api_secret_token_csd_xml_pdf_banco", () => {
   const combined = `${fs.readFileSync(clientsPath, "utf8")}\n${fs.readFileSync(draftsPath, "utf8")}`;
   assert(!/api[_-]?key|secret|token|password|csd|certificado|private[_-]?key|estado de cuenta|bank|clabe|<cfdi|xml|pdf/i.test(combined));
   return "no sensitive fixture data";
+});
+
+check("fixtures_rfc_sin_caracteres_ocultos_y_forma_valida", () => {
+  for (const client of clients.filter((item) => item.rfc)) {
+    const validation = validateRfcShape(client.rfc);
+    assert.strictEqual(validation.ok, true, `${client.client_id}: ${validation.errors.join(",")}`);
+    assert.strictEqual(validation.has_hidden_characters, false, client.client_id);
+    assert.strictEqual(normalizeRfc(client.rfc), client.rfc, client.client_id);
+  }
+  return "rfc canonical";
 });
 
 check("drafts_positivos_promueven_a_invoice_sandbox", () => {
