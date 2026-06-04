@@ -1,36 +1,42 @@
 [
   {
     "client_id": "CLIENT-DEMO-PF-GENERIC",
-    "display_name": "Cliente Persona Fisica DEMO",
-    "legal_name": "PERSONA FISICA GENERICA DEMO",
-    "rfc": "XAXX010101000",
+    "fiscal_profile_id": "PF_612_G03_DEMO",
+    "display_name": "ALBA XKARAJAM MENDEZ DEMO",
+    "legal_name": "ALBA XKARAJAM MENDEZ",
+    "rfc": "XAMA620210DQ5",
     "tax_regime": "612",
-    "fiscal_zip": "00000",
+    "cfdi_use": "G03",
+    "fiscal_zip": "01219",
     "person_type": "FISICA",
     "validated_by_human": true,
-    "validation_warnings": ["DEMO_SANDBOX_ONLY"]
+    "validation_warnings": ["DEMO_SANDBOX_ONLY", "SANDBOX_FISCAL_PROFILE_SOURCE_OF_TRUTH", "SAT_TEST_RECEIVER_DATA"]
   },
   {
     "client_id": "CLIENT-DEMO-PM-GENERIC",
-    "display_name": "Cliente Persona Moral DEMO",
-    "legal_name": "PERSONA MORAL GENERICA DEMO",
+    "fiscal_profile_id": "PM_601_G03_DEMO",
+    "display_name": "Cliente Persona Moral 601 G03 DEMO",
+    "legal_name": "PERSONA MORAL 601 G03 DEMO",
     "rfc": "AAA010101AAA",
     "tax_regime": "601",
+    "cfdi_use": "G03",
     "fiscal_zip": "00000",
     "person_type": "MORAL",
     "validated_by_human": true,
-    "validation_warnings": ["DEMO_SANDBOX_ONLY"]
+    "validation_warnings": ["DEMO_SANDBOX_ONLY", "SANDBOX_FISCAL_PROFILE_SOURCE_OF_TRUTH"]
   },
   {
     "client_id": "CLIENT-DEMO-PM-NO-LUCRATIVA",
-    "display_name": "Cliente PM No Lucrativa DEMO",
-    "legal_name": "PM NO LUCRATIVA GENERICA DEMO",
+    "fiscal_profile_id": "PM_603_G03_DEMO",
+    "display_name": "PM No Lucrativa 603 G03 DEMO",
+    "legal_name": "PM NO LUCRATIVA 603 G03 DEMO",
     "rfc": "BBB010101BBB",
     "tax_regime": "603",
+    "cfdi_use": "G03",
     "fiscal_zip": "00000",
     "person_type": "MORAL_SIN_FINES_LUCRO",
     "validated_by_human": true,
-    "validation_warnings": ["DEMO_SANDBOX_ONLY"]
+    "validation_warnings": ["DEMO_SANDBOX_ONLY", "SANDBOX_FISCAL_PROFILE_SOURCE_OF_TRUTH"]
   },
   {
     "client_id": "CLIENT-DEMO-INCOMPLETE",

@@ -1,0 +1,67 @@
+{
+  "schema_version": "facturacom_sandbox_fiscal_profiles.v1",
+  "source_of_truth": true,
+  "default_smoke_profile_id": "PF_612_G03_DEMO",
+  "profiles": [
+    {
+      "profile_id": "PF_612_G03_DEMO",
+      "description": "Persona fisica demo compatible con regimen 612 y UsoCFDI G03 para smoke sandbox.",
+      "receiver_kind": "PERSONA_FISICA",
+      "client_id": "CLIENT-DEMO-PF-GENERIC",
+      "display_name": "ALBA XKARAJAM MENDEZ DEMO",
+      "legal_name": "ALBA XKARAJAM MENDEZ",
+      "rfc": "XAMA620210DQ5",
+      "tax_regime": "612",
+      "cfdi_use": "G03",
+      "fiscal_zip": "01219",
+      "person_type": "FISICA",
+      "validated_by_human": true,
+      "validation_warnings": ["DEMO_SANDBOX_ONLY", "SANDBOX_FISCAL_PROFILE_SOURCE_OF_TRUTH", "SAT_TEST_RECEIVER_DATA"]
+    },
+    {
+      "profile_id": "PUBLIC_GENERAL_616_S01_DEMO",
+      "description": "Publico general nacional demo compatible con regimen 616 y UsoCFDI S01.",
+      "receiver_kind": "PUBLIC_GENERAL",
+      "client_id": "CLIENT-DEMO-PUBLIC-GENERAL",
+      "display_name": "Publico General Nacional DEMO",
+      "legal_name": "PUBLICO GENERAL NACIONAL DEMO",
+      "rfc": "XAXX010101000",
+      "tax_regime": "616",
+      "cfdi_use": "S01",
+      "fiscal_zip": "00000",
+      "person_type": "PUBLICO_GENERAL_NACIONAL",
+      "validated_by_human": true,
+      "validation_warnings": ["DEMO_SANDBOX_ONLY", "PUBLIC_GENERAL_616_S01"]
+    },
+    {
+      "profile_id": "PM_601_G03_DEMO",
+      "description": "Persona moral demo compatible con regimen 601 y UsoCFDI G03.",
+      "receiver_kind": "PERSONA_MORAL",
+      "client_id": "CLIENT-DEMO-PM-GENERIC",
+      "display_name": "Cliente Persona Moral 601 G03 DEMO",
+      "legal_name": "PERSONA MORAL 601 G03 DEMO",
+      "rfc": "AAA010101AAA",
+      "tax_regime": "601",
+      "cfdi_use": "G03",
+      "fiscal_zip": "00000",
+      "person_type": "MORAL",
+      "validated_by_human": true,
+      "validation_warnings": ["DEMO_SANDBOX_ONLY", "SANDBOX_FISCAL_PROFILE_SOURCE_OF_TRUTH"]
+    },
+    {
+      "profile_id": "PM_603_G03_DEMO",
+      "description": "Persona moral no lucrativa demo compatible con regimen 603 y UsoCFDI G03.",
+      "receiver_kind": "PERSONA_MORAL",
+      "client_id": "CLIENT-DEMO-PM-NO-LUCRATIVA",
+      "display_name": "PM No Lucrativa 603 G03 DEMO",
+      "legal_name": "PM NO LUCRATIVA 603 G03 DEMO",
+      "rfc": "BBB010101BBB",
+      "tax_regime": "603",
+      "cfdi_use": "G03",
+      "fiscal_zip": "00000",
+      "person_type": "MORAL_SIN_FINES_LUCRO",
+      "validated_by_human": true,
+      "validation_warnings": ["DEMO_SANDBOX_ONLY", "SANDBOX_FISCAL_PROFILE_SOURCE_OF_TRUTH"]
+    }
+  ]
+}

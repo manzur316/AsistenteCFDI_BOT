@@ -293,6 +293,42 @@ estado de compatibilidad y mismatch cliente/CFDI. Si encuentra
 `RECEPTOR_GUARD_NOT_EVALUATED_BUG`; no se debe repetir smoke live hasta
 corregirlo.
 
+## Sandbox Fiscal Profiles 6A.7K
+
+El smoke sandbox ya no debe derivar receptor fiscal desde variables globales.
+La fuente de verdad local es:
+
+```text
+data/sandbox/facturacom-sandbox-fiscal-profiles.json
+```
+
+El loader:
+
+```text
+scripts/lib/sandbox-fiscal-profile-loader.js
+```
+
+aplica el perfil al cliente sandbox antes de crear cliente y antes de construir
+CFDI. Perfiles minimos:
+
+- `PF_612_G03_DEMO`: persona fisica demo compatible con `RegimenFiscalR=612`,
+  CP fiscal `01219` y `UsoCFDI=G03`.
+- `PUBLIC_GENERAL_616_S01_DEMO`: publico general nacional con `XAXX010101000`,
+  `RegimenFiscalR=616` y `UsoCFDI=S01`.
+- `PM_601_G03_DEMO`: persona moral demo compatible con `601/G03`.
+
+Reglas:
+
+- `G03 + 612` requiere RFC demo con forma de persona fisica.
+- `XAXX010101000` nunca debe mezclarse con `612/G03`.
+- `[REDACTED_RFC]` nunca es dato valido para validacion.
+- Si el perfil falla, el intento queda
+  `LOCAL_INVALID_SANDBOX_FISCAL_PROFILE`, aumenta
+  `sandbox_fiscal_profile_errors` y no llama al PAC.
+- Si el perfil receptor pasa y Factura.com responde `303 - El RFC del CSD del
+  Emisor no corresponde`, el bloqueo es de configuracion del emisor sandbox
+  (CSD/serie/cuenta), no de receptor.
+
 Fase 6A.6C agrega normalizacion de identidad CFDI/PAC para preparar Storage
 Engine. Los smoke live sandbox ya validaron crear CFDI, descargar XML/PDF,
 cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:

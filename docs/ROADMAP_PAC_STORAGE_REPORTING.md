@@ -326,6 +326,26 @@ locales CFDI 4.0 de receptor. Para Factura.com sandbox esto ya se modela como:
 Esta regla pertenece al contrato neutral del Hub, no al proveedor. Factura.com
 solo es el primer adapter sandbox que la consume.
 
+### Sandbox Fiscal Profiles 6A.7K
+
+El receptor de pruebas sandbox debe salir de perfiles fiscales explicitos, no
+de combinaciones improvisadas por variables de entorno. La fuente local es
+`data/sandbox/facturacom-sandbox-fiscal-profiles.json`.
+
+Reglas del Hub:
+
+- El perfil fiscal sandbox manda sobre fixtures parciales y variables globales.
+- Antes de crear cliente y antes de CFDI se valida RFC, tipo de persona,
+  `RegimenFiscalR` y `UsoCFDI`.
+- `XAXX010101000` pertenece a publico general y no debe usarse con `612/G03`.
+- Un perfil inconsistente corta localmente como
+  `LOCAL_INVALID_SANDBOX_FISCAL_PROFILE` y no llama al PAC.
+- Los perfiles sandbox no representan clientes reales ni datos productivos.
+
+Esto prepara el mismo patron para futuros adapters: cada proveedor puede tener
+clientes sandbox distintos, pero el contrato neutral conserva receptor,
+regimen, uso y validaciones SAT antes de cualquier `stampSandbox`.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

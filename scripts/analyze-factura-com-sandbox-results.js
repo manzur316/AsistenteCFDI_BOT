@@ -10,6 +10,7 @@ const ALLOWED_DEMO_RFCS = new Set([
   "XEXX010101000",
   "AAA010101AAA",
   "BBB010101BBB",
+  "XAMA620210DQ5",
 ]);
 
 function text(value) {
@@ -457,6 +458,8 @@ function analyze(runtimeArg = process.argv[2]) {
     provider_auth_message: providerAuthMessage,
     auth_preflight_response_shape: authPreflightResponseShape,
     auth_preflight_ok: authPreflightOk,
+    active_sandbox_fiscal_profile_id: text(summary.active_sandbox_fiscal_profile_id || manifest.active_sandbox_fiscal_profile_id),
+    sandbox_fiscal_profile_errors: Number(summary.sandbox_fiscal_profile_errors || attempts.filter((attempt) => attempt.status === "LOCAL_INVALID_SANDBOX_FISCAL_PROFILE").length),
     receptor_compatibility_errors: Number(summary.receptor_compatibility_errors || attempts.filter((attempt) => attempt.status === "CFDI_LOCAL_RULE_ERROR").length),
     local_cfdi_rule_errors: Number(summary.local_cfdi_rule_errors || attempts.filter((attempt) => attempt.status === "CFDI_LOCAL_RULE_ERROR").length),
     invalid_rfc_shape_detected: Number(summary.invalid_rfc_shape_detected || receptorCompatibilityRecords.filter((item) => (item.errors || []).includes("LOCAL_INVALID_RFC_SHAPE")).length),
@@ -542,6 +545,8 @@ function printResult(result) {
   if (result.provider_auth_errors > 0) {
     console.log("Provider auth diagnosis: No es error de cliente ni CFDI; es autenticacion/ambiente/cuenta proveedor.");
   }
+  console.log(`Active sandbox fiscal profile: ${result.active_sandbox_fiscal_profile_id || "none"}`);
+  console.log(`Sandbox fiscal profile errors: ${result.sandbox_fiscal_profile_errors}`);
   console.log(`Effective UsoCFDI: ${result.effective_uso_cfdi || "none"}`);
   console.log(`Effective RegimenFiscalR: ${result.effective_regimen_fiscal_receptor || "none"}`);
   console.log(`Effective person type: ${result.effective_person_type || "none"}`);

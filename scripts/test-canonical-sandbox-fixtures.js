@@ -5,6 +5,7 @@ const { REVIEW_STATUSES } = require("./lib/canonical-cfdi-contracts");
 const { buildCanonicalDraftFromBotPreview } = require("./lib/canonical-draft-builder");
 const { buildCanonicalPacRequest, promoteCanonicalDraftToInvoiceDocument } = require("./lib/canonical-invoice-builder");
 const { normalizeRfc, validateRfcShape } = require("./lib/cfdi-receptor-compatibility-validator");
+const { applySandboxFiscalProfilesToClients, loadSandboxFiscalProfiles } = require("./lib/sandbox-fiscal-profile-loader");
 
 const root = path.resolve(__dirname, "..");
 const clientsPath = path.join(root, "data", "sandbox", "canonical-test-clients.json");
@@ -30,8 +31,10 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
-const clients = readJson(clientsPath);
+const rawClients = readJson(clientsPath);
 const drafts = readJson(draftsPath);
+const profiles = loadSandboxFiscalProfiles();
+const clients = applySandboxFiscalProfilesToClients(rawClients, { loadedProfiles: profiles }).clients;
 const clientById = new Map(clients.map((client) => [client.client_id, client]));
 
 function buildDraft(fixture, clientOverride = null) {
@@ -69,7 +72,7 @@ check("caso_incompleto_queda_needs_review", () => {
 
 check("fixtures_sin_datos_reales_evidentes", () => {
   const combined = `${fs.readFileSync(clientsPath, "utf8")}\n${fs.readFileSync(draftsPath, "utf8")}`;
-  const sanitized = combined.replace(/XAXX010101000|XEXX010101000|AAA010101AAA|BBB010101BBB/g, "");
+  const sanitized = combined.replace(/XAXX010101000|XEXX010101000|AAA010101AAA|BBB010101BBB|XAMA620210DQ5/g, "");
   assert(!/Juandi|Emberhub|CLIENTE_REAL|RFC_REAL|MANZUR|Cuenta real|Banco real/i.test(sanitized));
   assert(!/[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}/.test(sanitized));
   return "demo only";

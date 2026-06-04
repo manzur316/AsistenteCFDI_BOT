@@ -9,6 +9,10 @@ const {
   validateReceptorForCfdi,
   validateRfcShape,
 } = require("./lib/cfdi-receptor-compatibility-validator");
+const {
+  applySandboxFiscalProfilesToClients,
+  loadSandboxFiscalProfiles,
+} = require("./lib/sandbox-fiscal-profile-loader");
 const { runFacturaComAuthPreflight } = require("./preflight-facturacom-auth");
 const {
   assertFacturaComSandboxEnv,
@@ -122,6 +126,7 @@ function buildSmokeConfig(env = {}) {
     moneda: envValue(env, "FACTURACOM_SANDBOX_MONEDA") || "MXN",
     lugarExpedicion: envValue(env, "FACTURACOM_SANDBOX_LUGAR_EXPEDICION"),
     emitterRegimenFiscal: envValue(env, "FACTURACOM_SANDBOX_EMITTER_REGIMEN_FISCAL") || "626",
+    fiscalProfileId: envValue(env, "FACTURACOM_SANDBOX_FISCAL_PROFILE_ID"),
     skipAuthPreflight: boolEnv(env.FACTURACOM_SKIP_AUTH_PREFLIGHT),
     postCreateSearchDocumented: false,
   };
@@ -129,11 +134,26 @@ function buildSmokeConfig(env = {}) {
   return config;
 }
 
-function loadFixtures() {
+function loadFixtures(options = {}) {
   const clients = JSON.parse(fs.readFileSync(path.join(root, "data", "sandbox", "canonical-test-clients.json"), "utf8"));
   const drafts = JSON.parse(fs.readFileSync(path.join(root, "data", "sandbox", "canonical-test-drafts.json"), "utf8"));
-  const clientById = new Map(clients.map((client) => [client.client_id, client]));
-  return { clients, drafts, clientById };
+  const profiles = loadSandboxFiscalProfiles();
+  const hydrated = applySandboxFiscalProfilesToClients(clients, { loadedProfiles: profiles });
+  const clientById = new Map(hydrated.clients.map((client) => [client.client_id, client]));
+  const activeProfileId = text(options.activeFiscalProfileId || profiles.default_smoke_profile_id);
+  const sortedDrafts = activeProfileId
+    ? [
+      ...drafts.filter((draft) => draft.receiver_fiscal_profile_id === activeProfileId),
+      ...drafts.filter((draft) => draft.receiver_fiscal_profile_id !== activeProfileId),
+    ]
+    : drafts;
+  return {
+    clients: hydrated.clients,
+    drafts: sortedDrafts,
+    clientById,
+    fiscalProfiles: profiles,
+    activeFiscalProfileId: activeProfileId,
+  };
 }
 
 function loadLocalClientUidMap(runtimeDir, env = {}) {
@@ -156,6 +176,14 @@ function getClientUid(client = {}, uidMap = {}, env = {}) {
   if (byClientId) return byClientId;
   const envKey = `FACTURACOM_SANDBOX_CLIENT_UID_${safeId(client.client_id).toUpperCase()}`;
   return text(env[envKey] || env.FACTURACOM_SANDBOX_RECEIVER_UID);
+}
+
+function configForClient(config = {}, client = {}) {
+  return {
+    ...config,
+    usoCfdi: text(client.cfdi_use || client.uso_cfdi) || config.usoCfdi,
+    activeFiscalProfileId: text(client.fiscal_profile_id) || config.activeFiscalProfileId || config.fiscalProfileId || null,
+  };
 }
 
 function buildCanonicalScenario(fixture, client) {
@@ -245,10 +273,17 @@ function firstObjectValueDeep(value, names = []) {
   return null;
 }
 
+function usableRfcForValidation(value) {
+  const candidate = text(value);
+  if (!candidate) return null;
+  if (/\[REDACTED_RFC\]/i.test(candidate)) return null;
+  return candidate;
+}
+
 function extractClientResponseFacts(response = {}, expectedClient = {}) {
   const responseData = response.data || response.body || response;
   const uidLookup = findClientUidInResponse(response, expectedClient);
-  const rfcValue = firstObjectValueDeep(responseData, ["RFC", "rfc", "Rfc"]);
+  const rfcValue = usableRfcForValidation(firstObjectValueDeep(responseData, ["RFC", "rfc", "Rfc"]));
   const rfcValidation = validateRfcShape(rfcValue || expectedClient.rfc);
   return {
     uid: uidLookup.uid || null,
@@ -1192,6 +1227,50 @@ function applyProviderAuthFailure(attempt, summary, authPreflightResult = {}) {
   summary.warnings.push(`provider_auth_failed:${status}`);
 }
 
+function applyInvalidSandboxFiscalProfile({ attempt, summary, manifest, config, env, fixture, client }) {
+  const validation = client?.fiscal_profile_validation || {
+    ok: false,
+    errors: ["SANDBOX_PROFILE_VALIDATION_MISSING"],
+    profile_id: client?.fiscal_profile_id || null,
+  };
+  attempt.local_config_errors = validation.errors || ["LOCAL_INVALID_SANDBOX_FISCAL_PROFILE"];
+  attempt.local_config_warnings = validation.warnings || [];
+  const invalidRfcProfile = attempt.local_config_errors.some((code) => /RFC.*(INVALID|REDACTED)|LOCAL_INVALID_RFC_SHAPE/.test(code));
+  attempt.status = invalidRfcProfile ? "LOCAL_INVALID_RFC_SHAPE" : "LOCAL_INVALID_SANDBOX_FISCAL_PROFILE";
+  attempt.sandbox_fiscal_profile = {
+    profile_id: validation.profile_id || client?.fiscal_profile_id || null,
+    client_id: client?.client_id || null,
+    ok: validation.ok === true,
+    errors: attempt.local_config_errors,
+    warnings: attempt.local_config_warnings,
+    rfc_shape: validation.rfc_shape || null,
+    normalized_rfc_length: validation.normalized_rfc_length || 0,
+    effective_uso_cfdi: validation.effective_uso_cfdi || null,
+    effective_regimen_fiscal_receptor: validation.effective_regimen_fiscal_receptor || null,
+    effective_person_type: validation.effective_person_type || null,
+  };
+  attempt.warnings.push(...attempt.local_config_errors, ...attempt.local_config_warnings);
+  summary.errors += 1;
+  summary.needs_local_config += 1;
+  summary.sandbox_fiscal_profile_errors += 1;
+  if (invalidRfcProfile) summary.invalid_rfc_shape_detected += 1;
+  summary.warnings.push(`sandbox_fiscal_profile_invalid:${attempt.sandbox_fiscal_profile.profile_id || "UNKNOWN"}`);
+  const diagnosticFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-local-invalid-sandbox-fiscal-profile.json`, {
+    draft_id: fixture.draft_id,
+    status: attempt.status,
+    sandbox_fiscal_profile: attempt.sandbox_fiscal_profile,
+    client_create_blocked: true,
+    pac_call_blocked: true,
+  }, env);
+  attempt.artifacts.push(path.relative(root, diagnosticFile).replace(/\\/g, "/"));
+  manifest.artifacts.push({
+    type: "LOCAL_INVALID_SANDBOX_FISCAL_PROFILE",
+    draft_id: fixture.draft_id,
+    path: path.relative(root, diagnosticFile).replace(/\\/g, "/"),
+    ok: false,
+  });
+}
+
 function updateLocalRuleSummary(summary, receptorCompatibility = {}, errors = []) {
   summary.local_cfdi_rule_errors += 1;
   summary.receptor_compatibility_errors += 1;
@@ -1251,6 +1330,9 @@ function validateFinalCfdiReceptorPayload({ body = {}, client = {}, clientUidRes
   });
   const receptorCompatibility = buildSafeReceptorCompatibilityReport(rawValidation);
   receptorCompatibility.source = "final_cfdi_create_body";
+  if (client?.fiscal_profile_validation?.rfc_has_hidden_characters === true) {
+    receptorCompatibility.rfc_has_hidden_characters = true;
+  }
   const clientFacts = clientUidResult.client_response_facts || null;
   const mismatches = buildClientCfdiReceptorMismatches(body, clientFacts, receptorCompatibility);
   receptorCompatibility.client_response_facts = clientFacts ? {
@@ -1342,6 +1424,12 @@ async function processDraft({
   };
   manifest.attempts.push(attempt);
   summary.total_attempts += 1;
+  const draftConfig = configForClient(config, client);
+
+  if (client?.fiscal_profile_id && client?.fiscal_profile_validation?.ok !== true) {
+    applyInvalidSandboxFiscalProfile({ attempt, summary, manifest, config: draftConfig, env, fixture, client });
+    return attempt;
+  }
 
   const scenario = buildCanonicalScenario(fixture, client);
   if (!scenario.ok) {
@@ -1356,7 +1444,7 @@ async function processDraft({
     return attempt;
   }
 
-  const clientUidResult = await maybeCreateClient({ client, config, env, uidMap, manifest, summary, requestFn });
+  const clientUidResult = await maybeCreateClient({ client, config: draftConfig, env, uidMap, manifest, summary, requestFn });
   attempt.client_rfc_validation = clientUidResult.client_rfc_validation || null;
   attempt.client_response_facts = clientUidResult.client_response_facts || null;
   if (clientUidResult.local_status === "LOCAL_INVALID_RFC_SHAPE") {
@@ -1397,9 +1485,9 @@ async function processDraft({
   }
   const clientUid = clientUidResult.uid;
   attempt.client_uid = clientUid || null;
-  const payload = mapScenarioToFacturaCom(scenario, clientUid, config);
+  const payload = mapScenarioToFacturaCom(scenario, clientUid, draftConfig);
   if (payload.official_request.local_config_errors?.length > 0) {
-    applyLocalCfdiRuleError({ attempt, summary, manifest, config, env, fixture, payload });
+    applyLocalCfdiRuleError({ attempt, summary, manifest, config: draftConfig, env, fixture, payload });
     return attempt;
   }
   if (payload.official_request.unresolved_fields.length > 0) {
@@ -1422,11 +1510,11 @@ async function processDraft({
   ]));
   attempt.receptor_compatibility = finalReceptorCompatibility;
   if (finalReceptorCompatibility.errors.length > 0) {
-    applyLocalCfdiRuleError({ attempt, summary, manifest, config, env, fixture, payload });
+    applyLocalCfdiRuleError({ attempt, summary, manifest, config: draftConfig, env, fixture, payload });
     return attempt;
   }
   recordReceptorCompatibilitySummary(summary, finalReceptorCompatibility);
-  const requestFile = writeJson(config.runtimeDir, `${safeId(fixture.draft_id)}-create-cfdi-request.json`, {
+  const requestFile = writeJson(draftConfig.runtimeDir, `${safeId(fixture.draft_id)}-create-cfdi-request.json`, {
     method: "POST",
     path: "/v4/cfdi40/create",
     body,
@@ -1609,6 +1697,8 @@ function buildSummary(config) {
     provider_auth_status: null,
     provider_auth_message: null,
     auth_preflight_ok: null,
+    active_sandbox_fiscal_profile_id: config.fiscalProfileId || null,
+    sandbox_fiscal_profile_errors: 0,
     receptor_compatibility_errors: 0,
     local_cfdi_rule_errors: 0,
     invalid_rfc_shape_detected: 0,
@@ -1671,7 +1761,9 @@ async function runSmoke(env = process.env, options = {}) {
         });
       }
     }
-    const { drafts, clientById } = loadFixtures();
+    const { drafts, clientById, activeFiscalProfileId } = loadFixtures({ activeFiscalProfileId: config.fiscalProfileId });
+    summary.active_sandbox_fiscal_profile_id = activeFiscalProfileId || null;
+    manifest.active_sandbox_fiscal_profile_id = activeFiscalProfileId || null;
     const uidMap = loadLocalClientUidMap(runtimeDir, env);
     const batch = drafts.slice(0, config.batchSize);
     for (const fixture of batch) {

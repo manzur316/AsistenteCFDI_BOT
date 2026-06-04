@@ -418,6 +418,22 @@ inspector puede mostrar valores seguros de catalogo como `UsoCFDI`, `RegimenFisc
 `Impuesto`, `TipoFactor` y `TasaOCuota`; RFC completos, UID largos, secretos,
 XML y PDF siguen redactados.
 
+Fase 6A.7K agrega perfiles fiscales sandbox como fuente de verdad del receptor:
+
+- `data/sandbox/facturacom-sandbox-fiscal-profiles.json`
+- `scripts/lib/sandbox-fiscal-profile-loader.js`
+
+El primer smoke usa `PF_612_G03_DEMO`: datos de receptor demo SAT para persona
+fisica, regimen `612`, CP fiscal `01219` y `UsoCFDI=G03`. `XAXX010101000` queda separado en
+`PUBLIC_GENERAL_616_S01_DEMO` y solo debe usarse con combinaciones publicas o
+generales compatibles, no con `612/G03`. El smoke aplica el perfil antes de
+crear cliente y antes de CFDI; si el perfil es inconsistente, corta localmente
+como `LOCAL_INVALID_SANDBOX_FISCAL_PROFILE` sin llamar al PAC. Variables
+globales como `FACTURACOM_SANDBOX_USO_CFDI` ya no deben mezclar receptores.
+Si el analyzer muestra `303 - El RFC del CSD del Emisor no corresponde`, el
+bloqueo pertenece a configuracion sandbox del emisor/CSD/serie de la cuenta
+PAC, no al perfil fiscal del receptor.
+
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como
 observabilidad local y no debe avanzar a Reporting Engine.

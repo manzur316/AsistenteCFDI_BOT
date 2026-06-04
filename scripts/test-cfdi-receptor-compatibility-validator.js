@@ -44,6 +44,24 @@ function cleanTemp() {
   fs.mkdirSync(tempRoot, { recursive: true });
 }
 
+async function withPatchedFiscalProfiles(mutator, fn) {
+  const originalReadFileSync = fs.readFileSync;
+  fs.readFileSync = function patchedReadFileSync(filePath, ...args) {
+    const normalizedPath = String(filePath).replace(/\\/g, "/");
+    if (normalizedPath.endsWith("data/sandbox/facturacom-sandbox-fiscal-profiles.json")) {
+      const profiles = JSON.parse(originalReadFileSync.call(fs, filePath, "utf8"));
+      mutator(profiles);
+      return JSON.stringify(profiles);
+    }
+    return originalReadFileSync.call(fs, filePath, ...args);
+  };
+  try {
+    return await fn();
+  } finally {
+    fs.readFileSync = originalReadFileSync;
+  }
+}
+
 function validLiveEnv(overrides = {}) {
   return {
     FACTURACOM_SANDBOX_LIVE: "1",
@@ -188,21 +206,22 @@ checkAsync("smoke_corta_antes_de_pac_por_local_cfdi40161", async () => {
   const calls = [];
   const env = validLiveEnv({
     FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
-    FACTURACOM_SANDBOX_USO_CFDI: "CN01",
     FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
   });
   const requestFn = async ({ method, path: requestPath }) => {
     calls.push({ method, path: requestPath });
     throw new Error(`no debe llamar PAC: ${method} ${requestPath}`);
   };
-  const result = await runSmoke(env, { requestFn });
+  const result = await withPatchedFiscalProfiles((profiles) => {
+    profiles.profiles.find((profile) => profile.profile_id === "PF_612_G03_DEMO").cfdi_use = "CN01";
+  }, () => runSmoke(env, { requestFn }));
   const attempt = result.manifest.attempts[0];
-  assert.strictEqual(attempt.status, "CFDI_LOCAL_RULE_ERROR");
-  assert.strictEqual(result.summary.local_cfdi_rule_errors, 1);
+  assert.strictEqual(attempt.status, "LOCAL_INVALID_SANDBOX_FISCAL_PROFILE");
+  assert.strictEqual(result.summary.sandbox_fiscal_profile_errors, 1);
   assert.strictEqual(result.summary.needs_local_config, 1);
-  assert(attempt.local_config_errors.includes("LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH"));
+  assert(attempt.local_config_errors.some((code) => code.includes("LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH")));
   assert(!calls.some((call) => call.path === "/v4/cfdi40/create"));
-  assert(result.manifest.artifacts.some((artifact) => artifact.type === "CFDI_LOCAL_RULE_ERROR"));
+  assert(result.manifest.artifacts.some((artifact) => artifact.type === "LOCAL_INVALID_SANDBOX_FISCAL_PROFILE"));
   return "blocked";
 });
 
@@ -233,18 +252,19 @@ checkAsync("analyzer_reporta_effective_uso_y_person_type", async () => {
   const runtimeDir = path.join(tempRoot, "analyzer-runtime");
   const env = validLiveEnv({
     FACTURACOM_SANDBOX_RUNTIME_PATH: runtimeDir,
-    FACTURACOM_SANDBOX_USO_CFDI: "CN01",
     FACTURACOM_SANDBOX_CLIENT_UIDS_JSON: JSON.stringify({ "CLIENT-DEMO-PF-GENERIC": "UID-CLIENT-LOCAL" }),
   });
-  await runSmoke(env, { requestFn: async () => { throw new Error("no PAC"); } });
+  await withPatchedFiscalProfiles((profiles) => {
+    profiles.profiles.find((profile) => profile.profile_id === "PF_612_G03_DEMO").cfdi_use = "CN01";
+  }, () => runSmoke(env, { requestFn: async () => { throw new Error("no PAC"); } }));
   const result = analyze(runtimeDir);
-  assert.strictEqual(result.local_cfdi_rule_errors, 1);
-  assert.strictEqual(result.effective_uso_cfdi, "CN01");
-  assert.strictEqual(result.effective_regimen_fiscal_receptor, "612");
-  assert.strictEqual(result.effective_person_type, "GENERIC_NATIONAL");
-  assert.strictEqual(result.rfc_shape, "GENERIC_NATIONAL");
-  assert.strictEqual(result.uso_cfdi_regimen_persona_mismatch, 1);
-  return `${result.effective_uso_cfdi}/${result.effective_person_type}`;
+  assert.strictEqual(result.sandbox_fiscal_profile_errors, 1);
+  assert.strictEqual(result.local_cfdi_rule_errors, 0);
+  assert.strictEqual(result.needs_local_config, 1);
+  assert.strictEqual(result.active_sandbox_fiscal_profile_id, "PF_612_G03_DEMO");
+  assert.strictEqual(result.uso_cfdi_regimen_persona_mismatch, 0);
+  assert.strictEqual(result.sensitive_findings.length, 0);
+  return result.active_sandbox_fiscal_profile_id;
 });
 
 (async () => {

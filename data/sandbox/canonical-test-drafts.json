@@ -10,6 +10,7 @@
     "ready_to_copy": true,
     "blockers": [],
     "client_ref": "CLIENT-DEMO-PF-GENERIC",
+    "receiver_fiscal_profile_id": "PF_612_G03_DEMO",
     "concept": {
       "id": "SVC-CCTV-DEMO-001",
       "concepto_factura": "SERVICIO TECNICO DE SISTEMA CCTV DEMO",
@@ -36,6 +37,7 @@
     "ready_to_copy": true,
     "blockers": [],
     "client_ref": "CLIENT-DEMO-PM-GENERIC",
+    "receiver_fiscal_profile_id": "PM_601_G03_DEMO",
     "concept": {
       "id": "PROD-CCTV-DEMO-001",
       "concepto_factura": "VENTA DE EQUIPO CCTV DEMO",
@@ -62,6 +64,7 @@
     "ready_to_copy": true,
     "blockers": [],
     "client_ref": "CLIENT-DEMO-PM-NO-LUCRATIVA",
+    "receiver_fiscal_profile_id": "PM_603_G03_DEMO",
     "concept": {
       "id": "SVC-AC-DEMO-003",
       "concepto_factura": "SERVICIO DE INSTALACION DE CONTROL DE ACCESO DEMO",
@@ -88,6 +91,7 @@
     "ready_to_copy": true,
     "blockers": [],
     "client_ref": "CLIENT-DEMO-PF-GENERIC",
+    "receiver_fiscal_profile_id": "PF_612_G03_DEMO",
     "concept": {
       "id": "SVC-BARRIER-DEMO-001",
       "concepto_factura": "SERVICIO DE MANTENIMIENTO DE BARRERA VEHICULAR DEMO",
@@ -114,6 +118,7 @@
     "ready_to_copy": true,
     "blockers": [],
     "client_ref": "CLIENT-DEMO-PM-GENERIC",
+    "receiver_fiscal_profile_id": "PM_601_G03_DEMO",
     "line_items": [
       {
         "line_id": "LINE-DEMO-MATERIAL-001",
