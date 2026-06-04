@@ -180,6 +180,11 @@ Ver:
 - `docs/ROADMAP_PAC_STORAGE_REPORTING.md`
 - `docs/PRODUCT_OPERATING_MODEL.md`
 - `docs/SIMPLE_LEDGER_AND_CASHFLOW_MODEL.md`
+- `docs/CANONICAL_CFDI_CONTRACTS.md`
+- `docs/CANCELLATION_LIFECYCLE.md`
+- `docs/SIMPLE_PRODUCT_RULES.md`
+
+La fase 6A.2 formaliza contratos internos primero y adapters PAC despues. Storage, reporting, Telegram y Miniapp deben leer contratos canonicos, no formatos particulares de Factura.com, Facturama, Facturapi, SW, Finkok u otros PAC. Las cancelaciones se modelan como cambios de estado con audit trail; nunca como borrado de registros.
 
 ### Politica conversacional 4.7
 
