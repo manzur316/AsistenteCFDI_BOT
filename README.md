@@ -434,6 +434,20 @@ Si el analyzer muestra `303 - El RFC del CSD del Emisor no corresponde`, el
 bloqueo pertenece a configuracion sandbox del emisor/CSD/serie de la cuenta
 PAC, no al perfil fiscal del receptor.
 
+Fase 6A.7L separa el perfil de emisor sandbox:
+
+- `data/sandbox/facturacom-sandbox-emitter-profiles.json`
+- `scripts/lib/sandbox-emitter-profile-loader.js`
+
+El smoke aplica `EMITTER_XAMA_612_DEMO` como emisor sandbox: RFC demo con forma
+PF, `RegimenFiscal=612` y `LugarExpedicion=01219`. Este perfil es distinto del
+receptor `PF_612_G03_DEMO`, aunque ambos usen datos demo SAT. El perfil
+`EMITTER_RESICO_626_REAL_BLOCKED_FOR_SANDBOX` existe solo como bloqueo para no
+mezclar el RESICO 626 real del usuario con CSD sandbox. Si el PAC sigue
+respondiendo `303`, el analyzer clasifica `EMITTER_CSD_RFC_MISMATCH` y la
+accion correcta es revisar panel Factura.com: empresa activa, CSD cargado, RFC
+emisor y serie deben pertenecer al mismo emisor sandbox.
+
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como
 observabilidad local y no debe avanzar a Reporting Engine.

@@ -151,6 +151,14 @@ function messageLooksLikeClientValidation(message) {
   return /\b(validaci[oó]n|validacion|invalid[oa]|requerid[oa]|obligatori[oa]|campo|formato|c[oó]digo postal|regimen|rfc)\b/i.test(String(message || ""));
 }
 
+function messageLooksLikeEmitterCsdRfcMismatch(message) {
+  const normalized = String(message || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return /rfc del csd|csd del emisor|no corresponde al rfc que viene como emisor/.test(normalized);
+}
+
 function findSensitiveText(filePath, content) {
   const findings = [];
   const patterns = [
@@ -356,6 +364,13 @@ function analyze(runtimeArg = process.argv[2]) {
     .map((attempt) => attempt.api_message_summary || attempt.api_error?.api_message_summary)
     .map((value) => safeApiMessagePreview(value))
     .filter(Boolean));
+  const emitterCsdRfcMismatchDetected = Number(summary.emitter_csd_rfc_mismatch_detected || 0)
+    + attempts.filter((attempt) => attempt.emitter_csd_rfc_mismatch_detected === true
+      || attempt.api_error?.emitter_csd_rfc_mismatch_detected === true
+      || attempt.api_error_classification === "EMITTER_CSD_RFC_MISMATCH").length
+    + createApiErrorMessagePreviews.filter(messageLooksLikeEmitterCsdRfcMismatch).length;
+  const pacError303Detected = Number(summary.pac_error_303_detected || 0)
+    + createApiErrorMessagePreviews.filter(messageLooksLikeEmitterCsdRfcMismatch).length;
   const apiStatusUnknownAttempts = attempts.filter((attempt) => attempt.api_status_unknown === true);
   const businessSuccessfulAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK");
   const identityMissingAfterApiSuccessAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK_IDENTITY_MISSING");
@@ -458,6 +473,19 @@ function analyze(runtimeArg = process.argv[2]) {
     provider_auth_message: providerAuthMessage,
     auth_preflight_response_shape: authPreflightResponseShape,
     auth_preflight_ok: authPreflightOk,
+    active_sandbox_emitter_profile_id: text(summary.active_sandbox_emitter_profile_id || manifest.active_sandbox_emitter_profile_id),
+    effective_emitter_regimen: text(summary.effective_emitter_regimen || manifest.effective_emitter_regimen),
+    effective_lugar_expedicion: text(summary.effective_lugar_expedicion || manifest.effective_lugar_expedicion),
+    emitter_rfc_shape: text(summary.emitter_rfc_shape || manifest.emitter_rfc_shape),
+    emitter_profile_status: text(summary.emitter_profile_status || manifest.emitter_profile_status),
+    sandbox_emitter_profile_errors: Number(summary.sandbox_emitter_profile_errors || attempts.filter((attempt) => attempt.status === "LOCAL_INVALID_SANDBOX_EMITTER_PROFILE").length),
+    emitter_csd_rfc_mismatch_detected: emitterCsdRfcMismatchDetected,
+    pac_error_303_detected: pacError303Detected,
+    api_error_classifications_detected: unique([
+      ...(Array.isArray(summary.api_error_classifications_detected) ? summary.api_error_classifications_detected : []),
+      ...attempts.map((attempt) => attempt.api_error_classification || attempt.api_error?.classification),
+      ...(emitterCsdRfcMismatchDetected > 0 ? ["EMITTER_CSD_RFC_MISMATCH"] : []),
+    ]),
     active_sandbox_fiscal_profile_id: text(summary.active_sandbox_fiscal_profile_id || manifest.active_sandbox_fiscal_profile_id),
     sandbox_fiscal_profile_errors: Number(summary.sandbox_fiscal_profile_errors || attempts.filter((attempt) => attempt.status === "LOCAL_INVALID_SANDBOX_FISCAL_PROFILE").length),
     receptor_compatibility_errors: Number(summary.receptor_compatibility_errors || attempts.filter((attempt) => attempt.status === "CFDI_LOCAL_RULE_ERROR").length),
@@ -544,6 +572,18 @@ function printResult(result) {
   console.log(`Auth preflight OK: ${result.auth_preflight_ok === true ? "true" : (result.auth_preflight_ok === false ? "false" : "unknown")}`);
   if (result.provider_auth_errors > 0) {
     console.log("Provider auth diagnosis: No es error de cliente ni CFDI; es autenticacion/ambiente/cuenta proveedor.");
+  }
+  console.log(`Active sandbox emitter profile: ${result.active_sandbox_emitter_profile_id || "none"}`);
+  console.log(`Effective emitter RegimenFiscal: ${result.effective_emitter_regimen || "none"}`);
+  console.log(`Effective LugarExpedicion: ${result.effective_lugar_expedicion || "none"}`);
+  console.log(`Emitter RFC shape: ${result.emitter_rfc_shape || "none"}`);
+  console.log(`Emitter profile status: ${result.emitter_profile_status || "none"}`);
+  console.log(`Sandbox emitter profile errors: ${result.sandbox_emitter_profile_errors}`);
+  console.log(`Emitter CSD/RFC mismatch detected: ${result.emitter_csd_rfc_mismatch_detected}`);
+  console.log(`PAC error 303 detected: ${result.pac_error_303_detected}`);
+  console.log(`API error classifications: ${result.api_error_classifications_detected.join(", ") || "none"}`);
+  if (result.emitter_csd_rfc_mismatch_detected > 0 || result.pac_error_303_detected > 0) {
+    console.log("Emitter diagnosis: Verifica que el CSD cargado, empresa Factura.com, RFC emisor y serie pertenezcan al mismo emisor sandbox.");
   }
   console.log(`Active sandbox fiscal profile: ${result.active_sandbox_fiscal_profile_id || "none"}`);
   console.log(`Sandbox fiscal profile errors: ${result.sandbox_fiscal_profile_errors}`);

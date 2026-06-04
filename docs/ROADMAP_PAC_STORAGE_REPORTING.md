@@ -346,6 +346,21 @@ Esto prepara el mismo patron para futuros adapters: cada proveedor puede tener
 clientes sandbox distintos, pero el contrato neutral conserva receptor,
 regimen, uso y validaciones SAT antes de cualquier `stampSandbox`.
 
+### Sandbox Emitter Profiles 6A.7L
+
+El Hub tambien debe separar perfil receptor y perfil emisor. Para sandbox:
+
+- El receptor valida `RegimenFiscalR`, `UsoCFDI`, RFC shape y UID.
+- El emisor valida `RegimenFiscal`, `LugarExpedicion`, RFC/CSD esperado y serie.
+- El perfil `EMITTER_XAMA_612_DEMO` solo aplica a smoke sandbox.
+- El perfil `EMITTER_RESICO_626_REAL_BLOCKED_FOR_SANDBOX` bloquea cualquier
+  mezcla del RESICO 626 real del usuario con CSD sandbox.
+- Un error PAC 303 se clasifica como `EMITTER_CSD_RFC_MISMATCH`, no como
+  problema de concepto ni de receptor.
+
+La serie queda fuera del repositorio y debe confirmarse en el panel del PAC.
+No se versionan CSD, `.key`, `.cer`, passwords ni credenciales.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

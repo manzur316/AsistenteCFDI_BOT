@@ -197,6 +197,8 @@ function inspectRuntime(runtimeArg = DEFAULT_RUNTIME_DIR) {
   const manifestPath = path.join(runtimeDir, "manifest.json");
   if (!fs.existsSync(manifestPath)) throw new Error(`No existe manifest: ${manifestPath}`);
   const manifest = readJson(manifestPath);
+  const summaryPath = path.join(runtimeDir, "summary.json");
+  const summary = fs.existsSync(summaryPath) ? readJson(summaryPath) : {};
   const allowedTypes = new Set([
     "CLIENT_CREATE_REQUEST",
     "CLIENT_CREATE_RESPONSE",
@@ -213,6 +215,11 @@ function inspectRuntime(runtimeArg = DEFAULT_RUNTIME_DIR) {
     "Factura.com sandbox response shape inspection",
     `Runtime: ${path.relative(root, runtimeDir).replace(/\\/g, "/")}`,
     `Artifacts inspected: ${artifacts.length}`,
+    `Active sandbox emitter profile: ${summary.active_sandbox_emitter_profile_id || manifest.active_sandbox_emitter_profile_id || "none"}`,
+    `Effective emitter RegimenFiscal: ${summary.effective_emitter_regimen || manifest.effective_emitter_regimen || "none"}`,
+    `Effective LugarExpedicion: ${summary.effective_lugar_expedicion || manifest.effective_lugar_expedicion || "none"}`,
+    `Emitter RFC shape: ${summary.emitter_rfc_shape || manifest.emitter_rfc_shape || "none"}`,
+    `Emitter profile status: ${summary.emitter_profile_status || manifest.emitter_profile_status || "none"}`,
   ];
   for (const artifact of artifacts) {
     output.push("", ...inspectArtifact(runtimeDir, artifact));

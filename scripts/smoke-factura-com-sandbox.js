@@ -13,6 +13,11 @@ const {
   applySandboxFiscalProfilesToClients,
   loadSandboxFiscalProfiles,
 } = require("./lib/sandbox-fiscal-profile-loader");
+const {
+  applyEmitterProfileToFacturaComConfig,
+  buildSafeEmitterProfileReport,
+  getSandboxEmitterProfile,
+} = require("./lib/sandbox-emitter-profile-loader");
 const { runFacturaComAuthPreflight } = require("./preflight-facturacom-auth");
 const {
   assertFacturaComSandboxEnv,
@@ -127,6 +132,7 @@ function buildSmokeConfig(env = {}) {
     lugarExpedicion: envValue(env, "FACTURACOM_SANDBOX_LUGAR_EXPEDICION"),
     emitterRegimenFiscal: envValue(env, "FACTURACOM_SANDBOX_EMITTER_REGIMEN_FISCAL") || "626",
     fiscalProfileId: envValue(env, "FACTURACOM_SANDBOX_FISCAL_PROFILE_ID"),
+    emitterProfileId: envValue(env, "FACTURACOM_SANDBOX_EMITTER_PROFILE_ID"),
     skipAuthPreflight: boolEnv(env.FACTURACOM_SKIP_AUTH_PREFLIGHT),
     postCreateSearchDocumented: false,
   };
@@ -278,6 +284,14 @@ function usableRfcForValidation(value) {
   if (!candidate) return null;
   if (/\[REDACTED_RFC\]/i.test(candidate)) return null;
   return candidate;
+}
+
+function messageLooksLikeEmitterCsdRfcMismatch(value) {
+  const normalized = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return /rfc del csd|csd del emisor|no corresponde al rfc que viene como emisor/.test(normalized);
 }
 
 function extractClientResponseFacts(response = {}, expectedClient = {}) {
@@ -1133,12 +1147,16 @@ async function maybeRunPostCreateSearch({ attempt, body, createResponse, config,
 }
 
 function createApiErrorSummary(response = {}) {
+  const message = response.api_message_summary || safeApiMessagePreview(response.data || response.rawText || response, {}, 240);
+  const classification = messageLooksLikeEmitterCsdRfcMismatch(message) ? "EMITTER_CSD_RFC_MISMATCH" : null;
   return {
     http_ok: response.http_ok === true,
     api_ok: response.api_ok === undefined ? null : response.api_ok,
     api_status: response.api_status || null,
     api_status_unknown: response.api_status_unknown === true,
     api_message_summary: response.api_message_summary || null,
+    classification,
+    emitter_csd_rfc_mismatch_detected: classification === "EMITTER_CSD_RFC_MISMATCH",
     api_error_fields: response.api_error_fields || {},
     status: response.status ?? null,
     statusText: response.statusText ?? null,
@@ -1266,6 +1284,31 @@ function applyInvalidSandboxFiscalProfile({ attempt, summary, manifest, config, 
   manifest.artifacts.push({
     type: "LOCAL_INVALID_SANDBOX_FISCAL_PROFILE",
     draft_id: fixture.draft_id,
+    path: path.relative(root, diagnosticFile).replace(/\\/g, "/"),
+    ok: false,
+  });
+}
+
+function applyInvalidSandboxEmitterProfile({ summary, manifest, config, env, report }) {
+  summary.errors += 1;
+  summary.needs_local_config += 1;
+  summary.sandbox_emitter_profile_errors += 1;
+  summary.emitter_profile_status = "FAIL";
+  summary.warnings.push(`sandbox_emitter_profile_invalid:${report.profile_id || "UNKNOWN"}`);
+  manifest.active_sandbox_emitter_profile_id = report.profile_id || null;
+  manifest.emitter_profile_status = "FAIL";
+  manifest.effective_emitter_regimen = report.regimenFiscal || null;
+  manifest.effective_lugar_expedicion = report.lugarExpedicion || null;
+  manifest.emitter_rfc_shape = report.rfc_shape || null;
+  const diagnosticFile = writeJson(config.runtimeDir, "local-invalid-sandbox-emitter-profile.json", {
+    status: "LOCAL_INVALID_SANDBOX_EMITTER_PROFILE",
+    sandbox_emitter_profile: report,
+    client_create_blocked: true,
+    cfdi_create_blocked: true,
+    pac_call_blocked: true,
+  }, env);
+  manifest.artifacts.push({
+    type: "LOCAL_INVALID_SANDBOX_EMITTER_PROFILE",
     path: path.relative(root, diagnosticFile).replace(/\\/g, "/"),
     ok: false,
   });
@@ -1541,12 +1584,19 @@ async function processDraft({
   if (createResponse.ok === false) {
     attempt.status = createResponse.http_ok === true ? "CREATE_API_ERROR" : "CREATE_HTTP_ERROR";
     attempt.api_error = createApiErrorSummary(createResponse);
+    attempt.api_error_classification = attempt.api_error.classification || null;
+    attempt.emitter_csd_rfc_mismatch_detected = attempt.api_error.emitter_csd_rfc_mismatch_detected === true;
     if (attempt.status === "CREATE_API_ERROR") {
       summary.api_errors += 1;
       summary.create_api_errors += 1;
     } else {
       summary.http_errors += 1;
       summary.create_http_errors += 1;
+    }
+    if (attempt.emitter_csd_rfc_mismatch_detected) {
+      summary.emitter_csd_rfc_mismatch_detected += 1;
+      summary.pac_error_303_detected += 1;
+      pushUnique(summary.api_error_classifications_detected, "EMITTER_CSD_RFC_MISMATCH");
     }
     if (attempt.api_message_summary) summary.api_error_messages_detected.push(attempt.api_message_summary);
     summary.errors += 1;
@@ -1656,6 +1706,11 @@ function buildManifest(config) {
       skip_auth_preflight: config.skipAuthPreflight,
     },
     production_blocked: true,
+    active_sandbox_emitter_profile_id: config.emitterProfileId || null,
+    effective_emitter_regimen: config.emitterRegimenFiscal || null,
+    effective_lugar_expedicion: config.lugarExpedicion || null,
+    emitter_rfc_shape: config.emitterProfileReport?.rfc_shape || null,
+    emitter_profile_status: config.emitterProfileReport?.status || null,
     artifacts: [],
     attempts: [],
   };
@@ -1697,6 +1752,15 @@ function buildSummary(config) {
     provider_auth_status: null,
     provider_auth_message: null,
     auth_preflight_ok: null,
+    active_sandbox_emitter_profile_id: config.emitterProfileId || null,
+    effective_emitter_regimen: config.emitterRegimenFiscal || null,
+    effective_lugar_expedicion: config.lugarExpedicion || null,
+    emitter_rfc_shape: config.emitterProfileReport?.rfc_shape || null,
+    emitter_profile_status: config.emitterProfileReport?.status || null,
+    sandbox_emitter_profile_errors: 0,
+    emitter_csd_rfc_mismatch_detected: 0,
+    pac_error_303_detected: 0,
+    api_error_classifications_detected: [],
     active_sandbox_fiscal_profile_id: config.fiscalProfileId || null,
     sandbox_fiscal_profile_errors: 0,
     receptor_compatibility_errors: 0,
@@ -1729,7 +1793,7 @@ function buildSummary(config) {
 }
 
 async function runSmoke(env = process.env, options = {}) {
-  const config = buildSmokeConfig(env);
+  let config = buildSmokeConfig(env);
   if (!config.live) {
     console.log("SKIPPED: live disabled");
     return { skipped: true, ok: true };
@@ -1739,11 +1803,34 @@ async function runSmoke(env = process.env, options = {}) {
   const postCreateSearchDocumented = Boolean(options.postCreateSearchDocumented);
 
   const runtimeDir = ensureRuntimeDir(config.runtimeDir);
+  const emitterProfileLoad = getSandboxEmitterProfile(config.emitterProfileId);
+  const emitterProfile = emitterProfileLoad.profile || {};
+  const emitterProfileReport = emitterProfileLoad.profile
+    ? buildSafeEmitterProfileReport(emitterProfile)
+    : emitterProfileLoad.validation;
+  if (emitterProfileReport.ok === true) {
+    config = applyEmitterProfileToFacturaComConfig(config, emitterProfile);
+  }
+  config = {
+    ...config,
+    runtimeDir,
+    emitterProfileId: emitterProfileReport.profile_id || config.emitterProfileId || null,
+    emitterProfileReport,
+  };
   const manifest = buildManifest({ ...config, runtimeDir });
   const summary = buildSummary(config);
   let authPreflightResult = null;
 
   try {
+    if (emitterProfileReport.ok !== true) {
+      applyInvalidSandboxEmitterProfile({ summary, manifest, config, env, report: emitterProfileReport });
+      writeJson(runtimeDir, "manifest.json", manifest, env);
+      writeJson(runtimeDir, "summary.json", summary, env);
+      console.log(`Factura.com sandbox smoke manifest: ${path.join(runtimeDir, "manifest.json")}`);
+      console.log(`Factura.com sandbox smoke summary: ${path.join(runtimeDir, "summary.json")}`);
+      console.log(`SUMMARY: attempts=${summary.total_attempts} successful=${summary.successful} errors=${summary.errors} needs_local_config=${summary.needs_local_config}`);
+      return { ok: false, manifest, summary };
+    }
     if (config.skipAuthPreflight) {
       summary.auth_preflight_ok = null;
       summary.provider_auth_status = "AUTH_PREFLIGHT_SKIPPED";

@@ -7,6 +7,7 @@ const {
   loadSandboxFiscalProfiles,
   validateSandboxFiscalProfile,
 } = require("./lib/sandbox-fiscal-profile-loader");
+const { loadSandboxEmitterProfiles } = require("./lib/sandbox-emitter-profile-loader");
 
 const root = path.resolve(__dirname, "..");
 const clientsPath = path.join(root, "data", "sandbox", "canonical-test-clients.json");
@@ -32,6 +33,7 @@ function readJson(filePath) {
 }
 
 const loaded = loadSandboxFiscalProfiles();
+const emitterProfiles = loadSandboxEmitterProfiles();
 const clients = readJson(clientsPath);
 const drafts = readJson(draftsPath);
 
@@ -45,6 +47,14 @@ check("profiles_are_source_of_truth", () => {
   assert.strictEqual(loaded.source_of_truth, true);
   assert.strictEqual(loaded.default_smoke_profile_id, "PF_612_G03_DEMO");
   return loaded.default_smoke_profile_id;
+});
+
+check("receiver_and_emitter_profiles_are_separate_sources", () => {
+  assert(loaded.byId.has("PF_612_G03_DEMO"));
+  assert(emitterProfiles.byId.has("EMITTER_XAMA_612_DEMO"));
+  assert(!loaded.byId.has("EMITTER_XAMA_612_DEMO"));
+  assert(!emitterProfiles.byId.has("PF_612_G03_DEMO"));
+  return "separate";
 });
 
 check("required_profiles_exist", () => {

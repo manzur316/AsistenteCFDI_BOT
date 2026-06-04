@@ -403,6 +403,23 @@ sanitizado y no toca el endpoint CFDI. No se imprimen RFC completos: solo
 Recomendacion: 6A.6 puede proceder solo como smoke sandbox controlado si esos
 pendientes quedan resueltos localmente y con `FACTURACOM_SANDBOX_LIVE=1`.
 
+### Consistencia Emisor/CSD/Serie 6A.7L
+
+El error `303 - El RFC del CSD del Emisor no corresponde al RFC que viene como
+Emisor en el Comprobante` no se corrige cambiando receptor. El smoke debe
+validar primero un perfil de emisor sandbox:
+
+- `active_sandbox_emitter_profile_id`.
+- `effective_emitter_regimen`.
+- `effective_lugar_expedicion`.
+- `emitter_rfc_shape`.
+- `emitter_profile_status`.
+
+Para Factura.com, la serie configurada localmente debe pertenecer a la misma
+empresa/emisor del CSD y del perfil `EMITTER_XAMA_612_DEMO`. Si el PAC devuelve
+303, el analyzer debe reportar `EMITTER_CSD_RFC_MISMATCH` y pedir revisar panel
+Factura.com: empresa activa, CSD cargado, RFC emisor y serie.
+
 ## 6A.6 Smoke Sandbox Controlado
 
 El discovery oficial alimenta un smoke controlado, pero el smoke sigue apagado

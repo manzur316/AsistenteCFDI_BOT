@@ -329,6 +329,29 @@ Reglas:
   Emisor no corresponde`, el bloqueo es de configuracion del emisor sandbox
   (CSD/serie/cuenta), no de receptor.
 
+## Sandbox Emitter Profiles 6A.7L
+
+El emisor sandbox se configura con un perfil separado del receptor:
+
+```text
+data/sandbox/facturacom-sandbox-emitter-profiles.json
+scripts/lib/sandbox-emitter-profile-loader.js
+```
+
+`EMITTER_XAMA_612_DEMO` aplica al smoke:
+
+- `RegimenFiscal=612`.
+- `LugarExpedicion=01219`.
+- RFC/CSD esperado con forma PF demo, sin imprimir RFC completo.
+- Sin credenciales, certificados `.cer/.key` ni datos reales.
+
+`EMITTER_RESICO_626_REAL_BLOCKED_FOR_SANDBOX` existe para cortar localmente si
+alguien intenta mezclar el RESICO 626 real del usuario con CSD/serie sandbox.
+El mapper debe usar `RegimenFiscal` y `LugarExpedicion` del perfil de emisor en
+el body final. Si Factura.com responde `303`, el analyzer clasifica
+`EMITTER_CSD_RFC_MISMATCH` y recomienda revisar que empresa Factura.com, CSD,
+RFC emisor y serie pertenezcan al mismo emisor sandbox.
+
 Fase 6A.6C agrega normalizacion de identidad CFDI/PAC para preparar Storage
 Engine. Los smoke live sandbox ya validaron crear CFDI, descargar XML/PDF,
 cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:

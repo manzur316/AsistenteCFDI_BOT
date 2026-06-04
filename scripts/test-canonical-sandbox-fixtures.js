@@ -5,6 +5,7 @@ const { REVIEW_STATUSES } = require("./lib/canonical-cfdi-contracts");
 const { buildCanonicalDraftFromBotPreview } = require("./lib/canonical-draft-builder");
 const { buildCanonicalPacRequest, promoteCanonicalDraftToInvoiceDocument } = require("./lib/canonical-invoice-builder");
 const { normalizeRfc, validateRfcShape } = require("./lib/cfdi-receptor-compatibility-validator");
+const { loadSandboxEmitterProfiles } = require("./lib/sandbox-emitter-profile-loader");
 const { applySandboxFiscalProfilesToClients, loadSandboxFiscalProfiles } = require("./lib/sandbox-fiscal-profile-loader");
 
 const root = path.resolve(__dirname, "..");
@@ -34,6 +35,7 @@ function readJson(filePath) {
 const rawClients = readJson(clientsPath);
 const drafts = readJson(draftsPath);
 const profiles = loadSandboxFiscalProfiles();
+const emitterProfiles = loadSandboxEmitterProfiles();
 const clients = applySandboxFiscalProfilesToClients(rawClients, { loadedProfiles: profiles }).clients;
 const clientById = new Map(clients.map((client) => [client.client_id, client]));
 
@@ -50,6 +52,15 @@ check("cinco_clientes_cargan", () => {
 check("cinco_drafts_cargan", () => {
   assert.strictEqual(drafts.length, 5);
   return drafts.length;
+});
+
+check("emitter_profile_sandbox_activo_es_xama_612", () => {
+  const validation = emitterProfiles.validations.EMITTER_XAMA_612_DEMO;
+  assert.strictEqual(validation.ok, true, validation.errors.join(","));
+  assert.strictEqual(validation.regimenFiscal, "612");
+  assert.strictEqual(validation.lugarExpedicion, "01219");
+  assert.strictEqual(validation.rfc_shape, "PF");
+  return "EMITTER_XAMA_612_DEMO";
 });
 
 check("fixtures_positivos_pasan_build_canonical_draft", () => {

@@ -1,0 +1,32 @@
+{
+  "schema_version": "facturacom_sandbox_emitter_profiles.v1",
+  "source_of_truth": true,
+  "default_smoke_profile_id": "EMITTER_XAMA_612_DEMO",
+  "profiles": [
+    {
+      "profile_id": "EMITTER_XAMA_612_DEMO",
+      "description": "Emisor sandbox demo alineado a RFC/CSD de prueba SAT para smoke Factura.com.",
+      "rfc": "XAMA620210DQ5",
+      "legal_name": "ALBA XKARAJAM MENDEZ",
+      "regimenFiscal": "612",
+      "lugarExpedicion": "01219",
+      "expected_csd_rfc": "XAMA620210DQ5",
+      "source": "SAT/Factura.com sandbox test data",
+      "allowedForSmoke": true,
+      "validation_warnings": ["DEMO_SANDBOX_ONLY", "NO_CERT_FILES", "NO_CREDENTIALS"]
+    },
+    {
+      "profile_id": "EMITTER_RESICO_626_REAL_BLOCKED_FOR_SANDBOX",
+      "description": "Perfil placeholder bloqueado para impedir mezclar RESICO real del usuario con CSD sandbox.",
+      "rfc": null,
+      "legal_name": null,
+      "regimenFiscal": "626",
+      "lugarExpedicion": null,
+      "expected_csd_rfc": null,
+      "source": "blocked real user profile placeholder",
+      "allowedForSmoke": false,
+      "blocked_reason": "produccion/usuario real fuera de sandbox",
+      "validation_warnings": ["REAL_USER_PROFILE_BLOCKED_FOR_SANDBOX", "NO_REAL_RFC_STORED"]
+    }
+  ]
+}

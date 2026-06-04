@@ -602,6 +602,86 @@ check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
   return "api error";
 });
 
+check("analyzer_clasifica_error_303_como_emitter_csd_mismatch", () => {
+  const runtimeDir = path.join(tempRoot, "api-error-303-runtime");
+  const responsePath = path.join(runtimeDir, "DRAFT-API-303-create-cfdi-response.json");
+  const message = "303 - El RFC del CSD del Emisor no corresponde al RFC que viene como Emisor en el Comprobante.";
+  writeJson(responsePath, {
+    ok: false,
+    http_ok: true,
+    api_ok: false,
+    status: 200,
+    api_status: "error",
+    api_message_summary: safeApiMessagePreview(message),
+    api_error_fields: {
+      response: "error",
+      message: safeApiMessagePreview(message),
+    },
+    data: {
+      response: "error",
+      message,
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    active_sandbox_emitter_profile_id: "EMITTER_XAMA_612_DEMO",
+    effective_emitter_regimen: "612",
+    effective_lugar_expedicion: "01219",
+    emitter_rfc_shape: "PF",
+    emitter_profile_status: "PASS",
+    artifacts: [{
+      type: "CFDI_CREATE_RESPONSE",
+      draft_id: "DRAFT-API-303",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+      ok: false,
+    }],
+    attempts: [{
+      draft_id: "DRAFT-API-303",
+      status: "CREATE_API_ERROR",
+      http_ok: true,
+      api_ok: false,
+      api_status: "error",
+      api_message_summary: message,
+      api_error_classification: "EMITTER_CSD_RFC_MISMATCH",
+      emitter_csd_rfc_mismatch_detected: true,
+      api_error: {
+        http_ok: true,
+        api_ok: false,
+        api_status: "error",
+        api_message_summary: message,
+        classification: "EMITTER_CSD_RFC_MISMATCH",
+        emitter_csd_rfc_mismatch_detected: true,
+      },
+    }],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 1,
+    successful: 0,
+    errors: 1,
+    api_errors: 1,
+    create_api_errors: 1,
+    emitter_csd_rfc_mismatch_detected: 1,
+    pac_error_303_detected: 1,
+    api_error_classifications_detected: ["EMITTER_CSD_RFC_MISMATCH"],
+    active_sandbox_emitter_profile_id: "EMITTER_XAMA_612_DEMO",
+    effective_emitter_regimen: "612",
+    effective_lugar_expedicion: "01219",
+    emitter_rfc_shape: "PF",
+    emitter_profile_status: "PASS",
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.emitter_csd_rfc_mismatch_detected > 0, true);
+  assert.strictEqual(result.pac_error_303_detected > 0, true);
+  assert(result.api_error_classifications_detected.includes("EMITTER_CSD_RFC_MISMATCH"));
+  const cli = runNode(["scripts/analyze-factura-com-sandbox-results.js", runtimeDir]);
+  assert.strictEqual(cli.status, 0, cli.stderr);
+  assert(cli.stdout.includes("Emitter diagnosis:"), cli.stdout);
+  return "303 classified";
+});
+
 check("analyzer_reporta_client_create_error_seguro", () => {
   const runtimeDir = path.join(tempRoot, "client-create-error-runtime");
   const responsePath = path.join(runtimeDir, "client-create-response.json");
