@@ -19,6 +19,7 @@ const safeFiles = [
   "data/knowledge_base/cfdi40_claveprodserv_index.json",
   "data/knowledge_base/cfdi40_claveunidad_index.json",
   "data/knowledge_base/cfdi40_master_knowledge.json",
+  "data/knowledge_base/emitter_activity_scope.proposed.json",
   "runtime/.gitkeep",
   "runner/README.md",
   "runner/telegram-local-runner.js",

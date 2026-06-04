@@ -1,0 +1,439 @@
+{
+  "schema_version": "emitter_activity_scope.proposed.v1",
+  "status": "PROPOSED_NOT_ACTIVE",
+  "activation_policy": {
+    "requires_human_approval": true,
+    "does_not_modify_active_catalog": true,
+    "does_not_enable_new_concepts": true,
+    "does_not_stamp_cfdi": true,
+    "does_not_generate_xml_or_pdf": true
+  },
+  "principle": "La constancia fiscal manda. El catalogo SAT valida. La Guia de llenado define reglas CFDI. El bot solo sugiere borradores sujetos a revision humana.",
+  "sources": {
+    "emitter_certificate": "Constancia fiscal del emisor, actividades A1-A5 vigentes",
+    "active_bot_catalog": "data/concepts.normalized.json",
+    "sat_master_catalog": "CATALOGOS SAT BD ORIGINAL/catCFDI_V_4_20260603.xls",
+    "official_filling_guide": "CATALOGOS SAT BD ORIGINAL/Anexo_20_Guia_de_llenado_CFDI.pdf",
+    "knowledge_base": [
+      "data/knowledge_base/cfdi40_master_knowledge.json",
+      "data/knowledge_base/cfdi40_claveprodserv_index.json",
+      "data/knowledge_base/cfdi40_claveunidad_index.json",
+      "data/knowledge_base/cfdi40_decision_engine.json",
+      "data/knowledge_base/cfdi40_filling_rules.json"
+    ]
+  },
+  "emitter": {
+    "regimen_fiscal": "626",
+    "regimen_name": "Regimen Simplificado de Confianza",
+    "requires_human_review_always": true
+  },
+  "activities": [
+    {
+      "id": "A1",
+      "activity": "Otras instalaciones y equipamiento en construcciones",
+      "scope_intent": "Instalacion de equipamiento tecnico en inmuebles, canalizacion o cableado ligado al equipo, control de acceso, seguridad electronica y comunicacion cuando sea equipamiento.",
+      "allowed_operation_types": [
+        "SERVICIO_INSTALACION",
+        "SERVICIO",
+        "MIXTO"
+      ],
+      "limits": [
+        "No construccion civil general",
+        "No albanileria",
+        "No pintura",
+        "No plomeria",
+        "No electricidad general si no esta ligada al equipo tecnico permitido"
+      ]
+    },
+    {
+      "id": "A2",
+      "activity": "Reparacion y mantenimiento de maquinaria y equipo comercial y de servicios",
+      "scope_intent": "Diagnostico, mantenimiento, ajuste, reparacion y cambio de partes de equipo usado por comercios o servicios: barreras, casetas, equipos de acceso, equipos de atencion o servicio.",
+      "allowed_operation_types": [
+        "SERVICIO",
+        "MIXTO"
+      ],
+      "limits": [
+        "No maquinaria industrial pesada sin validacion",
+        "No reparaciones automotrices",
+        "No renta de equipo"
+      ]
+    },
+    {
+      "id": "A3",
+      "activity": "Reparacion y mantenimiento de otro equipo electronico y de equipo de precision",
+      "scope_intent": "Diagnostico, mantenimiento, configuracion tecnica y reparacion de equipo electronico fisico, equipo de precision, comunicacion, computo, CCTV, controladores y sensores.",
+      "allowed_operation_types": [
+        "SERVICIO",
+        "SERVICIO_INSTALACION",
+        "MIXTO"
+      ],
+      "limits": [
+        "No desarrollo de software",
+        "No SaaS",
+        "No automatizaciones n8n como servicio",
+        "No IA como servicio"
+      ]
+    },
+    {
+      "id": "A4",
+      "activity": "Comercio al por menor de telefonos, aparatos de comunicacion, refacciones y accesorios",
+      "scope_intent": "Venta de aparatos de comunicacion, telefonos, routers, switches, puntos de acceso, cables, conectores, refacciones y accesorios relacionados.",
+      "allowed_operation_types": [
+        "PRODUCTO"
+      ],
+      "limits": [
+        "No venta de productos no relacionados con comunicacion o electronica",
+        "No servicios profesionales ajenos"
+      ]
+    },
+    {
+      "id": "A5",
+      "activity": "Comercio al por menor de computadoras y accesorios",
+      "scope_intent": "Venta de computadoras, laptops, monitores, almacenamiento, memoria, perifericos, cables, fuentes y accesorios de computo.",
+      "allowed_operation_types": [
+        "PRODUCTO"
+      ],
+      "limits": [
+        "No software a medida",
+        "No paginas web",
+        "No SaaS"
+      ]
+    }
+  ],
+  "fiscal_scope_categories": [
+    {
+      "id": "INSTALLATION_EQUIPMENT_CONSTRUCTION",
+      "activity_ids": [
+        "A1"
+      ],
+      "candidate_sat_keys_from_active_catalog": [
+        "72151604",
+        "72151605",
+        "72151701",
+        "72151702",
+        "72151704",
+        "81111809"
+      ],
+      "candidate_topics": [
+        "instalacion de telefonos y equipos",
+        "cableado para video datos y voz",
+        "sistemas de control de acceso",
+        "sistemas CCTV",
+        "sistemas instrumentados de seguridad",
+        "instalacion de sistemas fisicos"
+      ],
+      "suggestion_policy": "Puede sugerir solo si el mensaje trae operacion de instalacion/equipamiento y el concepto existe en catalogo activo auditado."
+    },
+    {
+      "id": "TECHNICAL_MAINTENANCE_COMMERCIAL_SERVICE_EQUIPMENT",
+      "activity_ids": [
+        "A2"
+      ],
+      "candidate_sat_keys_from_active_catalog": [
+        "72151704",
+        "81111811",
+        "81111812"
+      ],
+      "candidate_topics": [
+        "mantenimiento de sistemas instrumentados de seguridad",
+        "soporte tecnico",
+        "mantenimiento de hardware",
+        "barreras",
+        "caseta",
+        "equipo comercial y de servicios"
+      ],
+      "suggestion_policy": "Debe exigir equipo o sistema claro; si el texto solo dice servicio general, sistema o caseta, pedir aclaracion."
+    },
+    {
+      "id": "ELECTRONIC_PRECISION_EQUIPMENT",
+      "activity_ids": [
+        "A3"
+      ],
+      "candidate_sat_keys_from_active_catalog": [
+        "39121004",
+        "39121011",
+        "43191500",
+        "43191600",
+        "43201800",
+        "43211710",
+        "45121500",
+        "45121600",
+        "46171619",
+        "46171621",
+        "46171622",
+        "81111811",
+        "81111812"
+      ],
+      "candidate_topics": [
+        "equipo electronico",
+        "fuentes",
+        "sensores",
+        "lectores",
+        "dispositivos de identificacion",
+        "CCTV",
+        "control de acceso",
+        "hardware fisico"
+      ],
+      "suggestion_policy": "Permite crecer mas alla de CCTV, pero la evidencia debe venir de equipo fisico y operacion tecnica real."
+    },
+    {
+      "id": "COMMUNICATION_DEVICES_RETAIL",
+      "activity_ids": [
+        "A4"
+      ],
+      "candidate_sat_keys_from_active_catalog": [
+        "26121607",
+        "26121609",
+        "39121446",
+        "43191500",
+        "43191600",
+        "43202222",
+        "43222600",
+        "43222609",
+        "43222612",
+        "43222640"
+      ],
+      "candidate_topics": [
+        "telefonos",
+        "aparatos de comunicacion",
+        "router",
+        "switch",
+        "access point",
+        "cables",
+        "conectores",
+        "refacciones",
+        "accesorios"
+      ],
+      "suggestion_policy": "Solo debe priorizar PRODUCTO cuando el mensaje indica venta o suministro."
+    },
+    {
+      "id": "COMPUTERS_ACCESSORIES_RETAIL",
+      "activity_ids": [
+        "A5"
+      ],
+      "candidate_sat_keys_from_active_catalog": [
+        "43201800",
+        "43211500",
+        "43211600",
+        "43211902",
+        "43202222"
+      ],
+      "candidate_topics": [
+        "computadoras",
+        "laptops",
+        "monitores",
+        "almacenamiento",
+        "memoria",
+        "perifericos",
+        "accesorios"
+      ],
+      "suggestion_policy": "Venta de computo debe ir a familia COMPUTO/PRODUCTO. No debe caer en RFID, acceso o CCTV."
+    },
+    {
+      "id": "SECURITY_ELECTRONICS_WHEN_JUSTIFIED",
+      "activity_ids": [
+        "A1",
+        "A2",
+        "A3",
+        "A4"
+      ],
+      "candidate_sat_keys_from_active_catalog": [
+        "45121500",
+        "45121600",
+        "46171619",
+        "46171621",
+        "46171622",
+        "72151701",
+        "72151702",
+        "72151704"
+      ],
+      "candidate_topics": [
+        "seguridad electronica",
+        "CCTV",
+        "control de acceso",
+        "barreras",
+        "lectores",
+        "fuentes",
+        "refacciones"
+      ],
+      "suggestion_policy": "Seguridad electronica es valida solo si se justifica por instalacion/equipamiento/mantenimiento o venta de equipo/refaccion cubierto."
+    }
+  ],
+  "blocked_scope": [
+    {
+      "id": "NO_SOFTWARE_APPS_WEB_SAAS_IA_N8N",
+      "terms": [
+        "software",
+        "app movil",
+        "pagina web",
+        "SaaS",
+        "IA",
+        "n8n como servicio",
+        "automatizacion digital"
+      ],
+      "decision": "BLOQUEAR"
+    },
+    {
+      "id": "NO_MARKETING_DESIGN_VIDEO",
+      "terms": [
+        "marketing",
+        "diseno grafico",
+        "video",
+        "redes sociales"
+      ],
+      "decision": "AGREGAR_ACTIVIDAD"
+    },
+    {
+      "id": "NO_OFF_TRADES_OR_CONSTRUCTION",
+      "terms": [
+        "comida",
+        "plomeria",
+        "pintura",
+        "albanileria",
+        "construccion civil general"
+      ],
+      "decision": "AGREGAR_ACTIVIDAD"
+    },
+    {
+      "id": "NO_PROFESSIONAL_CONSULTING_OR_RENTAL",
+      "terms": [
+        "consultoria fiscal",
+        "consultoria legal",
+        "consultoria contable",
+        "renta de equipo"
+      ],
+      "decision": "AGREGAR_ACTIVIDAD"
+    }
+  ],
+  "proposed_scoring_layers": [
+    {
+      "order": 1,
+      "id": "emitter_activity_scope",
+      "purpose": "Validar si la operacion vive dentro de las actividades economicas vigentes del emisor.",
+      "decision_effect": "Bloquear o pedir revision si ninguna actividad vigente cubre la familia fiscal."
+    },
+    {
+      "order": 2,
+      "id": "cfdi40_filling_rules",
+      "purpose": "Aplicar reglas de Guia de llenado: regimen, uso CFDI, objeto de impuesto, metodo/forma de pago, vigencia y revision humana.",
+      "decision_effect": "Agregar advertencias o bloqueos CFDI, sin timbrar."
+    },
+    {
+      "order": 3,
+      "id": "sat_master_catalog_validation",
+      "purpose": "Validar existencia y vigencia de c_ClaveProdServ, c_ClaveUnidad, c_ObjetoImp, c_Impuesto, c_TipoFactor y c_TasaOCuota.",
+      "decision_effect": "Rechazar claves inexistentes o con complemento obligatorio no soportado."
+    },
+    {
+      "order": 4,
+      "id": "operation_type",
+      "purpose": "Distinguir venta, instalacion, mantenimiento, reparacion, diagnostico y configuracion.",
+      "decision_effect": "Producto solo si hay venta/suministro; servicio si hay revision, diagnostico, mantenimiento o configuracion."
+    },
+    {
+      "order": 5,
+      "id": "sat_description_similarity",
+      "purpose": "Comparar contra descripcion SAT y grupos fiscales, evitando tokens aislados demasiado generales.",
+      "decision_effect": "Subir confianza solo si descripcion SAT y contexto real coinciden."
+    },
+    {
+      "order": 6,
+      "id": "active_catalog_concept",
+      "purpose": "Seleccionar solo conceptos ya auditados en data/concepts.normalized.json.",
+      "decision_effect": "Nunca inventar concepto, clave, unidad o IVA."
+    },
+    {
+      "order": 7,
+      "id": "manual_keywords_current",
+      "purpose": "Usar keywords actuales como evidencia auxiliar, no como fuente principal.",
+      "decision_effect": "Empatar candidatos y detectar modelos/marcas, sin rebasar constancia ni SAT."
+    },
+    {
+      "order": 8,
+      "id": "semantic_exclusions_and_ambiguity",
+      "purpose": "Evitar contaminacion semantica y pedir aclaracion si falta equipo/sistema.",
+      "decision_effect": "PEDIR_ACLARACION o penalizacion fuerte."
+    }
+  ],
+  "semantic_disambiguation_rules": [
+    {
+      "id": "CAMERA_NOT_DVR",
+      "condition": "mensaje menciona camara/camaras y no menciona dvr, nvr, grabador, almacenamiento o disco",
+      "forbidden_primary_contains": [
+        "DVR",
+        "NVR",
+        "GRABADOR",
+        "DISCO",
+        "ALMACENAMIENTO"
+      ],
+      "preferred_scope": [
+        "camara",
+        "CCTV general solo si sistema completo esta justificado",
+        "diagnostico/revision camara"
+      ]
+    },
+    {
+      "id": "DVR_NOT_CAMERA",
+      "condition": "mensaje menciona dvr, nvr o grabador y no menciona camara",
+      "forbidden_primary_contains": [
+        "CAMARA DE VIDEOVIGILANCIA"
+      ],
+      "preferred_scope": [
+        "grabador",
+        "DVR/NVR",
+        "servicio de almacenamiento solo si menciona disco"
+      ]
+    },
+    {
+      "id": "POWER_SOURCE_NOT_DVR",
+      "condition": "mensaje menciona fuente de poder/alimentacion/adaptador/transformador y camara/CCTV",
+      "forbidden_primary_contains": [
+        "DVR",
+        "NVR",
+        "GRABADOR",
+        "DISCO"
+      ],
+      "preferred_scope": [
+        "fuente de poder",
+        "mantenimiento/revision CCTV",
+        "producto fuente si venta explicita"
+      ]
+    },
+    {
+      "id": "SYSTEM_GENERIC_NEEDS_EQUIPMENT",
+      "condition": "mensaje solo menciona sistema, equipo, caseta, falla, servicio tecnico o general",
+      "decision": "PEDIR_ACLARACION",
+      "question": "Que equipo o sistema fue atendido?"
+    }
+  ],
+  "sat_search_guardrails": [
+    "No usar tokens aislados como red, fuente, camara o control sin contexto fiscal, porque c_ClaveProdServ contiene homonimos y usos no relacionados.",
+    "Preferir grupos SAT y claves activas ya auditadas sobre coincidencia textual bruta.",
+    "Cualquier candidato SAT que no exista en data/concepts.normalized.json queda como propuesta, no como sugerencia activa.",
+    "Si c_ClaveProdServ indica complemento obligatorio no soportado, bloquear o pedir revision.",
+    "Toda salida queda como BORRADOR SUJETO A REVISION HUMANA."
+  ],
+  "minimal_change_proposal": [
+    {
+      "phase": "P1_AUDIT_ONLY",
+      "change": "Agregar esta matriz y reporte sin tocar scoring productivo.",
+      "risk": "Bajo"
+    },
+    {
+      "phase": "P2_SHADOW_SCORING",
+      "change": "Implementar un evaluador shadow que calcule activity_scope_score y fiscal_scope_score sin cambiar action final.",
+      "risk": "Bajo"
+    },
+    {
+      "phase": "P3_GUARDRAIL_GATE",
+      "change": "Usar emitter_activity_scope como compuerta antes de keywords, manteniendo conceptos activos existentes.",
+      "risk": "Medio"
+    },
+    {
+      "phase": "P4_CATALOG_EXPANSION_REVIEW",
+      "change": "Proponer nuevos conceptos candidatos solo con reporte y aprobacion humana.",
+      "risk": "Medio"
+    }
+  ]
+}
