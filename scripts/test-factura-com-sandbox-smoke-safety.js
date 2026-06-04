@@ -602,6 +602,105 @@ check("analyzer_reporta_create_api_error_sin_contar_identity_missing", () => {
   return "api error";
 });
 
+check("analyzer_no_clasifica_success_message_como_error", () => {
+  const runtimeDir = path.join(tempRoot, "success-message-runtime");
+  const cfdiResponsePath = path.join(runtimeDir, "DRAFT-SUCCESS-create-cfdi-response.json");
+  const clientResponsePath = path.join(runtimeDir, "client-create-success-response.json");
+  const successMessage = "Factura creada y enviada satisfactoriamente";
+  writeJson(cfdiResponsePath, {
+    ok: true,
+    http_ok: true,
+    api_ok: true,
+    status: 200,
+    api_status: "success",
+    api_message_summary: successMessage,
+    data: {
+      response: "success",
+      message: successMessage,
+      Data: {
+        UID: "CFDI-UID-SUCCESS",
+        UUID: "00000000-0000-4000-8000-000000000777",
+      },
+    },
+  });
+  writeJson(clientResponsePath, {
+    ok: true,
+    http_ok: true,
+    api_ok: true,
+    status: 201,
+    api_status: "success",
+    data: {
+      status: "success",
+      message: "Cliente creado satisfactoriamente",
+      Data: {
+        UID: "UID-CLIENT-SUCCESS",
+        RFC: "[REDACTED_RFC]",
+        RegimenId: "612",
+        UsoCFDI: "G03",
+      },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    schema_version: "facturacom_sandbox_smoke.v1",
+    live: true,
+    base_url: "https://sandbox.factura.com/api",
+    artifacts: [
+      {
+        type: "CLIENT_CREATE_RESPONSE",
+        client_id: "CLIENT-DEMO",
+        path: path.relative(root, clientResponsePath).replace(/\\/g, "/"),
+        ok: true,
+      },
+      {
+        type: "CFDI_CREATE_RESPONSE",
+        draft_id: "DRAFT-SUCCESS",
+        path: path.relative(root, cfdiResponsePath).replace(/\\/g, "/"),
+        ok: true,
+      },
+    ],
+    attempts: [{
+      draft_id: "DRAFT-SUCCESS",
+      status: "CREATE_OK",
+      api_ok: true,
+      api_status: "success",
+      api_message_summary: successMessage,
+      cfdi_uid: "CFDI-UID-SUCCESS",
+      uuid: "00000000-0000-4000-8000-000000000777",
+      cfdi_identity_source: "create_response",
+    }],
+  });
+  writeJson(path.join(runtimeDir, "summary.json"), {
+    total_attempts: 1,
+    successful: 1,
+    errors: 0,
+    api_errors: 0,
+    create_api_errors: 0,
+    client_create_errors: 0,
+    client_lookup_errors: 0,
+    client_validation_error_detected: 1,
+    api_error_messages_detected: [successMessage],
+    business_successful: 1,
+    warnings: [],
+  });
+  const result = analyze(runtimeDir);
+  assert.strictEqual(result.successful, 1);
+  assert.strictEqual(result.api_errors, 0);
+  assert.strictEqual(result.create_api_errors, 0);
+  assert.strictEqual(result.business_successful, 1);
+  assert.deepStrictEqual(result.api_error_messages_detected, []);
+  assert(result.api_success_messages_detected.includes(successMessage), result.api_success_messages_detected.join(" | "));
+  assert.strictEqual(result.client_create_errors, 0);
+  assert.deepStrictEqual(result.client_create_error_messages, []);
+  assert.strictEqual(result.client_validation_error_detected, 0);
+  assert(result.client_create_success_messages.length > 0, "client success message expected");
+  const cli = runNode(["scripts/analyze-factura-com-sandbox-results.js", runtimeDir]);
+  assert.strictEqual(cli.status, 0, cli.stderr);
+  assert(cli.stdout.includes("API error messages detectados: none"), cli.stdout);
+  assert(cli.stdout.includes(`API success messages detectados: ${successMessage}`), cli.stdout);
+  assert(cli.stdout.includes("Client validation error detectado: 0"), cli.stdout);
+  return "success separated";
+});
+
 check("analyzer_clasifica_error_303_como_emitter_csd_mismatch", () => {
   const runtimeDir = path.join(tempRoot, "api-error-303-runtime");
   const responsePath = path.join(runtimeDir, "DRAFT-API-303-create-cfdi-response.json");
@@ -863,6 +962,35 @@ check("inspector_no_imprime_valores_completos_y_marca_forbidden", () => {
   assert(!output.includes("CFDI-UID-SHAPE-SECRET"), "no debe imprimir cfdi UID completo");
   assert(!output.includes("SHOULD-NOT-PRINT-REQUEST-HEADER"), "no debe imprimir headers de request");
   return "shape safe";
+});
+
+check("inspector_rfc_redactado_no_se_evalua_como_invalid", () => {
+  const runtimeDir = path.join(tempRoot, "inspect-redacted-rfc-runtime");
+  const responsePath = path.join(runtimeDir, "client-create-redacted-response.json");
+  writeJson(responsePath, {
+    ok: true,
+    status: 201,
+    data: {
+      response: "success",
+      Data: {
+        RFC: "[REDACTED_RFC]",
+      },
+    },
+  });
+  writeJson(path.join(runtimeDir, "manifest.json"), {
+    artifacts: [{
+      type: "CLIENT_CREATE_RESPONSE",
+      path: path.relative(root, responsePath).replace(/\\/g, "/"),
+      ok: true,
+    }],
+    attempts: [],
+  });
+  const output = inspectRuntime(runtimeDir);
+  assert(output.includes("rfc_shape=REDACTED_NOT_EVALUATED"), output);
+  assert(output.includes("normalized_rfc_length=REDACTED"), output);
+  assert(output.includes("rfc_hidden=unknown"), output);
+  assert(!output.includes("rfc_shape=INVALID"), output);
+  return "redacted not evaluated";
 });
 
 check("inspector_muestra_client_create_response_y_request_seguro", () => {

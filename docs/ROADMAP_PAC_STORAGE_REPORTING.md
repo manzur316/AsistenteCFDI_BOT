@@ -361,6 +361,19 @@ El Hub tambien debe separar perfil receptor y perfil emisor. Para sandbox:
 La serie queda fuera del repositorio y debe confirmarse en el panel del PAC.
 No se versionan CSD, `.key`, `.cer`, passwords ni credenciales.
 
+### Sandbox Analyzer Hygiene 6A.7N
+
+El analyzer sandbox debe distinguir transporte/API/business success de errores.
+Mensajes de exito del proveedor, por ejemplo `Factura creada y enviada
+satisfactoriamente`, no son errores y deben mostrarse como mensajes de exito
+cuando `successful=1`, `business_successful=1` y `api_errors=0`.
+
+La validacion fiscal de RFC se ejecuta antes de sanitizar artifacts. Los
+inspectores de runtime trabajan sobre datos redactados, por lo que
+`[REDACTED_RFC]` no debe evaluarse como RFC real ni reportarse como `INVALID`;
+debe marcarse `REDACTED_NOT_EVALUATED`. Esta regla evita falsos positivos en
+observabilidad sin relajar ningun guard fiscal previo al PAC.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

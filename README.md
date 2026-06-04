@@ -448,6 +448,15 @@ respondiendo `303`, el analyzer clasifica `EMITTER_CSD_RFC_MISMATCH` y la
 accion correcta es revisar panel Factura.com: empresa activa, CSD cargado, RFC
 emisor y serie deben pertenecer al mismo emisor sandbox.
 
+Fase 6A.7N limpia falsos positivos de observabilidad despues de un timbrado
+sandbox exitoso. Mensajes PAC como `Factura creada y enviada satisfactoriamente`
+se reportan como `API success messages detectados`, no como errores, cuando
+`api_errors=0` y `business_successful=1`. De la misma forma, una respuesta
+`CLIENT_CREATE_RESPONSE` con `status/response=success` no incrementa
+`client_validation_error_detected`. La validacion fiscal de RFC ocurre antes de
+sanitizar; el inspector solo analiza artifacts sanitizados y marca
+`[REDACTED_RFC]` como `REDACTED_NOT_EVALUATED`, nunca como RFC invalido real.
+
 Estado real actual: si sandbox crea CFDI pero no devuelve identidad en create,
 headers, lookup, XML o busqueda oficial documentada, el flujo se queda como
 observabilidad local y no debe avanzar a Reporting Engine.

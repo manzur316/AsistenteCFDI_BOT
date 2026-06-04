@@ -352,6 +352,28 @@ el body final. Si Factura.com responde `303`, el analyzer clasifica
 `EMITTER_CSD_RFC_MISMATCH` y recomienda revisar que empresa Factura.com, CSD,
 RFC emisor y serie pertenezcan al mismo emisor sandbox.
 
+## Analyzer/Inspector Success Semantics 6A.7N
+
+El analyzer separa mensajes de exito y error del PAC. Un mensaje como
+`Factura creada y enviada satisfactoriamente` debe aparecer en
+`api_success_messages_detected` cuando el intento tiene `api_ok=true`,
+`response/status=success` o `status=CREATE_OK`. Solo se reporta en
+`api_error_messages_detected` si el intento o artifact indica error:
+`api_ok=false`, `ok=false`, `response/status=error` o status de intento de
+error.
+
+Las respuestas de cliente siguen la misma regla: `CLIENT_CREATE_RESPONSE` o
+`CLIENT_LOOKUP_RESPONSE` con success puede mostrarse como mensaje de exito, pero
+no aumenta `client_validation_error_detected`. Los mensajes de validacion de
+cliente solo cuentan cuando tambien existe `client_create_errors` o
+`client_lookup_errors`.
+
+El inspector analiza artifacts ya sanitizados. La validacion fiscal y de forma
+de RFC se hace antes de redactar; por eso un valor `[REDACTED_RFC]` o
+`[REDACTED_RFC_VALUE]` se muestra como
+`rfc_shape=REDACTED_NOT_EVALUATED`, `normalized_rfc_length=REDACTED` y
+`rfc_hidden=unknown`, no como RFC real invalido.
+
 Fase 6A.6C agrega normalizacion de identidad CFDI/PAC para preparar Storage
 Engine. Los smoke live sandbox ya validaron crear CFDI, descargar XML/PDF,
 cancelar en sandbox y procesar batch de 5. Cada intento puede conservar:

@@ -134,6 +134,29 @@ function responseLooksLikeError(response = {}) {
   return /\berror\b/i.test(statusText);
 }
 
+function responseLooksLikeSuccess(response = {}) {
+  if (response.api_ok === true || response.ok === true) return true;
+  const statusText = String(response.api_status || response.data?.response || response.data?.status || response.data?.estatus || "");
+  return /\bsuccess\b/i.test(statusText);
+}
+
+function attemptLooksLikeApiError(attempt = {}) {
+  if (attempt.api_ok === false) return true;
+  if (attempt.ok === false) return true;
+  if (attempt.api_error && typeof attempt.api_error === "object") return true;
+  if (/\b(ERROR|FAILED)\b/i.test(String(attempt.status || ""))) return true;
+  const statusText = String(attempt.api_status || attempt.response || attempt.status_text || "");
+  return /\berror\b/i.test(statusText);
+}
+
+function attemptLooksLikeApiSuccess(attempt = {}) {
+  if (attempt.api_ok === true) return true;
+  if (attempt.ok === true) return true;
+  if (String(attempt.status || "") === "CREATE_OK") return true;
+  const statusText = String(attempt.api_status || attempt.response || attempt.status_text || "");
+  return /\bsuccess\b/i.test(statusText);
+}
+
 function messageLooksLikeClientAlreadyExists(message) {
   const normalized = String(message || "")
     .normalize("NFD")
@@ -231,8 +254,12 @@ function analyze(runtimeArg = process.argv[2]) {
   const createResponseShapesDetected = [];
   const clientCreateResponseShapesDetected = [];
   const clientLookupResponseShapesDetected = [];
-  const clientCreateArtifactMessages = [];
-  const clientLookupArtifactMessages = [];
+  const apiSuccessArtifactMessages = [];
+  const apiErrorArtifactMessages = [];
+  const clientCreateSuccessArtifactMessages = [];
+  const clientCreateErrorArtifactMessages = [];
+  const clientLookupSuccessArtifactMessages = [];
+  const clientLookupErrorArtifactMessages = [];
   const authPreflightResponseShape = [];
   const localCfdiRuleResponseShape = [];
   let authPreflightArtifactOk = null;
@@ -264,6 +291,14 @@ function analyze(runtimeArg = process.argv[2]) {
       const responseJson = readJsonIfPossible(abs);
       if (responseJson) {
         const shapeLines = collectShapeLines(responseJson).slice(0, 120);
+        const message = responseMessagePreview(responseJson);
+        if (message) {
+          if (responseLooksLikeError(responseJson) || artifact.ok === false) {
+            apiErrorArtifactMessages.push(message);
+          } else if (responseLooksLikeSuccess(responseJson) || artifact.ok === true) {
+            apiSuccessArtifactMessages.push(message);
+          }
+        }
         if (artifact.type === "CFDI_CREATE_RESPONSE") {
           createResponseShapesDetected.push({
             draft_id: artifact.draft_id || null,
@@ -299,11 +334,17 @@ function analyze(runtimeArg = process.argv[2]) {
         };
         if (artifact.type === "CLIENT_CREATE_RESPONSE") {
           clientCreateResponseShapesDetected.push(shapeRecord);
-          if (message) clientCreateArtifactMessages.push(message);
+          if (message) {
+            if (responseLooksLikeError(responseJson) || artifact.ok === false) clientCreateErrorArtifactMessages.push(message);
+            else if (responseLooksLikeSuccess(responseJson) || artifact.ok === true) clientCreateSuccessArtifactMessages.push(message);
+          }
           if (responseLooksLikeError(responseJson)) clientCreateArtifactErrors += 1;
         } else {
           clientLookupResponseShapesDetected.push(shapeRecord);
-          if (message) clientLookupArtifactMessages.push(message);
+          if (message) {
+            if (responseLooksLikeError(responseJson) || artifact.ok === false) clientLookupErrorArtifactMessages.push(message);
+            else if (responseLooksLikeSuccess(responseJson) || artifact.ok === true) clientLookupSuccessArtifactMessages.push(message);
+          }
           if (responseLooksLikeError(responseJson)) clientLookupArtifactErrors += 1;
         }
       }
@@ -356,9 +397,26 @@ function analyze(runtimeArg = process.argv[2]) {
   const cfdiIdentitySource = {};
   const createApiErrors = attempts.filter((attempt) => attempt.status === "CREATE_API_ERROR");
   const createHttpErrors = attempts.filter((attempt) => attempt.status === "CREATE_HTTP_ERROR");
+  const summaryApiErrorsCount = Number(summary.api_errors || 0) + Number(summary.create_api_errors || 0);
+  const summaryBusinessSuccessCount = Number(summary.business_successful || summary.successful || 0);
+  const summaryApiErrorMessages = Array.isArray(summary.api_error_messages_detected)
+    ? summary.api_error_messages_detected
+    : [];
+  const summaryApiMessagesAreSuccess = summaryApiErrorsCount === 0 && summaryBusinessSuccessCount > 0;
   const apiErrorMessagesDetected = unique([
-    ...(Array.isArray(summary.api_error_messages_detected) ? summary.api_error_messages_detected : []),
-    ...attempts.map((attempt) => attempt.api_message_summary || attempt.api_error?.api_message_summary),
+    ...(summaryApiMessagesAreSuccess ? [] : summaryApiErrorMessages),
+    ...apiErrorArtifactMessages,
+    ...attempts
+      .filter(attemptLooksLikeApiError)
+      .map((attempt) => attempt.api_message_summary || attempt.api_error?.api_message_summary),
+  ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
+  const apiSuccessMessagesDetected = unique([
+    ...(Array.isArray(summary.api_success_messages_detected) ? summary.api_success_messages_detected : []),
+    ...(summaryApiMessagesAreSuccess ? summaryApiErrorMessages : []),
+    ...apiSuccessArtifactMessages,
+    ...attempts
+      .filter((attempt) => attemptLooksLikeApiSuccess(attempt) && !attemptLooksLikeApiError(attempt))
+      .map((attempt) => attempt.api_message_summary || attempt.api_success_message || attempt.message),
   ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
   const createApiErrorMessagePreviews = unique(createApiErrors
     .map((attempt) => attempt.api_message_summary || attempt.api_error?.api_message_summary)
@@ -374,20 +432,36 @@ function analyze(runtimeArg = process.argv[2]) {
   const apiStatusUnknownAttempts = attempts.filter((attempt) => attempt.api_status_unknown === true);
   const businessSuccessfulAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK");
   const identityMissingAfterApiSuccessAttempts = attempts.filter((attempt) => attempt.status === "CREATE_OK_IDENTITY_MISSING");
+  const clientCreateErrorsCount = Number(summary.client_create_errors ?? clientCreateArtifactErrors);
+  const clientLookupErrorsCount = Number(summary.client_lookup_errors ?? clientLookupArtifactErrors);
   const clientCreateErrorMessages = unique([
-    ...(Array.isArray(summary.client_create_error_messages) ? summary.client_create_error_messages : []),
-    ...clientCreateArtifactMessages,
-    ...attempts.map((attempt) => attempt.client_create_error?.message || attempt.client_create_error?.api_error?.api_message_summary),
+    ...(clientCreateErrorsCount > 0 && Array.isArray(summary.client_create_error_messages) ? summary.client_create_error_messages : []),
+    ...clientCreateErrorArtifactMessages,
+    ...attempts
+      .filter((attempt) => attempt.client_create_status === "CLIENT_CREATE_API_ERROR" || attempt.client_create_status === "CLIENT_CREATE_HTTP_ERROR" || attempt.client_create_error)
+      .map((attempt) => attempt.client_create_error?.message || attempt.client_create_error?.api_error?.api_message_summary),
+  ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
+  const clientCreateSuccessMessages = unique([
+    ...(Array.isArray(summary.client_create_success_messages) ? summary.client_create_success_messages : []),
+    ...clientCreateSuccessArtifactMessages,
   ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
   const clientLookupErrorMessages = unique([
-    ...(Array.isArray(summary.client_lookup_error_messages) ? summary.client_lookup_error_messages : []),
-    ...clientLookupArtifactMessages,
+    ...(clientLookupErrorsCount > 0 && Array.isArray(summary.client_lookup_error_messages) ? summary.client_lookup_error_messages : []),
+    ...clientLookupErrorArtifactMessages,
+  ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
+  const clientLookupSuccessMessages = unique([
+    ...(Array.isArray(summary.client_lookup_success_messages) ? summary.client_lookup_success_messages : []),
+    ...clientLookupSuccessArtifactMessages,
   ].map((value) => safeApiMessagePreview(value)).filter(Boolean));
   const clientAlreadyExistsDetected = Number(summary.client_already_exists_detected || 0)
     + clientCreateErrorMessages.filter(messageLooksLikeClientAlreadyExists).length
     + clientLookupErrorMessages.filter(messageLooksLikeClientAlreadyExists).length;
-  const clientValidationErrorDetected = Number(summary.client_validation_error_detected || 0)
-    + clientCreateErrorMessages.filter(messageLooksLikeClientValidation).length;
+  const clientValidationSummaryCount = (clientCreateErrorsCount > 0 || clientLookupErrorsCount > 0)
+    ? Number(summary.client_validation_error_detected || 0)
+    : 0;
+  const clientValidationErrorDetected = clientValidationSummaryCount
+    + (clientCreateErrorsCount > 0 ? clientCreateErrorMessages.filter(messageLooksLikeClientValidation).length : 0)
+    + (clientLookupErrorsCount > 0 ? clientLookupErrorMessages.filter(messageLooksLikeClientValidation).length : 0);
   const providerAuthStatus = text(summary.provider_auth_status) || authPreflightArtifactStatus;
   const providerAuthMessage = safeApiMessagePreview(summary.provider_auth_message || authPreflightArtifactMessage);
   const authPreflightOk = typeof summary.auth_preflight_ok === "boolean"
@@ -504,13 +578,16 @@ function analyze(runtimeArg = process.argv[2]) {
     receptor_guard_not_evaluated_bug: receptorGuardNotEvaluatedBug,
     receptor_compatibility_status: unique(receptorCompatibilityRecords.map((item) => item.compatibility_status))[0] || null,
     local_cfdi_rule_response_shape: localCfdiRuleResponseShape,
-    client_create_errors: Number(summary.client_create_errors ?? clientCreateArtifactErrors),
-    client_lookup_errors: Number(summary.client_lookup_errors ?? clientLookupArtifactErrors),
+    client_create_errors: clientCreateErrorsCount,
+    client_lookup_errors: clientLookupErrorsCount,
     client_create_error_messages: clientCreateErrorMessages,
     client_lookup_error_messages: clientLookupErrorMessages,
+    client_create_success_messages: clientCreateSuccessMessages,
+    client_lookup_success_messages: clientLookupSuccessMessages,
     client_already_exists_detected: clientAlreadyExistsDetected,
     client_validation_error_detected: clientValidationErrorDetected,
     api_error_messages_detected: apiErrorMessagesDetected,
+    api_success_messages_detected: apiSuccessMessagesDetected,
     create_api_error_message_previews: createApiErrorMessagePreviews,
     business_successful: Number(summary.business_successful ?? businessSuccessfulAttempts.length),
     identity_missing_after_api_success: Number(summary.identity_missing_after_api_success ?? identityMissingAfterApiSuccessAttempts.length),
@@ -604,9 +681,12 @@ function printResult(result) {
   console.log(`Client lookup errors: ${result.client_lookup_errors}`);
   console.log(`Client create error messages: ${result.client_create_error_messages.join(" | ") || "none"}`);
   console.log(`Client lookup error messages: ${result.client_lookup_error_messages.join(" | ") || "none"}`);
+  console.log(`Client create success messages: ${result.client_create_success_messages.join(" | ") || "none"}`);
+  console.log(`Client lookup success messages: ${result.client_lookup_success_messages.join(" | ") || "none"}`);
   console.log(`Client already exists detectado: ${result.client_already_exists_detected}`);
   console.log(`Client validation error detectado: ${result.client_validation_error_detected}`);
   console.log(`API error messages detectados: ${result.api_error_messages_detected.join(" | ") || "none"}`);
+  console.log(`API success messages detectados: ${result.api_success_messages_detected.join(" | ") || "none"}`);
   console.log(`API error message previews: ${result.api_error_messages_detected.join(" | ") || "none"}`);
   console.log(`Create API error message previews: ${result.create_api_error_message_previews.join(" | ") || "none"}`);
   console.log(`Business successful: ${result.business_successful}`);

@@ -59,6 +59,10 @@ function classifyString(value, pathLabel = "") {
   return markers;
 }
 
+function isRedactedRfcValue(value) {
+  return /\[REDACTED_RFC(?:_VALUE)?\]/i.test(String(value || ""));
+}
+
 function allowsSafePreview(pathLabel = "") {
   const normalized = String(pathLabel || "").replace(/\.\d+\./g, ".").toLowerCase();
   const lastKey = normalized.split(".").filter(Boolean).pop();
@@ -96,12 +100,20 @@ function describeValue(value, pathLabel = "") {
   if (typeof value === "string") {
     const markers = classifyString(value, pathLabel);
     if (/(^|\.)rfc$/i.test(pathLabel) || /(^|\.)(RFC|Rfc)$/.test(pathLabel)) {
-      const validation = validateRfcShape(value);
-      markers.push(
-        `rfc_shape=${validation.rfc_shape}`,
-        `normalized_rfc_length=${validation.normalized_rfc_length}`,
-        `rfc_hidden=${validation.has_hidden_characters ? "true" : "false"}`,
-      );
+      if (isRedactedRfcValue(value)) {
+        markers.push(
+          "rfc_shape=REDACTED_NOT_EVALUATED",
+          "normalized_rfc_length=REDACTED",
+          "rfc_hidden=unknown",
+        );
+      } else {
+        const validation = validateRfcShape(value);
+        markers.push(
+          `rfc_shape=${validation.rfc_shape}`,
+          `normalized_rfc_length=${validation.normalized_rfc_length}`,
+          `rfc_hidden=${validation.has_hidden_characters ? "true" : "false"}`,
+        );
+      }
     }
     const preview = allowsSafePreview(pathLabel) ? safePreview(value) : null;
     const previewText = preview ? `, preview="${preview.replace(/"/g, "'")}"` : "";
