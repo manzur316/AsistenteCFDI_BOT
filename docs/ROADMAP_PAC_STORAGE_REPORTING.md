@@ -704,6 +704,22 @@ docs/PHASE_7_0_TELEGRAM_PRODUCT_INTERFACE_PLANNING.md
 
 Siguiente fase recomendada: `7.1 Telegram Product Menu Contract`.
 
+### Telegram Product Menu Contract 7.1
+
+La fase 7.1 crea un contrato JS versionado y testeable para el menu producto de
+Telegram. Define menu principal, submenus, callbacks seguros, roles y
+clasificaciones `USER_SAFE`, `ADMIN_ONLY`, `SANDBOX_ONLY`, `FUTURE` y
+`DEPRECATED`, sin modificar workflows ni logica fiscal.
+
+Documento y contrato:
+
+```text
+docs/PHASE_7_1_TELEGRAM_PRODUCT_MENU_CONTRACT.md
+scripts/lib/telegram-product-menu-contract.js
+```
+
+Siguiente fase recomendada: `7.2 Telegram Product Menu Renderer`.
+
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
 La fase 6A.11B corrige dos riesgos del E2E local sin tocar produccion ni

@@ -781,7 +781,15 @@ workflows ni PAC real:
 docs/PHASE_7_0_TELEGRAM_PRODUCT_INTERFACE_PLANNING.md
 ```
 
-Siguiente fase recomendada: `7.1 Telegram Product Menu Contract`.
+Fase 7.1 agrega el contrato versionado del menu producto Telegram, sin tocar
+workflows ni logica fiscal:
+
+```text
+docs/PHASE_7_1_TELEGRAM_PRODUCT_MENU_CONTRACT.md
+scripts/lib/telegram-product-menu-contract.js
+```
+
+Siguiente fase recomendada: `7.2 Telegram Product Menu Renderer`.
 
 ### Politica conversacional 4.7
 
