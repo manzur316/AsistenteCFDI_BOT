@@ -14,6 +14,18 @@ n8n. N8n solo orquesta y llama:
 node scripts/run-sandbox-action.js <action>
 ```
 
+Reglas obligatorias de workflow n8n:
+
+```text
+docs/N8N_WORKFLOW_GUARDRAILS.md
+```
+
+Antes de importar o reimportar, corre:
+
+```powershell
+node scripts/test-n8n-workflow-guardrails.js
+```
+
 ## Arranque Local
 
 Desde la carpeta del proyecto:

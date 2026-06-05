@@ -22,6 +22,8 @@ Confirmar que el workflow local:
 - n8n local corriendo en `http://localhost:5678`.
 - Workflow importado:
   `workflow/cfdi_sandbox_action_router.n8n.json`.
+- Guardrails n8n revisados:
+  `docs/N8N_WORKFLOW_GUARDRAILS.md`.
 - Proyecto abierto desde la raiz correcta:
   `C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI`.
 - `CFDI_ALLOWED_TELEGRAM_CHAT_ID` configurado localmente.
@@ -44,6 +46,12 @@ n8n start
 
 No configures `NODE_FUNCTION_ALLOW_BUILTIN` para este router sandbox. Los Code
 Nodes no usan `fs/path`; el workflow consume solo `stdout` del Action Layer.
+
+Antes de importar el workflow, ejecuta:
+
+```powershell
+node scripts/test-n8n-workflow-guardrails.js
+```
 
 Si no defines `TELEGRAM_BOT_TOKEN`, el webhook local sigue funcionando y n8n no
 intenta responder por Telegram.

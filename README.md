@@ -628,6 +628,18 @@ Summary` parsea exclusivamente el JSON estable que `Execute Command` entrega en
 `stdout`/`data`. `latest.json` queda para diagnostico externo y no para lectura
 interna de n8n. No habilites `NODE_FUNCTION_ALLOW_BUILTIN` para este flujo.
 
+Fase 6A.11E agrega guardrails permanentes para workflows n8n:
+
+```text
+docs/N8N_WORKFLOW_GUARDRAILS.md
+scripts/test-n8n-workflow-guardrails.js
+```
+
+N8n debe seguir siendo solo orquestador: sin `fs/path`, sin filesystem, sin PAC
+directo, sin headers de proveedor, sin `process.env` en Code Nodes y consumiendo
+solo `stdout` JSON del Action Layer. Workflows historicos se reportan como deuda
+legacy; el router sandbox soportado debe pasar reglas estrictas.
+
 Fase 6A.10 agrega el router n8n sandbox sobre esa Action Layer:
 
 ```text

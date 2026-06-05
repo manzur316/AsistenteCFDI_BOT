@@ -10,6 +10,15 @@ La fase 6A.11 agrega botones inline para operar acciones sandbox desde Telegram
 sin permitir acciones libres. N8n sigue siendo solo orquestador: recibe texto o
 `callback_query.data`, valida chat autorizado y llama al Action Layer local.
 
+Los botones quedan bajo las reglas generales de n8n:
+
+```text
+docs/N8N_WORKFLOW_GUARDRAILS.md
+```
+
+El workflow no debe usar `fs/path`, leer runtime desde Code Nodes ni llamar PAC
+directamente; solo consume `stdout` JSON del Action Layer.
+
 ## Menu Principal
 
 Abre el menu con:

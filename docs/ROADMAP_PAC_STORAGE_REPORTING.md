@@ -600,6 +600,20 @@ El router sandbox no lee `latest.json` ni ningun archivo desde n8n; consume solo
 queda como diagnostico externo local. No se debe habilitar
 `NODE_FUNCTION_ALLOW_BUILTIN` para este flujo.
 
+La fase 6A.11E formaliza guardrails permanentes para workflows n8n:
+
+```text
+docs/N8N_WORKFLOW_GUARDRAILS.md
+scripts/test-n8n-workflow-guardrails.js
+```
+
+Regla arquitectonica: n8n orquesta, pero no lee filesystem, no usa modulos Node
+en Code Nodes, no llama PAC/Factura.com directamente, no contiene headers o
+credenciales PAC y no duplica logica fiscal pesada. El patron valido es Webhook
+o Telegram callback -> allowlist -> `node scripts/run-sandbox-action.js
+<action>` -> stdout JSON -> resumen seguro. Workflows historicos quedan
+reportados como deuda legacy hasta migracion o retiro.
+
 ### Sandbox Reporting Engine 6A.8
 
 La fase 6A.8 agrega reportes mensuales locales a partir de

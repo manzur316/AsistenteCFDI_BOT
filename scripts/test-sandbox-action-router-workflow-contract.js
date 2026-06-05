@@ -67,6 +67,64 @@ function requireCalls(text) {
   return calls;
 }
 
+const legacyWorkflowExceptions = new Set([
+  "workflow/cfdi_manual_test.n8n.json",
+  "workflow/cfdi_telegram_local_ingest.n8n.json",
+  "workflow/cfdi_telegram_polling_local.n8n.json",
+  "workflow/cfdi_telegram_polling_with_history.n8n.json",
+  "workflow/cfdi_telegram_postgres_polling.n8n.json",
+]);
+
+function listWorkflowJsonFiles(dir = path.join(root, "workflow")) {
+  const out = [];
+  const stack = [dir];
+  while (stack.length) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) stack.push(full);
+      else if (/\.json$/i.test(entry.name) || /\.n8n\.json$/i.test(entry.name)) out.push(full);
+    }
+  }
+  return out.sort();
+}
+
+function repoPath(filePath) {
+  return path.relative(root, filePath).replace(/\\/g, "/");
+}
+
+function supportedWorkflowGuardrailFindings() {
+  const forbidden = [
+    /require\(\s*['"]fs['"]\s*\)/,
+    /require\(\s*['"]path['"]\s*\)/,
+    /\breadFileSync\b/,
+    /\bwriteFileSync\b/,
+    /\bexistsSync\b/,
+    /\breaddirSync\b/,
+    /\bprocess\.env\b/,
+    /\bchild_process\b/,
+    /\bexec\s*\(/,
+    /\bspawn\s*\(/,
+    /https:\/\/api\.factura\.com/i,
+    /F-Api-Key|F-Secret-Key|F-PLUGIN/i,
+    /\.env\b/i,
+    /\.(?:cer|key|pfx|p12)\b/i,
+    /\bsendDocument\b/i,
+    /<cfdi:Comprobante|%PDF-/i,
+  ];
+  const findings = [];
+  for (const file of listWorkflowJsonFiles()) {
+    const fileRepoPath = repoPath(file);
+    if (legacyWorkflowExceptions.has(fileRepoPath)) continue;
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+    const code = (parsed.nodes || []).map((node) => node.parameters?.jsCode || "").join("\n");
+    for (const pattern of forbidden) {
+      if (pattern.test(code)) findings.push(`${fileRepoPath}:${pattern}`);
+    }
+  }
+  return findings;
+}
+
 function executeCode(code, input, config = {}, nodeOverrides = {}) {
   const nodeContext = {
     "Set Config": {
@@ -398,6 +456,12 @@ if (workflow) {
     assert(!/readFileSync|writeFileSync|appendFileSync|existsSync/.test(allCode));
     assert(!/action-results-sandbox['"],\s*['"]latest\.json|latestPath/.test(allCode));
     return "no fs/path/readFileSync";
+  });
+
+  check("supported_workflows_pass_global_guardrails", () => {
+    const findings = supportedWorkflowGuardrailFindings();
+    assert.strictEqual(findings.length, 0, findings.join(", "));
+    return "supported workflows clean";
   });
 
   check("summary_produces_non_empty_webhook_response", () => {
