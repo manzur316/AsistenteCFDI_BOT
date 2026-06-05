@@ -750,7 +750,22 @@ scripts/test-sandbox-action-audit-export.js
 El export no modifica `actions.jsonl`, falla si el analyzer detecta datos
 sensibles y solo produce reportes locales ignorados por Git.
 
-Siguiente fase recomendada: `6A.16 Sandbox audit review checklist and signoff workflow`.
+Fase 6A.16 agrega checklist y signoff humano local para cerrar el bloque
+sandbox 6A:
+
+```text
+docs/PHASE_6A16_SANDBOX_AUDIT_SIGNOFF_WORKFLOW.md
+runtime/sandbox-action-audit/signoff/SANDBOX_AUDIT_SIGNOFF_CHECKLIST.md
+runtime/sandbox-action-audit/signoff/sandbox-audit-signoff-checklist.json
+runtime/sandbox-action-audit/signoff/sandbox-audit-signoff-checklist.csv
+scripts/generate-sandbox-audit-signoff-checklist.js
+scripts/test-sandbox-audit-signoff-checklist.js
+```
+
+El modo `--mark-reviewed` exige `--reviewer-note`, se niega si hay FAIL y solo
+crea `HUMAN_REVIEWED.local.json` en runtime.
+
+Siguiente fase recomendada: cierre formal de 6A o transicion planificada a Fase 7.
 
 ### Politica conversacional 4.7
 

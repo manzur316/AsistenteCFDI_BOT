@@ -651,7 +651,32 @@ El export valida el audit con el analyzer, usa `summary.json` si existe y falla
 si detecta datos sensibles. No guarda chat_id/user_id completos, RFC, UUID, UID,
 rutas absolutas, artifacts, CSD, credenciales PAC ni datos reales.
 
-Siguiente fase recomendada: `6A.16 Sandbox audit review checklist and signoff workflow`.
+### Sandbox Audit Signoff Workflow 6A.16
+
+La fase 6A.16 agrega checklist y signoff humano local para revisar el audit,
+summary y export sandbox antes de cerrar 6A o planear la transicion a Fase 7.
+
+Documentos y scripts:
+
+```text
+docs/PHASE_6A16_SANDBOX_AUDIT_SIGNOFF_WORKFLOW.md
+scripts/generate-sandbox-audit-signoff-checklist.js
+scripts/test-sandbox-audit-signoff-checklist.js
+```
+
+Los archivos de checklist se generan solo en runtime local:
+
+```text
+runtime/sandbox-action-audit/signoff/SANDBOX_AUDIT_SIGNOFF_CHECKLIST.md
+runtime/sandbox-action-audit/signoff/sandbox-audit-signoff-checklist.json
+runtime/sandbox-action-audit/signoff/sandbox-audit-signoff-checklist.csv
+```
+
+`--mark-reviewed` exige `--reviewer-note`, se bloquea si hay FAIL y solo crea
+`HUMAN_REVIEWED.local.json` en runtime. No cambia workflows, no cambia logica
+fiscal y no habilita PAC productivo.
+
+Siguiente fase recomendada: cierre formal de 6A o transicion planificada a Fase 7.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
