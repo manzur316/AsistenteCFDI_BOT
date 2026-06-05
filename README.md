@@ -843,6 +843,11 @@ scripts/test-telegram-pac-sandbox-console.js
 
 Siguiente fase recomendada: `7.6 Approved Draft to PAC Sandbox`.
 
+El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
+produccion futura queda fijado en:
+
+- `docs/PAC_SANDBOX_TO_PRODUCTION_ROADMAP.md`
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

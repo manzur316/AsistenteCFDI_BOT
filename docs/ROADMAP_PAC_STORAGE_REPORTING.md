@@ -832,6 +832,21 @@ scripts/test-telegram-pac-sandbox-console.js
 
 Siguiente fase recomendada: `7.6 Approved Draft to PAC Sandbox`.
 
+### PAC Sandbox To Production Roadmap
+
+La transicion desde Telegram + Factura.com Sandbox hacia produccion futura queda
+formalizada en:
+
+```text
+docs/PAC_SANDBOX_TO_PRODUCTION_ROADMAP.md
+```
+
+El documento fija fases 7.5 a 8.1, separa `timbrado sandbox` de `timbrado
+productivo`, exige que n8n no llame directo a Factura.com, prohibe credenciales
+PAC en workflows, mantiene separados sandbox/production, requiere doble
+confirmacion para cancelaciones, historial/timeline por factura y separacion
+entre `invoice_status` y `payment_status`.
+
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
 La fase 6A.11B corrige dos riesgos del E2E local sin tocar produccion ni
