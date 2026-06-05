@@ -718,6 +718,29 @@ docs/PHASE_7_1_TELEGRAM_PRODUCT_MENU_CONTRACT.md
 scripts/lib/telegram-product-menu-contract.js
 ```
 
+Siguiente fase recomendada: `7.1B Telegram/n8n Workflow Topology`.
+
+### Telegram/n8n Workflow Topology 7.1B
+
+La fase 7.1B define la topologia oficial de workflows para Telegram y n8n. La
+regla central es que Telegram tenga un unico punto de entrada operativo:
+
+```text
+Telegram -> runner/telegram-local-runner.js -> workflow/cfdi_telegram_local_ingest.n8n.json -> Router interno
+```
+
+Documento y test:
+
+```text
+docs/PHASE_7_1B_TELEGRAM_N8N_WORKFLOW_TOPOLOGY.md
+scripts/test-n8n-workflow-topology-policy.js
+```
+
+El workflow `cfdi_telegram_local_ingest.n8n.json` queda como `PRIMARY`; el
+workflow `cfdi_sandbox_action_router.n8n.json` queda como `TECHNICAL_ADMIN`.
+Los workflows futuros deben tener responsabilidad separada y no recibir updates
+Telegram directamente.
+
 Siguiente fase recomendada: `7.2 Telegram Product Menu Renderer`.
 
 ### Telegram Product Menu Renderer 7.2

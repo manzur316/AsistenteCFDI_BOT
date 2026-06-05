@@ -789,6 +789,14 @@ docs/PHASE_7_1_TELEGRAM_PRODUCT_MENU_CONTRACT.md
 scripts/lib/telegram-product-menu-contract.js
 ```
 
+Fase 7.1B define la topologia oficial Telegram/n8n: un unico punto de entrada
+operativo para Telegram, con crecimiento preferente en Action Layer, PostgreSQL,
+contratos y modulos testeables:
+
+```text
+docs/PHASE_7_1B_TELEGRAM_N8N_WORKFLOW_TOPOLOGY.md
+```
+
 Fase 7.2 agrega el renderer puro del menu producto Telegram. Produce payloads
 seguros de texto y `inline_keyboard`, pero no envia mensajes ni toca workflows:
 
