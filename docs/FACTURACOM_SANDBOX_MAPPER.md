@@ -734,4 +734,31 @@ y `sensitive_findings`. No debe imprimir credenciales, XML/PDF completos, CSD,
 capa como una caja negra local; no debe conocer endpoints, headers ni shapes
 internos de Factura.com.
 
+## n8n Sandbox Action Router 6A.10
+
+El workflow `workflow/cfdi_sandbox_action_router.n8n.json` integra n8n con la
+Action Layer sin importar el mapper ni el adapter de Factura.com. El router solo
+recibe comandos por Webhook local, valida chat autorizado, traduce el comando a
+una accion permitida y ejecuta:
+
+```powershell
+node scripts/run-sandbox-action.js <action>
+```
+
+N8n no contiene `F-Api-Key`, `F-Secret-Key`, `F-PLUGIN`, URL de Factura.com,
+payload CFDI, XML, PDF ni reglas fiscales. Si hay `sensitive_findings`, responde
+solo una alerta corta y no muestra detalles largos.
+
+Comandos permitidos:
+
+- `/sandbox_preflight`
+- `/sandbox_report`
+- `/sandbox_package`
+- `/sandbox_excel`
+- `/sandbox_checklist`
+- `/sandbox_full_package`
+- `/sandbox_smoke_create`
+- `/sandbox_smoke_download`
+- `/sandbox_smoke_cancel`
+
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.

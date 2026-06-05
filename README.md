@@ -605,6 +605,37 @@ checklist, regenera el paquete y analiza el resultado. Sigue siendo sandbox:
 no PAC productivo, no timbrado, no XML/PDF real fiscal y no sustitucion del
 contador.
 
+Fase 6A.10 agrega el router n8n sandbox sobre esa Action Layer:
+
+```text
+workflow/cfdi_sandbox_action_router.n8n.json
+workflow/CFDI_SANDBOX_ACTION_ROUTER_SETUP.md
+```
+
+El workflow usa un Webhook local, valida `CFDI_ALLOWED_TELEGRAM_CHAT_ID`, mapea
+solo comandos permitidos y ejecuta un unico patron:
+
+```powershell
+node scripts/run-sandbox-action.js <action>
+```
+
+Comandos:
+
+- `/sandbox_preflight`
+- `/sandbox_report`
+- `/sandbox_package`
+- `/sandbox_excel`
+- `/sandbox_checklist`
+- `/sandbox_full_package`
+- `/sandbox_smoke_create`
+- `/sandbox_smoke_download`
+- `/sandbox_smoke_cancel`
+
+N8n no conoce Factura.com, PAC, XML/PDF, headers ni contratos fiscales internos.
+Si `TELEGRAM_BOT_TOKEN` existe localmente, puede responder por `sendMessage`; si
+no, responde por webhook local. No envia XML/PDF, ZIP, Excel ni otros archivos
+por Telegram en esta fase.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

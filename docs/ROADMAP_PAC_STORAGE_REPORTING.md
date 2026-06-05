@@ -449,6 +449,54 @@ Orden de `sandbox.full.monthly.package`:
 6. Regenerar paquete para incluir Excel/checklist.
 7. Analizar paquete.
 
+### n8n Sandbox Action Router 6A.10
+
+La fase 6A.10 conecta n8n con la Action Layer sin duplicar logica fiscal dentro
+del workflow.
+
+Workflow:
+
+```text
+workflow/cfdi_sandbox_action_router.n8n.json
+```
+
+Runbook:
+
+```text
+workflow/CFDI_SANDBOX_ACTION_ROUTER_SETUP.md
+```
+
+Responsabilidades de n8n:
+
+- Recibir un mensaje por Webhook local de prueba.
+- Extraer `chat_id`, `user_id` y `text`.
+- Validar `chat_id` contra `CFDI_ALLOWED_TELEGRAM_CHAT_ID`.
+- Convertir comandos sandbox a acciones por allowlist.
+- Ejecutar `node scripts/run-sandbox-action.js <action>`.
+- Leer `runtime/action-results-sandbox/latest.json`.
+- Responder un resumen seguro por webhook y, si hay token local, por Telegram.
+
+Responsabilidades que n8n no tiene:
+
+- No decide conceptos fiscales.
+- No conoce contratos internos CFDI.
+- No conoce headers ni endpoints Factura.com.
+- No muta catalogos ni storage directamente.
+- No envia XML/PDF, ZIP ni Excel por Telegram.
+- No permite comandos de shell libres.
+
+Comandos del router:
+
+- `/sandbox_preflight` -> `sandbox.preflight`
+- `/sandbox_report` -> `sandbox.report.generate`
+- `/sandbox_package` -> `sandbox.package.generate`
+- `/sandbox_excel` -> `sandbox.excel.generate`
+- `/sandbox_checklist` -> `sandbox.checklist.generate`
+- `/sandbox_full_package` -> `sandbox.full.monthly.package`
+- `/sandbox_smoke_create` -> `sandbox.smoke.create`
+- `/sandbox_smoke_download` -> `sandbox.smoke.download`
+- `/sandbox_smoke_cancel` -> `sandbox.smoke.cancel`
+
 ### Sandbox Reporting Engine 6A.8
 
 La fase 6A.8 agrega reportes mensuales locales a partir de

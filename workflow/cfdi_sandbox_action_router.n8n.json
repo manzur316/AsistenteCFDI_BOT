@@ -1,0 +1,307 @@
+{
+  "name": "cfdi_sandbox_action_router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cfdi-sandbox-action-router",
+        "responseMode": "responseNode",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "sandbox-router-webhook",
+      "name": "Webhook Sandbox Action Router",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        320
+      ],
+      "webhookId": "cfdi-sandbox-action-router"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "workflowVersion",
+              "value": "CFDI_SANDBOX_ACTION_ROUTER_V1"
+            },
+            {
+              "name": "projectRoot",
+              "value": "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI"
+            },
+            {
+              "name": "allowedChatId",
+              "value": "={{$env.CFDI_ALLOWED_TELEGRAM_CHAT_ID || ''}}"
+            },
+            {
+              "name": "telegramBotToken",
+              "value": "={{$env.TELEGRAM_BOT_TOKEN || ''}}"
+            }
+          ]
+        },
+        "options": {
+          "keepOnlySet": false
+        }
+      },
+      "id": "sandbox-router-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        320,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const config = $node['Set Config'].json || {};\nconst input = $json || {};\nconst body = input.body && typeof input.body === 'object' ? input.body : input;\nconst message = body.message && typeof body.message === 'object' ? body.message : {};\nconst from = message.from && typeof message.from === 'object' ? message.from : {};\nconst chat = message.chat && typeof message.chat === 'object' ? message.chat : {};\nconst chatId = String(body.chat_id ?? chat.id ?? '').trim();\nconst userId = String(body.user_id ?? from.id ?? '').trim();\nconst text = String(body.text ?? message.text ?? '').trim();\nconst allowedChatId = String(config.allowedChatId || '').trim();\nconst telegramBotToken = String(config.telegramBotToken || '').trim();\nconst workflowVersion = String(config.workflowVersion || 'CFDI_SANDBOX_ACTION_ROUTER_V1');\nconst projectRoot = String(config.projectRoot || '').trim();\nconst ACTION_MAP = Object.freeze({\n  '/sandbox_preflight': 'sandbox.preflight',\n  '/sandbox_report': 'sandbox.report.generate',\n  '/sandbox_package': 'sandbox.package.generate',\n  '/sandbox_excel': 'sandbox.excel.generate',\n  '/sandbox_checklist': 'sandbox.checklist.generate',\n  '/sandbox_full_package': 'sandbox.full.monthly.package',\n  '/sandbox_smoke_create': 'sandbox.smoke.create',\n  '/sandbox_smoke_download': 'sandbox.smoke.download',\n  '/sandbox_smoke_cancel': 'sandbox.smoke.cancel'\n});\nconst HELP = [\n  'Comandos sandbox disponibles:',\n  '/sandbox_preflight',\n  '/sandbox_report',\n  '/sandbox_package',\n  '/sandbox_excel',\n  '/sandbox_checklist',\n  '/sandbox_full_package',\n  '/sandbox_smoke_create',\n  '/sandbox_smoke_download',\n  '/sandbox_smoke_cancel'\n].join('\\n');\nconst commandToken = text.split(/\\s+/)[0] || '';\nconst requestedAction = ACTION_MAP[commandToken] || '';\nlet status = 'help';\nlet shouldExecute = false;\nlet replyText = HELP;\nlet executeCommand = '';\nif (!allowedChatId) {\n  status = 'needs_config';\n  replyText = 'NEEDS_CONFIG: configura CFDI_ALLOWED_TELEGRAM_CHAT_ID en el entorno local de n8n.';\n} else if (!chatId || chatId !== allowedChatId) {\n  status = 'unauthorized';\n  replyText = 'No autorizado';\n} else if (!requestedAction) {\n  status = 'help';\n  replyText = HELP;\n} else {\n  status = 'accepted';\n  shouldExecute = true;\n  executeCommand = `node scripts/run-sandbox-action.js ${requestedAction}`;\n  replyText = `Ejecutando ${requestedAction}...`;\n}\nconst telegramSendEnabled = Boolean(chatId && telegramBotToken && !telegramBotToken.includes('REEMPLAZAR'));\nreturn [{ json: { workflow_version: workflowVersion, project_root: projectRoot, chat_id: chatId, user_id: userId, text, command_token: commandToken, requested_action: requestedAction, should_execute: shouldExecute, execute_command: executeCommand, router_status: status, reply_text: replyText, telegram_bot_token: telegramBotToken, telegram_send_enabled: telegramSendEnabled, telegram_payload: { chat_id: chatId, text: replyText }, webhook_response: { ok: true, status, action: requestedAction || null, message: replyText } } }];"
+      },
+      "id": "sandbox-router-normalize",
+      "name": "Normalize Input And Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.should_execute}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sandbox-router-if-execute",
+      "name": "Should Execute Action",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        800,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{$json.execute_command}}"
+      },
+      "id": "sandbox-router-execute",
+      "name": "Execute Sandbox Action",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst routed = $node['Normalize Input And Route'].json || {};\nconst config = $node['Set Config'].json || {};\nfunction safeArray(value) { return Array.isArray(value) ? value : []; }\nfunction parseJson(value) { try { return JSON.parse(String(value || '').trim()); } catch (_error) { return null; } }\nconst stdoutResult = parseJson($json.stdout || $json.data || '');\nconst latestPath = path.join(String(config.projectRoot || routed.project_root || ''), 'runtime', 'action-results-sandbox', 'latest.json');\nlet latestResult = null;\ntry { latestResult = JSON.parse(fs.readFileSync(latestPath, 'utf8')); } catch (_error) { latestResult = null; }\nconst result = latestResult && latestResult.action === routed.requested_action ? latestResult : stdoutResult;\nif (!result || typeof result !== 'object') {\n  const text = `ERROR ejecutando ${routed.requested_action}: no se pudo leer JSON estable del Action Layer.`;\n  return [{ json: { ...routed, action_result: null, reply_text: text, telegram_payload: { chat_id: routed.chat_id, text }, webhook_response: { ok: false, status: 'ERROR', action: routed.requested_action, message: text } } }];\n}\nconst warnings = safeArray(result.warnings);\nconst errors = safeArray(result.errors);\nconst findings = safeArray(result.sensitive_findings);\nconst artifacts = safeArray(result.artifacts);\nconst nextSuggestion = result.status === 'NEEDS_RUNTIME'\n  ? 'Ejecuta primero sandbox.smoke.download o verifica runtime/storage-sandbox.'\n  : result.status === 'NEEDS_CONFIG'\n    ? 'Configura variables sandbox locales antes de reintentar.'\n    : result.status === 'OK'\n      ? 'Puedes revisar artifacts locales en runtime; no se envian archivos por Telegram en esta fase.'\n      : 'Revisa el analyzer local antes de continuar.';\nconst lines = [\n  `Sandbox action: ${result.action}`,\n  `Status: ${result.status}`,\n  `Duration ms: ${result.duration_ms ?? 'N/A'}`,\n  `Artifacts: ${artifacts.length}`,\n  `Warnings: ${warnings.length ? warnings.join(' | ') : 'none'}`,\n  `Errors: ${errors.length ? errors.join(' | ') : 'none'}`,\n  `Sensitive findings: ${findings.length ? findings.length + ' encontrados; detalles ocultos' : 'none'}`,\n  `Siguiente: ${nextSuggestion}`\n];\nconst text = lines.join('\\n');\nreturn [{ json: { ...routed, action_result: { action: result.action, status: result.status, ok: result.ok === true, duration_ms: result.duration_ms ?? null, artifacts_count: artifacts.length, warnings, errors, sensitive_findings_count: findings.length, latest_path: 'runtime/action-results-sandbox/latest.json' }, reply_text: text, telegram_payload: { chat_id: routed.chat_id, text }, webhook_response: { ok: true, status: result.status, action: result.action, message: text } } }];"
+      },
+      "id": "sandbox-router-action-summary",
+      "name": "Build Safe Action Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const input = $json || {};\nreturn [{ json: { ...input, reply_text: input.reply_text || 'Comando no reconocido', telegram_payload: { chat_id: input.chat_id, text: input.reply_text || 'Comando no reconocido' }, webhook_response: input.webhook_response || { ok: true, status: input.router_status || 'help', action: null, message: input.reply_text || 'Comando no reconocido' } } }];"
+      },
+      "id": "sandbox-router-immediate-response",
+      "name": "Build Immediate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.telegram_send_enabled}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "sandbox-router-if-telegram",
+      "name": "Should Send Telegram",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.telegram.org/bot' + $json.telegram_bot_token + '/sendMessage'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{JSON.stringify($json.telegram_payload)}}",
+        "options": {}
+      },
+      "id": "sandbox-router-telegram-send",
+      "name": "Telegram sendMessage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        120
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json.webhook_response}}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "sandbox-router-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Sandbox Action Router": {
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input And Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input And Route": {
+      "main": [
+        [
+          {
+            "node": "Should Execute Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Execute Action": {
+      "main": [
+        [
+          {
+            "node": "Execute Sandbox Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Immediate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Sandbox Action": {
+      "main": [
+        [
+          {
+            "node": "Build Safe Action Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Safe Action Summary": {
+      "main": [
+        [
+          {
+            "node": "Should Send Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Immediate Response": {
+      "main": [
+        [
+          {
+            "node": "Should Send Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Send Telegram": {
+      "main": [
+        [
+          {
+            "node": "Telegram sendMessage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cfdi-sandbox-action-router-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "cfdi_sandbox_action_router"
+}
