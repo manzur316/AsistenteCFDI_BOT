@@ -649,6 +649,21 @@ por ejemplo `cfdi_sbx:report`, `cfdi_sbx:full`, `cfdi_sbx:smoke_menu` y
 XML/PDF, ZIP, Excel, credenciales ni secretos. Los botones solo disparan
 acciones sandbox permitidas y siguen sin enviar archivos por Telegram.
 
+Fase 6A.12 agrega un plan manual E2E para probar Telegram + n8n + Action
+Layer sandbox sin agregar features productivas:
+
+```text
+workflow/CFDI_SANDBOX_E2E_TEST_PLAN.md
+scripts/test-sandbox-e2e-readiness.js
+```
+
+Orden recomendado: correr readiness, importar/activar el workflow, probar
+`/sandbox_menu` por webhook local, probar `cfdi_sbx:full`, revisar
+`runtime/action-results-sandbox/latest.json`, probar Telegram real solo con
+`CFDI_ALLOWED_TELEGRAM_CHAT_ID` y confirmar que no se envian archivos por
+Telegram. El cierre de 6A requiere `sensitive_findings=none` o alerta resumida
+sin exponer datos sensibles.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

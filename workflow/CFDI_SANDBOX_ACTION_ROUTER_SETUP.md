@@ -148,6 +148,28 @@ Invoke-WebRequest `
   -Body $body
 ```
 
+## Plan Manual E2E 6A.12
+
+Para cerrar la prueba manual completa de Telegram + n8n + Action Layer sandbox,
+usa:
+
+```text
+workflow/CFDI_SANDBOX_E2E_TEST_PLAN.md
+```
+
+Orden recomendado:
+
+1. Ejecutar `node scripts/test-sandbox-e2e-readiness.js`.
+2. Importar y activar el workflow.
+3. Probar `/sandbox_menu` por webhook local.
+4. Probar `cfdi_sbx:full` y revisar `runtime/action-results-sandbox/latest.json`.
+5. Probar `cfdi_sbx:report`, `cfdi_sbx:smoke_menu`, callback desconocido y
+   chat no autorizado.
+6. Probar Telegram real solo si `TELEGRAM_BOT_TOKEN` existe localmente.
+7. Confirmar que no se envia XML/PDF, ZIP ni Excel por Telegram.
+8. Confirmar que no hay `sensitive_findings`, o que solo se muestra alerta
+   resumida sin detalles sensibles.
+
 ## Seguridad
 
 - `CFDI_ALLOWED_TELEGRAM_CHAT_ID` es obligatorio.
@@ -171,5 +193,5 @@ observabilidad sandbox local para preparar la siguiente fase.
 Siguiente fase recomendada:
 
 ```text
-6A.12 Sandbox action audit history
+6A.13 Sandbox action audit history
 ```

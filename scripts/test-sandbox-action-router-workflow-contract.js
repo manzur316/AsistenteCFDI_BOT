@@ -301,6 +301,16 @@ if (workflow) {
     return "submenu";
   });
 
+  check("callback_menu_shows_main_menu", () => {
+    const result = executeCode(normalizeCode, makeCallback("cfdi_sbx:menu"))[0].json;
+    assert.strictEqual(result.should_execute, false);
+    assert.strictEqual(result.router_status, "menu");
+    assert.strictEqual(result.execute_command, "");
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:full"));
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:report"));
+    return "main menu";
+  });
+
   check("callback_smoke_actions_sandbox_only", () => {
     for (const [callbackData, expectedAction] of [
       ["cfdi_sbx:smoke_create", "sandbox.smoke.create"],

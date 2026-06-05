@@ -536,6 +536,39 @@ Reglas:
 - No envia documentos por Telegram; solo resumen seguro y botones siguientes.
 - Smoke sigue siendo sandbox y requiere opt-in local.
 
+### Manual E2E Sandbox Telegram/n8n Test Plan 6A.12
+
+La fase 6A.12 documenta la prueba manual completa entre Telegram, n8n y Action
+Layer sandbox. No cambia logica fiscal, no agrega PAC productivo y no envia
+archivos por Telegram.
+
+Documento:
+
+```text
+workflow/CFDI_SANDBOX_E2E_TEST_PLAN.md
+```
+
+Verificacion local:
+
+```text
+scripts/test-sandbox-e2e-readiness.js
+```
+
+Orden recomendado:
+
+1. Validar readiness.
+2. Importar y activar el workflow local.
+3. Probar `/sandbox_menu` con webhook local.
+4. Probar `cfdi_sbx:full` y confirmar `latest.json`.
+5. Probar `cfdi_sbx:report`, `cfdi_sbx:smoke_menu`, callback desconocido y
+   chat no autorizado.
+6. Probar Telegram real solo con chat allowlisted.
+7. Confirmar que no se envio XML/PDF/ZIP/Excel por Telegram.
+8. Confirmar `sensitive_findings=none` o alerta resumida sin datos sensibles.
+
+Criterio para cerrar 6A: pruebas offline PASS, smoke local OK y checklist E2E
+manual sin credenciales, produccion, CSD, runtime versionado ni datos reales.
+
 ### Sandbox Reporting Engine 6A.8
 
 La fase 6A.8 agrega reportes mensuales locales a partir de

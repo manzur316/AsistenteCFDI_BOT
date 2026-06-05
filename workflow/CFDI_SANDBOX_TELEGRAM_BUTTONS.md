@@ -118,3 +118,24 @@ Invoke-WebRequest `
   -ContentType "application/json" `
   -Body $body
 ```
+
+## Plan Manual E2E
+
+La fase 6A.12 deja el checklist completo para validar Telegram + n8n + Action
+Layer sandbox:
+
+```text
+workflow/CFDI_SANDBOX_E2E_TEST_PLAN.md
+```
+
+Orden sugerido:
+
+1. Probar `/sandbox_menu`.
+2. Probar `Paquete completo` (`cfdi_sbx:full`).
+3. Probar `Resumen mensual sandbox` (`cfdi_sbx:report`).
+4. Probar `Smoke sandbox` (`cfdi_sbx:smoke_menu`).
+5. Probar callback desconocido.
+6. Probar chat no autorizado.
+7. Revisar `runtime/action-results-sandbox/latest.json`.
+8. Confirmar que no se enviaron XML/PDF/ZIP/Excel por Telegram.
+9. Confirmar `sensitive_findings=none` o alerta resumida sin datos sensibles.
