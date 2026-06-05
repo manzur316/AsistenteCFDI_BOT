@@ -862,7 +862,19 @@ docs/PHASE_7_7_SANDBOX_CFDI_LIFECYCLE_CANCELLATION.md
 scripts/test-sandbox-cfdi-lifecycle-cancellation.js
 ```
 
-Siguiente fase recomendada: `7.8 Sandbox lifecycle storage review`.
+Fase 7.8 agrega revision local del lifecycle storage sandbox y nombres
+human-readable seguros para artifacts locales. Genera reportes bajo
+`runtime/storage-sandbox/reports/`, indexa documentos por cliente, periodo,
+estatus e ids internos, valida checksums y evita exponer RFC, UUID, UID, rutas
+absolutas, XML/PDF completos, secretos o credenciales:
+
+```text
+docs/PHASE_7_8_SANDBOX_LIFECYCLE_STORAGE_REVIEW.md
+scripts/review-sandbox-lifecycle-storage.js
+scripts/lib/sandbox-human-readable-storage-naming.js
+```
+
+Siguiente fase recomendada: `7.9 Invoice Status and Payment Status Model`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

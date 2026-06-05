@@ -860,7 +860,29 @@ docs/PHASE_7_7_SANDBOX_CFDI_LIFECYCLE_CANCELLATION.md
 scripts/test-sandbox-cfdi-lifecycle-cancellation.js
 ```
 
-Siguiente fase recomendada: `7.8 Sandbox lifecycle storage review`.
+### Sandbox Lifecycle Storage Review 7.8
+
+La fase 7.8 agrega revision local del storage sandbox y naming legible seguro
+para artefactos del ciclo CFDI sandbox. El review no mueve ni borra runtime:
+lee `runtime/storage-sandbox/`, genera reportes seguros bajo
+`runtime/storage-sandbox/reports/`, indexa documentos por cliente, periodo,
+estatus e ids internos, valida checksums y revisa que la cancelacion sandbox no
+elimine XML/PDF originales.
+
+Documento, review y pruebas:
+
+```text
+docs/PHASE_7_8_SANDBOX_LIFECYCLE_STORAGE_REVIEW.md
+scripts/review-sandbox-lifecycle-storage.js
+scripts/lib/sandbox-human-readable-storage-naming.js
+scripts/test-sandbox-lifecycle-storage-review.js
+scripts/test-sandbox-human-readable-storage-naming.js
+```
+
+Los reportes generados no deben exponer RFC, UUID, UID, rutas absolutas,
+XML/PDF completos, secretos, `.env`, CSD, credenciales ni datos reales.
+
+Siguiente fase recomendada: `7.9 Invoice Status and Payment Status Model`.
 
 ### PAC Sandbox To Production Roadmap
 
