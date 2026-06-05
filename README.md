@@ -789,7 +789,15 @@ docs/PHASE_7_1_TELEGRAM_PRODUCT_MENU_CONTRACT.md
 scripts/lib/telegram-product-menu-contract.js
 ```
 
-Siguiente fase recomendada: `7.2 Telegram Product Menu Renderer`.
+Fase 7.2 agrega el renderer puro del menu producto Telegram. Produce payloads
+seguros de texto y `inline_keyboard`, pero no envia mensajes ni toca workflows:
+
+```text
+docs/PHASE_7_2_TELEGRAM_PRODUCT_MENU_RENDERER.md
+scripts/lib/telegram-product-menu-renderer.js
+```
+
+Siguiente fase recomendada: `7.3 Telegram Product Menu Router Adapter`.
 
 ### Politica conversacional 4.7
 

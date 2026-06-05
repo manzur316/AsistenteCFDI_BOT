@@ -720,6 +720,22 @@ scripts/lib/telegram-product-menu-contract.js
 
 Siguiente fase recomendada: `7.2 Telegram Product Menu Renderer`.
 
+### Telegram Product Menu Renderer 7.2
+
+La fase 7.2 agrega una capa presentacional pura para convertir el contrato
+`TELEGRAM_PRODUCT_MENU_V1` en payloads seguros de Telegram con `text` e
+`inline_keyboard`. No envia mensajes, no modifica workflows, no llama PAC y no
+cambia logica fiscal.
+
+Documento y renderer:
+
+```text
+docs/PHASE_7_2_TELEGRAM_PRODUCT_MENU_RENDERER.md
+scripts/lib/telegram-product-menu-renderer.js
+```
+
+Siguiente fase recomendada: `7.3 Telegram Product Menu Router Adapter`.
+
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
 La fase 6A.11B corrige dos riesgos del E2E local sin tocar produccion ni
