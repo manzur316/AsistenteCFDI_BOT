@@ -522,4 +522,33 @@ Analisis local:
 node scripts/analyze-factura-com-sandbox-results.js
 ```
 
+## Sandbox Cancel + Storage Verification 6A.7O
+
+La verificacion 6A.7O se ejecuta en dos caminos live sandbox separados y con
+opt-in local:
+
+- Descarga: `FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`,
+  `FACTURACOM_SANDBOX_CANCEL_TEST=0`, `FACTURACOM_SANDBOX_BATCH_SIZE=1`.
+- Cancelacion: `FACTURACOM_SANDBOX_DOWNLOAD_TEST=0`,
+  `FACTURACOM_SANDBOX_CANCEL_TEST=1`, `FACTURACOM_SANDBOX_BATCH_SIZE=1`.
+
+El resultado aceptable para descarga es `successful=1`, `errors=0`,
+`XML descargados=1`, `PDF descargados=1`, `UUIDs encontrados=1` y
+`Sensitive findings=none`. El resultado aceptable para cancelacion es
+`successful=1`, `errors=0`, `Cancelaciones OK=1`,
+`Cancelaciones error=0`, UID/UUID presentes y `Sensitive findings=none`.
+
+Despues del smoke con XML/PDF se debe ejecutar:
+
+```powershell
+node scripts/store-facturacom-sandbox-artifacts.js
+node scripts/analyze-storage-sandbox.js
+```
+
+Storage debe guardar manifests bajo `runtime/storage-sandbox/`, marcar status
+`CREATED` o `CANCELLED`, conservar `cfdi_uid`, `uuid` si existe, `serie`,
+`folio`, `cancel_status`, `has_xml`, `has_pdf`, `has_cancel_response` y
+checksums SHA-256 por artifact. `client_uid` sigue siendo solo identidad del
+receptor y nunca se usa como `invoice_id`.
+
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.

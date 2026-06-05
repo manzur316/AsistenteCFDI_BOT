@@ -103,7 +103,9 @@ function createSmokeFixture(name = "smoke") {
         status: "CREATE_OK",
         uid: "CFDI-UID-123",
         cfdi_uid: "CFDI-UID-123",
-        uuid: null,
+        uuid: "00000000-0000-4000-8000-000000000555",
+        serie: "A",
+        folio: "42",
         cancel_status: "OK",
         artifacts: Object.values(files).map(rel),
         warnings: [],
@@ -264,9 +266,18 @@ check("store_cli_genera_manifest_index_summary_y_copia_artifacts", () => {
   assert(fs.existsSync(path.join(storageRoot, "reports", "storage-summary.json")), "summary");
   const invoiceManifest = JSON.parse(fs.readFileSync(path.join(invoiceDir, "manifest.json"), "utf8"));
   assert.strictEqual(invoiceManifest.status, "CANCELLED");
-  assert.strictEqual(invoiceManifest.identity_status, "PARTIAL_PROVIDER_UID");
+  assert.strictEqual(invoiceManifest.identity_status, "COMPLETE");
+  assert.strictEqual(invoiceManifest.cfdi_uid, "CFDI-UID-123");
+  assert.strictEqual(invoiceManifest.uuid, "00000000-0000-4000-8000-000000000555");
+  assert.strictEqual(invoiceManifest.serie, "A");
+  assert.strictEqual(invoiceManifest.folio, "42");
+  assert.strictEqual(invoiceManifest.cancel_status, "OK");
   assert.strictEqual(invoiceManifest.has_xml, true);
   assert.strictEqual(invoiceManifest.has_pdf, true);
+  assert.strictEqual(invoiceManifest.has_cancel_response, true);
+  assert(invoiceManifest.artifacts.every((artifact) => artifact.sha256 && /^[a-f0-9]{64}$/.test(artifact.sha256)));
+  assert(invoiceManifest.artifacts.every((artifact) => typeof artifact.bytes === "number" && artifact.bytes > 0));
+  assert(invoiceManifest.artifacts.some((artifact) => artifact.category === "cancel"));
   assert(invoiceManifest.artifacts.every((artifact) => !path.isAbsolute(artifact.storage_path)));
   return result.reports.summary;
 });
@@ -280,12 +291,14 @@ check("build_index_summary_y_analyze", () => {
   assert.strictEqual(summary.total_documents, 2);
   assert.strictEqual(summary.cancelled, 1);
   assert.strictEqual(summary.error, 1);
-  assert.strictEqual(summary.identity_partial, 1);
+  assert.strictEqual(summary.identity_complete, 1);
+  assert.strictEqual(summary.identity_partial, 0);
   assert.strictEqual(summary.identity_missing, 1);
   assert.strictEqual(summary.identity_internal, 1);
   assert.strictEqual(summary.with_xml, 1);
   assert.strictEqual(summary.with_pdf, 1);
   assert.strictEqual(analysis.total_documents, 2);
+  assert.strictEqual(analysis.identity_complete, 1);
   assert.strictEqual(analysis.identity_internal, 1);
   assert.strictEqual(analysis.created, 0);
   assert.strictEqual(analysis.error, 1);

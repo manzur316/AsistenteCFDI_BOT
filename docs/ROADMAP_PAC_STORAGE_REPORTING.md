@@ -374,6 +374,29 @@ inspectores de runtime trabajan sobre datos redactados, por lo que
 debe marcarse `REDACTED_NOT_EVALUATED`. Esta regla evita falsos positivos en
 observabilidad sin relajar ningun guard fiscal previo al PAC.
 
+### Sandbox Cancel + Storage Verification 6A.7O
+
+La fase 6A.7O verifica el ciclo operativo completo en sandbox sin abrir
+produccion: create, descarga XML/PDF, cancelacion sandbox, analisis, storage y
+analisis de storage. La verificacion mantiene dos smoke runs separados para no
+mezclar download y cancelacion en el mismo intento:
+
+- Smoke de descarga con `FACTURACOM_SANDBOX_DOWNLOAD_TEST=1`,
+  `FACTURACOM_SANDBOX_CANCEL_TEST=0` y batch 1.
+- Smoke de cancelacion con `FACTURACOM_SANDBOX_DOWNLOAD_TEST=0`,
+  `FACTURACOM_SANDBOX_CANCEL_TEST=1` y batch 1.
+
+Criterios de salida:
+
+- `successful=1`, `errors=0` y `business_successful=1` en ambos caminos.
+- XML y PDF descargados en el camino de descarga.
+- `Cancelaciones OK=1` y `Cancelaciones error=0` en el camino de cancelacion.
+- UID/UUID presentes e identidad completa en analyzer/storage cuando existan.
+- Storage bajo `runtime/storage-sandbox/` con status `CREATED` y `CANCELLED`,
+  XML/PDF checksums, `cancel_status` y respuesta de cancelacion.
+- `Sensitive findings=none`.
+- Ningun runtime, XML/PDF, CSD, `.env`, credencial ni cliente real se versiona.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

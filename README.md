@@ -499,6 +499,14 @@ No subas `.env.pac.sandbox.local`, credenciales, XML/PDF, responses, manifests,
 runtime, estados de cuenta ni clientes reales. Produccion sigue bloqueada por
 codigo; `https://api.factura.com` no es aceptado por el cliente live.
 
+Fase 6A.7O cierra el ciclo operativo sandbox local con dos smoke runs separados:
+uno para crear y descargar XML/PDF, y otro para crear y cancelar. El storage
+debe registrar documentos `CREATED` y `CANCELLED`, conservar `cfdi_uid`, `uuid`
+cuando exista, `serie`, `folio`, checksums de XML/PDF y respuesta de cancelacion
+sin versionar ningun artifact de `runtime/`. El analyzer debe reportar
+`Sensitive findings: none`, `identity missing=0` para documentos almacenados con
+identidad completa y rutas bajo `runtime/storage-sandbox`.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.
