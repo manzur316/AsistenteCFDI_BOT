@@ -93,7 +93,11 @@ if (workflow) {
   checks.push({ name: "no_terminal_code_returns_empty_items", pass: !buildLoadCode.includes("return []") && !buildResponseCode.includes("return []") && !codeText.includes("Build Callback Answer"), value: "no empty terminal code" });
   checks.push({ name: "no_token_real", pass: !/\b\d{6,}:[A-Za-z0-9_-]{20,}\b/.test(raw), value: "none" });
   checks.push({ name: "no_telegram_trigger_or_getUpdates", pass: !nodeTypes.includes("n8n-nodes-base.telegramTrigger") && !raw.includes("getUpdates"), value: "none" });
-  checks.push({ name: "no_pac_timbrado_whatsapp", pass: !/\bPAC\b|timbrad|WhatsApp|whatsapp|stamp_cfdi|timbre_fiscal/i.test(raw), value: "none" });
+  checks.push({
+    name: "no_pac_production_or_direct_provider_secrets",
+    pass: !/https:\/\/api\.factura\.com|F-Api-Key|F-Secret-Key|F-PLUGIN|stampProduction|timbre_fiscal|WhatsApp|whatsapp|sendDocument|sendMediaGroup|sendPhoto/i.test(raw),
+    value: "sandbox console only",
+  });
 
   try {
     const extracted = executeCode(extractCode, makeWebhookInput({

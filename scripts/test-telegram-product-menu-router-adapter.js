@@ -189,8 +189,14 @@ check("admin_sandbox_visible_only_for_owner", () => {
 
 check("admin_sandbox_submenu_callbacks_are_explicit", () => {
   const callbacks = flattenCallbacks(renderTelegramSubmenu("admin_sandbox", ROLES.OWNER, { includeSandbox: true }));
+  assert(callbacks.includes("cfdi_nav:pac_sbx"));
   assert(callbacks.includes("cfdi_sbx:full"));
   assert(callbacks.includes("cfdi_sbx:preflight"));
+  assert(callbacks.includes("cfdi_sbx:smoke_create"));
+  assert(callbacks.includes("cfdi_sbx:smoke_download"));
+  assert(callbacks.includes("cfdi_sbx:smoke_cancel"));
+  assert(callbacks.includes("cfdi_sbx:latest"));
+  assert(callbacks.includes("cfdi_sbx:audit"));
   for (const callbackData of callbacks) {
     assertSafeCallback(callbackData);
     const result = executeCode(handleCode, baseInput(callbackData, ROLES.OWNER, { update_id: 7340 + callbacks.indexOf(callbackData) }));
@@ -220,10 +226,13 @@ check("pending_actions_answer_explicitly", () => {
   const accountant = executeCode(handleCode, baseInput("cfdi_nav:acctpkg", ROLES.OWNER, { update_id: 7360 }));
   const sandbox = executeCode(handleCode, baseInput("cfdi_sbx:full", ROLES.OWNER, { update_id: 7361 }));
   assert.strictEqual(accountant.action, "PRODUCT_MENU_PENDING");
-  assert.strictEqual(sandbox.action, "PRODUCT_SANDBOX_PENDING");
+  assert.strictEqual(sandbox.action, "PAC_SANDBOX_ACTION_REQUESTED");
   assert(accountant.telegram_message.includes("Esta opcion todavia esta en preparacion."));
-  assert(sandbox.telegram_message.includes("Esta opcion todavia esta en preparacion"));
-  return "explicit_pending";
+  assert(sandbox.telegram_message.includes("Factura.com Sandbox: CFDI de prueba. No es produccion fiscal real."));
+  assert.strictEqual(sandbox.requested_sandbox_action, "sandbox.full.monthly.package");
+  assert.strictEqual(sandbox.should_execute_sandbox_action, true);
+  assert(sandbox.sandbox_execute_command.includes("node scripts/run-sandbox-action.js sandbox.full.monthly.package"));
+  return "explicit_pending_and_sandbox_action";
 });
 
 check("unknown_product_callback_does_not_break", () => {
@@ -243,6 +252,10 @@ check("callbacks_do_not_send_files_or_call_pac", () => {
     "stampProduction",
     "stampProduction futuro",
     "production.factura",
+    "https://api.factura.com",
+    "F-Api-Key",
+    "F-Secret-Key",
+    "F-PLUGIN",
   ];
   for (const value of forbidden) {
     assert(!workflowText.includes(value), `workflow contiene ${value}`);

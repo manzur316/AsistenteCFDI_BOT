@@ -8,6 +8,7 @@ const { generateAccountantPackage } = require("../generate-sandbox-accountant-pa
 const { generateAccountantExcel } = require("../generate-sandbox-accountant-excel");
 const { generateAccountantChecklist } = require("../generate-sandbox-accountant-checklist");
 const { analyze: analyzePackage } = require("../analyze-sandbox-accountant-package");
+const { analyzeAudit } = require("../analyze-sandbox-action-audit");
 const { DEFAULT_STORAGE_ROOT, scanSensitiveFiles } = require("./sandbox-storage-engine");
 const { DEFAULT_PACKAGE_ROOT } = require("./sandbox-accountant-package");
 
@@ -31,6 +32,8 @@ const ACTIONS = [
   "sandbox.excel.generate",
   "sandbox.checklist.generate",
   "sandbox.full.monthly.package",
+  "sandbox.latest.result",
+  "sandbox.audit.summary",
 ];
 
 function isInside(parent, child) {
@@ -123,6 +126,7 @@ function defaultPaths(options = {}) {
     reportRoot: assertRuntimePath(options.reportRoot || DEFAULT_REPORT_ROOT, "reportRoot"),
     packageRoot: assertRuntimePath(options.packageRoot || DEFAULT_PACKAGE_ROOT, "packageRoot"),
     actionResultsRoot: actionResultsRoot(options),
+    actionAuditRoot: actionAuditRoot(options),
     period: options.period,
   };
 }
@@ -149,7 +153,7 @@ function writeActionResult(result, options = {}) {
 }
 
 function actionAuditRoot(options = {}) {
-  return assertRuntimePath(options.auditRoot || DEFAULT_ACTION_AUDIT_ROOT, "auditRoot");
+  return assertRuntimePath(options.actionAuditRoot || options.auditRoot || DEFAULT_ACTION_AUDIT_ROOT, "auditRoot");
 }
 
 function safeAuditText(value, maxLength = 96) {
@@ -379,6 +383,49 @@ function runPackageAnalyze(paths) {
   return stableStep("sandbox.package.analyze", "OK", output);
 }
 
+function runLatestResult(paths) {
+  const analysis = analyzeLatestActionResult({ actionResultsRoot: paths.actionResultsRoot });
+  return stableStep(
+    "sandbox.latest.result",
+    analysis.exists && (analysis.sensitive_findings || []).length === 0 ? "OK" : analysis.exists ? "ERROR" : "NEEDS_RUNTIME",
+    {
+      exists: analysis.exists,
+      action: analysis.action || null,
+      status: analysis.status || null,
+      duration_ms: analysis.duration_ms ?? null,
+      artifacts_count: Array.isArray(analysis.artifacts) ? analysis.artifacts.length : 0,
+      warnings_count: Array.isArray(analysis.warnings) ? analysis.warnings.length : 0,
+      errors_count: Array.isArray(analysis.errors) ? analysis.errors.length : 0,
+      sensitive_findings_count: Array.isArray(analysis.sensitive_findings) ? analysis.sensitive_findings.length : 0,
+    },
+    analysis.exists ? [] : ["No hay ultimo resultado sandbox en runtime local."],
+    analysis.exists && (analysis.sensitive_findings || []).length ? ["SENSITIVE_FINDINGS"] : [],
+  );
+}
+
+function runAuditSummary(paths) {
+  const analysis = analyzeAudit(path.join(paths.actionAuditRoot, "actions.jsonl"));
+  return stableStep(
+    "sandbox.audit.summary",
+    analysis.ok ? "OK" : "ERROR",
+    {
+      ok: analysis.ok,
+      total_records: analysis.total_records || 0,
+      by_action: analysis.by_action || {},
+      by_status: analysis.by_status || {},
+      by_source_kind: analysis.by_source_kind || {},
+      latest_action: analysis.latest?.action || null,
+      latest_status: analysis.latest?.status || null,
+      latest_artifacts_count: analysis.latest?.artifacts_count ?? null,
+      latest_warnings_count: analysis.latest?.warnings_count ?? null,
+      latest_errors_count: analysis.latest?.errors_count ?? null,
+      latest_sensitive_findings_count: analysis.latest?.sensitive_findings_count ?? null,
+    },
+    analysis.ok ? [] : (analysis.errors || ["Audit sandbox requiere revision."]),
+    analysis.ok ? [] : (analysis.errors || ["AUDIT_ANALYSIS_ERROR"]),
+  );
+}
+
 function finalStatusFromSteps(steps) {
   if (steps.some((step) => step.status === "PACKAGE_SAFETY_ERROR")) return "PACKAGE_SAFETY_ERROR";
   if (steps.some((step) => step.status === "ERROR")) return "ERROR";
@@ -442,6 +489,8 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.excel.generate") return runExcelGenerate(paths);
   if (action === "sandbox.checklist.generate") return runChecklistGenerate(paths);
   if (action === "sandbox.full.monthly.package") return runFullMonthlyPackage(paths);
+  if (action === "sandbox.latest.result") return runLatestResult(paths);
+  if (action === "sandbox.audit.summary") return runAuditSummary(paths);
   return stableStep(action, "ERROR", {}, [], ["UNHANDLED_ACTION"]);
 }
 

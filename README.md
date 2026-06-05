@@ -831,7 +831,17 @@ docs/PHASE_7_4_PRODUCT_FLOW_INTEGRATION.md
 scripts/test-telegram-product-flow-integration.js
 ```
 
-Siguiente fase recomendada: `7.5 Telegram Product E2E Manual Validation`.
+Fase 7.5 agrega una consola OWNER/admin de PAC Sandbox dentro del workflow
+primario. Usa Factura.com Sandbox como proveedor de prueba por Action Layer
+allowlisted; permite timbrado sandbox, pero mantiene bloqueado el timbrado
+productivo fiscal real:
+
+```text
+docs/PHASE_7_5_TELEGRAM_PAC_SANDBOX_STAMPING_CONSOLE.md
+scripts/test-telegram-pac-sandbox-console.js
+```
+
+Siguiente fase recomendada: `7.6 Approved Draft to PAC Sandbox`.
 
 ### Politica conversacional 4.7
 
@@ -927,8 +937,8 @@ Si una linea queda ambigua, el estado pasa a `LINE_NEEDS_CLARIFICATION`. Mensaje
 
 ## Limites fiscales
 
-- No timbra CFDI.
-- No usa PAC.
+- No timbra CFDI productivo fiscal real.
+- No usa PAC de produccion.
 - No captura automaticamente en SAT.
 - No envia WhatsApp.
 - No expone webhook a internet.

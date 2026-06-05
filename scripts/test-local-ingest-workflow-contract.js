@@ -110,7 +110,16 @@ if (workflow) {
   checks.push({ name: "no_process_dirname_filename", pass: !/process\.|__dirname|__filename/.test(raw), value: "none" });
   checks.push({ name: "no_local_js_require", pass: disallowedRequires.length === 0 && !/require\(\s*["'][.]{1,2}\//.test(raw) && !raw.includes("scripts/scoring.js"), value: disallowedRequires.join(",") || "none" });
   checks.push({ name: "no_public_webhook_setup", pass: !/setWebhook|ngrok|public webhook|webhook publico/i.test(raw), value: "local only" });
-  checks.push({ name: "no_pac_timbrado_whatsapp", pass: !/\bPAC\b|timbrad|WhatsApp|whatsapp|stamp_cfdi|timbre_fiscal/i.test(raw), value: "none" });
+  checks.push({
+    name: "no_pac_production_or_direct_provider_secrets",
+    pass: !/https:\/\/api\.factura\.com|F-Api-Key|F-Secret-Key|F-PLUGIN|stampProduction|timbre_fiscal|WhatsApp|whatsapp|sendDocument|sendMediaGroup|sendPhoto/i.test(raw),
+    value: "sandbox console only",
+  });
+  checks.push({
+    name: "pac_sandbox_uses_action_layer",
+    pass: raw.includes("Execute PAC Sandbox Action") && raw.includes("node scripts/run-sandbox-action.js") && raw.includes("sandbox_execute_command"),
+    value: "Action Layer allowlisted",
+  });
 
   try {
     const result = executeCode(extractCode, makeWebhookInput({

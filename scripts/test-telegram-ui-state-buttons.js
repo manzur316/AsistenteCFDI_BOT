@@ -428,9 +428,9 @@ checks.push({
   value: "parse_mode opt-in",
 });
 checks.push({
-  name: "workflow_no_pac_timbrado_xml_pdf_whatsapp",
-  pass: !/\bPAC\b|timbrad|XML|PDF|WhatsApp|whatsapp/i.test(workflowText),
-  value: "none",
+  name: "workflow_no_pac_production_or_file_send",
+  pass: !/https:\/\/api\.factura\.com|F-Api-Key|F-Secret-Key|F-PLUGIN|stampProduction|timbre_fiscal|WhatsApp|whatsapp|sendDocument|sendMediaGroup|sendPhoto/i.test(workflowText),
+  value: "sandbox console only",
 });
 
 console.log("Telegram UI state buttons contract");

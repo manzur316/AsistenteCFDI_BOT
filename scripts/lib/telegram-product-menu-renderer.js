@@ -40,8 +40,8 @@ const SUBMENU_TEXT = Object.freeze({
   admin_sandbox: [
     "Admin/Sandbox",
     "",
-    "Herramientas locales de prueba para el administrador.",
-    "No son parte del flujo diario del usuario final.",
+    "Consola OWNER/admin para Factura.com Sandbox.",
+    "Permite timbrado sandbox de prueba por Action Layer; produccion fiscal real sigue bloqueada.",
   ].join("\n"),
 });
 

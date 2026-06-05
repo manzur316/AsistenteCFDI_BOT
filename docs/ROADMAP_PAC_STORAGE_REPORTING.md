@@ -799,7 +799,38 @@ docs/PHASE_7_4_PRODUCT_FLOW_INTEGRATION.md
 scripts/test-telegram-product-flow-integration.js
 ```
 
-Siguiente fase recomendada: `7.5 Telegram Product E2E Manual Validation`.
+### Telegram PAC Sandbox Stamping Console 7.5
+
+La fase 7.5 agrega una consola OWNER/admin en el workflow primario de Telegram
+para operar Factura.com Sandbox desde el PAC Adapter Hub y el Action Layer. Esta
+fase permite timbrado sandbox de prueba con `FACTURACOM_SANDBOX_LIVE=1`, pero
+mantiene bloqueado el timbrado productivo fiscal real contra Factura.com
+produccion.
+
+La consola usa callbacks seguros:
+
+```text
+cfdi_nav:pac_sbx
+cfdi_sbx:preflight
+cfdi_sbx:smoke_create
+cfdi_sbx:smoke_download
+cfdi_sbx:smoke_cancel
+cfdi_sbx:latest
+cfdi_sbx:audit
+```
+
+El workflow principal no llama directamente al proveedor, no contiene URL de
+produccion ni headers/credenciales PAC, y no envia XML/PDF/ZIP/Excel por
+Telegram.
+
+Documento y prueba:
+
+```text
+docs/PHASE_7_5_TELEGRAM_PAC_SANDBOX_STAMPING_CONSOLE.md
+scripts/test-telegram-pac-sandbox-console.js
+```
+
+Siguiente fase recomendada: `7.6 Approved Draft to PAC Sandbox`.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 

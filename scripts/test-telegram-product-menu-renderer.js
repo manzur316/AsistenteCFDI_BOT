@@ -52,7 +52,6 @@ function payloadHasForbiddenSensitiveValue(payload) {
     /\buid\b|_uid\b|\buid_/i,
     /\bmonto\b|\bamount\b|\btotal\b/i,
     /[a-z]:[\\/]|[\\/](?:users|runtime|documents|tmp|var)[\\/]/i,
-    /\bXML\b|\bPDF\b|\bZIP\b|\bExcel\b|\bxlsx\b/i,
     /\bCSD\b|\.env|secret|password|api[_-]?key/i,
     /\b\d{6,}:[A-Za-z0-9_-]{20,}\b/,
   ];
@@ -166,9 +165,9 @@ checks.push({
   value: "no paths",
 });
 checks.push({
-  name: "payloads_have_no_file_artifact_terms",
-  pass: allRenderedPayloads.every((payload) => !/\bXML\b|\bPDF\b|\bZIP\b|\bExcel\b|\bxlsx\b/i.test(JSON.stringify(payload))),
-  value: "no file terms",
+  name: "payloads_have_no_file_artifact_references",
+  pass: allRenderedPayloads.every((payload) => !/\.(?:xml|pdf|zip|xlsx)\b|sendDocument|sendMediaGroup|sendPhoto/i.test(JSON.stringify(payload))),
+  value: "no artifact references",
 });
 
 checks.push({

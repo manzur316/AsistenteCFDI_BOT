@@ -263,9 +263,9 @@ check("owner_ve_admin_sandbox_y_aclara_no_produccion", () => {
   const result = executeCode(handleCode, callbackInput("cfdi_nav:admin", "OWNER", { update_id: 7640 }));
   const callbacks = callbackDataList(result);
   assert.strictEqual(result.action, "PRODUCT_ADMIN_SANDBOX");
-  assert(callbacks.includes("cfdi_sbx:menu"));
+  assert(callbacks.includes("cfdi_nav:pac_sbx"));
   assert(callbacks.includes("cfdi_sbx:full"));
-  assert(result.telegram_message.includes("Sandbox no es produccion."));
+  assert(result.telegram_message.includes("Factura.com Sandbox: CFDI de prueba. No es produccion fiscal real."));
   return callbacks.join(",");
 });
 
@@ -332,7 +332,8 @@ check("ningun_boton_visible_queda_sin_respuesta", () => {
 });
 
 check("workflow_no_documentos_ni_produccion_por_telegram", () => {
-  assert(!/\bPAC\b|timbrad|XML|PDF|WhatsApp|whatsapp|stamp_cfdi|timbre_fiscal/i.test(workflowText));
+  assert(!/sendDocument|sendMediaGroup|sendPhoto|sendVideo|sendAudio/i.test(workflowText));
+  assert(!/https:\/\/api\.factura\.com|F-Api-Key|F-Secret-Key|F-PLUGIN|stampProduction|timbre_fiscal|WhatsApp|whatsapp/i.test(workflowText));
   return "safe";
 });
 

@@ -43,6 +43,7 @@ function paths(name) {
     reportRoot: path.join(base, "reports-sandbox"),
     packageRoot: path.join(base, "accountant-packages-sandbox"),
     actionResultsRoot: path.join(base, "action-results-sandbox"),
+    actionAuditRoot: path.join(base, "sandbox-action-audit"),
   };
 }
 
@@ -154,6 +155,8 @@ cleanTemp();
       "sandbox.excel.generate",
       "sandbox.checklist.generate",
       "sandbox.full.monthly.package",
+      "sandbox.latest.result",
+      "sandbox.audit.summary",
     ]) {
       assert(ACTIONS.includes(action), action);
       assert(listSandboxActions().includes(action), action);
@@ -236,6 +239,34 @@ cleanTemp();
     assert.strictEqual(analysis.exists, true);
     assert.strictEqual(analysis.action, "sandbox.report.generate");
     return analysis.status;
+  });
+
+  await check("latest_y_audit_summary_son_acciones_seguras", async () => {
+    const p = paths("latest-audit");
+    const latest = await runSandboxAction("sandbox.latest.result", { ...p, env: { FACTURACOM_SANDBOX_LIVE: "0" } });
+    assertStableResult(latest, "sandbox.latest.result");
+    assert.strictEqual(latest.status, "NEEDS_RUNTIME");
+
+    fs.mkdirSync(p.actionAuditRoot, { recursive: true });
+    writeText(path.join(p.actionAuditRoot, "actions.jsonl"), `${JSON.stringify({
+      schema_version: "sandbox_action_audit.v1",
+      timestamp: "2026-06-05T00:00:00.000Z",
+      source_kind: "CALLBACK_QUERY",
+      action: "sandbox.preflight",
+      status: "OK",
+      ok: true,
+      duration_ms: 10,
+      artifacts_count: 0,
+      warnings_count: 0,
+      errors_count: 0,
+      sensitive_findings_count: 0,
+    })}\n`);
+    const audit = await runSandboxAction("sandbox.audit.summary", { ...p, env: { FACTURACOM_SANDBOX_LIVE: "0" } });
+    assertStableResult(audit, "sandbox.audit.summary");
+    assert.strictEqual(audit.status, "OK");
+    assert.strictEqual(audit.output.total_records, 1);
+    assert.strictEqual(audit.sensitive_findings.length, 0);
+    return `${latest.status}/${audit.status}`;
   });
 
   await check("sensitive_findings_none", async () => {
