@@ -851,7 +851,18 @@ docs/PHASE_7_6_APPROVED_DRAFT_TO_PAC_SANDBOX.md
 scripts/test-approved-draft-to-pac-sandbox.js
 ```
 
-Siguiente fase recomendada: `7.7 Sandbox CFDI Lifecycle and Cancellation`.
+Fase 7.7 agrega el ciclo de cancelacion sandbox para CFDI en estado
+`SANDBOX_TIMBRADO`: doble confirmacion por action token, Action Layer
+`sandbox.draft.cancel`, estado `SANDBOX_CANCELADO`/`SANDBOX_CANCEL_ERROR`,
+evento local y manifest seguro bajo `runtime/storage-sandbox/`, sin
+cancelacion productiva ni envio de XML/PDF/ZIP/Excel por Telegram:
+
+```text
+docs/PHASE_7_7_SANDBOX_CFDI_LIFECYCLE_CANCELLATION.md
+scripts/test-sandbox-cfdi-lifecycle-cancellation.js
+```
+
+Siguiente fase recomendada: `7.8 Sandbox lifecycle storage review`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

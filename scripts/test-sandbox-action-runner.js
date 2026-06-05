@@ -158,6 +158,7 @@ cleanTemp();
       "sandbox.latest.result",
       "sandbox.audit.summary",
       "sandbox.draft.stamp",
+      "sandbox.draft.cancel",
     ]) {
       assert(ACTIONS.includes(action), action);
       assert(listSandboxActions().includes(action), action);

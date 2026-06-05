@@ -128,6 +128,10 @@ class FacturaComSandboxAdapter {
     });
   }
 
+  cancelInvoice(invoiceRef = {}, context = {}) {
+    return this.mockCancelSandbox(invoiceRef, context.mockResponse);
+  }
+
   createDraftPayload(draftOrRequest = {}, context = {}) {
     if (draftOrRequest?.payload?.canonical_invoice_document) return this.createSandboxPayload(draftOrRequest);
     if (context.canonicalPacRequest) return this.createSandboxPayload(context.canonicalPacRequest);

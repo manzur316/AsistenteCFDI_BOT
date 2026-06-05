@@ -845,7 +845,22 @@ docs/PHASE_7_6_APPROVED_DRAFT_TO_PAC_SANDBOX.md
 scripts/test-approved-draft-to-pac-sandbox.js
 ```
 
-Siguiente fase recomendada: `7.7 Sandbox CFDI Lifecycle and Cancellation`.
+### Sandbox CFDI Lifecycle And Cancellation 7.7
+
+La fase 7.7 agrega cancelacion sandbox para CFDI en estado
+`SANDBOX_TIMBRADO`. El flujo usa doble confirmacion con `cfdi:<token>`, ejecuta
+solo la accion allowlisted `sandbox.draft.cancel`, persiste eventos de
+lifecycle, guarda respuesta segura en `runtime/storage-sandbox/` y actualiza a
+`SANDBOX_CANCELADO` o `SANDBOX_CANCEL_ERROR`.
+
+Documento y prueba:
+
+```text
+docs/PHASE_7_7_SANDBOX_CFDI_LIFECYCLE_CANCELLATION.md
+scripts/test-sandbox-cfdi-lifecycle-cancellation.js
+```
+
+Siguiente fase recomendada: `7.8 Sandbox lifecycle storage review`.
 
 ### PAC Sandbox To Production Roadmap
 
