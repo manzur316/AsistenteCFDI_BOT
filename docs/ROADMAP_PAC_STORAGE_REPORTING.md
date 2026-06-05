@@ -785,7 +785,21 @@ docs/PHASE_7_3_TELEGRAM_PRODUCT_MENU_ROUTER_ADAPTER.md
 scripts/test-telegram-product-menu-router-adapter.js
 ```
 
-Siguiente fase recomendada: `7.4 Product Flow Integration`.
+### Product Flow Integration 7.4
+
+La fase 7.4 pule la navegacion diaria del usuario en el workflow primario:
+`/start` abre el menu producto, `/help` muestra ayuda contextual, clientes,
+pendientes, reportes y estado tienen respuestas explicitas y las acciones
+sensibles siguen usando action tokens.
+
+Documento y prueba:
+
+```text
+docs/PHASE_7_4_PRODUCT_FLOW_INTEGRATION.md
+scripts/test-telegram-product-flow-integration.js
+```
+
+Siguiente fase recomendada: `7.5 Telegram Product E2E Manual Validation`.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 

@@ -822,7 +822,16 @@ docs/PHASE_7_3_TELEGRAM_PRODUCT_MENU_ROUTER_ADAPTER.md
 scripts/test-telegram-product-menu-router-adapter.js
 ```
 
-Siguiente fase recomendada: `7.4 Product Flow Integration`.
+Fase 7.4 integra el flujo de producto diario dentro del workflow primario:
+`/start` abre el menu producto, clientes/reportes/estado tienen respuestas
+claras y las acciones sensibles siguen usando action tokens:
+
+```text
+docs/PHASE_7_4_PRODUCT_FLOW_INTEGRATION.md
+scripts/test-telegram-product-flow-integration.js
+```
+
+Siguiente fase recomendada: `7.5 Telegram Product E2E Manual Validation`.
 
 ### Politica conversacional 4.7
 

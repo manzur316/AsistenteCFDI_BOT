@@ -8,6 +8,7 @@ const {
   parseCallbackData,
   validateActionTokenRecord,
 } = require("./lib/telegram-action-token-utils");
+const { validateTelegramCallbackData } = require("./lib/telegram-product-menu-contract");
 
 const root = path.resolve(__dirname, "..");
 const workflowPath = path.join(root, "workflow", "cfdi_telegram_local_ingest.n8n.json");
@@ -46,10 +47,13 @@ function hasButtons(result, expected) {
 
 function callbacksSafe(result) {
   return flattenButtons(result).every((button) => {
-    const callbackData = String(button.callback_data || "");
+      const callbackData = String(button.callback_data || "");
+    const parsed = callbackData.startsWith("cfdi_nav:") || callbackData.startsWith("cfdi_sbx:")
+      ? validateTelegramCallbackData(callbackData).ok
+      : Boolean(parseCallbackData(callbackData));
     return callbackData.length <= CALLBACK_DATA_LIMIT
-      && Boolean(parseCallbackData(callbackData))
-      && !/DRAFT|CLI-|AAA010101AAA|81111811|Privada|Rivera|concept|clave|monto|total/i.test(callbackData);
+      && parsed
+      && !/DRAFT-|CLI-|AAA010101AAA|81111811|Privada|Rivera|concept|clave|monto|total/i.test(callbackData);
   });
 }
 
@@ -194,7 +198,7 @@ function baseInput(text, extra = {}) {
     action_token: extra.action_token ?? null,
     recent_drafts: extra.recent_drafts || [],
     bot_state: {},
-    today_summary: { pendientes: 1, aprobados: 1, descartados: 0, bloqueados: 0 },
+    today_summary: extra.today_summary || { pendientes: 1, aprobados: 1, descartados: 0, bloqueados: 0 },
     source_kind: extra.source_kind || "MESSAGE",
     callback_query_id: extra.callback_query_id || "",
     callback_message_id: extra.callback_message_id || "",
@@ -213,6 +217,7 @@ function callbackInput(action, payload = {}, extra = {}) {
     recent_drafts: extra.recent_drafts || [],
     clients: extra.clients || [demoClient()],
     tax_rules: extra.tax_rules || taxRules,
+    today_summary: extra.today_summary,
     action_token: {
       token,
       chat_id: extra.chat_id || chatId,
@@ -334,7 +339,10 @@ if (handleCode) {
         executeCode(handleCode, baseInput("/ayuda", { update_id: 9308 })),
         executeCode(handleCode, baseInput("/noexiste", { update_id: 9309 })),
       ],
-      expect: (results) => results.every((result) => hasButtons(result, ["Nueva factura", "Pendientes", "Aprobadas", "Clientes", "Ayuda"]) && callbacksSafe(result)),
+      expect: (results) => results[0].action === "PRODUCT_MENU_MAIN"
+        && results[1].action === "PRODUCT_HELP"
+        && results[2].action === "COMMAND_UNKNOWN"
+        && results.every((result) => hasButtons(result, ["Nueva factura", "Clientes", "Pendientes", "Estado", "Ayuda"]) && callbacksSafe(result)),
     },
     {
       name: "cancelado_tiene_menu_post_cancel",
@@ -363,8 +371,8 @@ if (handleCode) {
     },
     {
       name: "view_summary_no_abre_menu_silencioso",
-      run: () => executeCode(handleCode, callbackInput("VIEW_SUMMARY", {}, { update_id: 93132, recent_drafts: [], clients: [], tax_rules: [] })),
-      expect: (result) => result.action === "COMMAND_RESUMEN" && String(result.telegram_message || "").includes("Resumen mensual basico") && !String(result.telegram_message || "").includes("Comandos disponibles") && hasButtons(result, ["Nueva factura", "Pendientes", "Aprobadas", "Clientes", "Ayuda"]) && callbacksSafe(result),
+      run: () => executeCode(handleCode, callbackInput("VIEW_SUMMARY", {}, { update_id: 93132, recent_drafts: [], clients: [], tax_rules: [], today_summary: { pendientes: 0, aprobados: 0, descartados: 0, bloqueados: 0 } })),
+      expect: (result) => result.action === "COMMAND_RESUMEN" && String(result.telegram_message || "").includes("No hay datos suficientes para mostrar resumen mensual.") && !String(result.telegram_message || "").includes("Comandos disponibles") && hasButtons(result, ["Nueva factura", "Clientes", "Pendientes", "Estado", "Ayuda"]) && callbacksSafe(result),
     },
     {
       name: "discard_button_actualiza_pendiente_y_usa_token",
