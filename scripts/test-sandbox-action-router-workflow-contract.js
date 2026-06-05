@@ -16,6 +16,22 @@ const expectedCommands = {
   "/sandbox_smoke_download": "sandbox.smoke.download",
   "/sandbox_smoke_cancel": "sandbox.smoke.cancel",
 };
+const expectedCallbacks = {
+  "cfdi_sbx:report": "sandbox.report.generate",
+  "cfdi_sbx:package": "sandbox.package.generate",
+  "cfdi_sbx:excel": "sandbox.excel.generate",
+  "cfdi_sbx:checklist": "sandbox.checklist.generate",
+  "cfdi_sbx:full": "sandbox.full.monthly.package",
+  "cfdi_sbx:preflight": "sandbox.preflight",
+  "cfdi_sbx:smoke_create": "sandbox.smoke.create",
+  "cfdi_sbx:smoke_download": "sandbox.smoke.download",
+  "cfdi_sbx:smoke_cancel": "sandbox.smoke.cancel",
+};
+const expectedUiCallbacks = [
+  "cfdi_sbx:menu",
+  "cfdi_sbx:smoke_menu",
+  "cfdi_sbx:cancel",
+];
 
 const checks = [];
 
@@ -79,6 +95,27 @@ function makeMessage(text, chatId = "12345") {
   };
 }
 
+function makeCallback(data, chatId = "12345") {
+  return {
+    body: {
+      callback_query: {
+        id: "callback-test",
+        from: { id: "user-1" },
+        data,
+        message: {
+          message_id: 20,
+          chat: { id: chatId },
+        },
+      },
+    },
+  };
+}
+
+function workflowCallbackDataValues(text) {
+  const matches = [...text.matchAll(/callback_data:\s*'([^']+)'/g)];
+  return [...new Set(matches.map((match) => match[1]))].sort();
+}
+
 let workflow = null;
 let raw = "";
 let normalizeCode = "";
@@ -107,6 +144,7 @@ if (workflow) {
   const httpNodes = nodes.filter((node) => node.type === "n8n-nodes-base.httpRequest");
   const allCode = nodes.map((node) => node.parameters?.jsCode || "").join("\n");
   const disallowedRequires = requireCalls(allCode).filter((item) => !["fs", "path"].includes(item));
+  const callbackDataValues = workflowCallbackDataValues(raw);
 
   check("uses_webhook_local_test", () => {
     assert.strictEqual(webhookNode.type, "n8n-nodes-base.webhook");
@@ -173,18 +211,48 @@ if (workflow) {
     return `${Object.keys(expectedCommands).length} commands`;
   });
 
+  check("inline_keyboard_present", () => {
+    assert(raw.includes("inline_keyboard"));
+    assert(raw.includes("MAIN_MENU_KEYBOARD"));
+    assert(raw.includes("SMOKE_MENU_KEYBOARD"));
+    return "main + smoke menu";
+  });
+
+  check("callback_data_allowlist_present", () => {
+    for (const [callbackData, action] of Object.entries(expectedCallbacks)) {
+      assert(raw.includes(callbackData), callbackData);
+      assert(raw.includes(action), action);
+    }
+    for (const callbackData of expectedUiCallbacks) assert(raw.includes(callbackData), callbackData);
+    return `${callbackDataValues.length} callback_data`;
+  });
+
+  check("callback_data_safe_and_short", () => {
+    assert(callbackDataValues.length >= Object.keys(expectedCallbacks).length + expectedUiCallbacks.length);
+    for (const value of callbackDataValues) {
+      assert(value.length <= 32, `${value} length=${value.length}`);
+      assert(/^cfdi_sbx:[a-z_]+$/.test(value), value);
+      assert(!/[A-Z&?=/:\\.\d]/.test(value.replace("cfdi_sbx:", "")), value);
+      assert(!/RFC|UUID|UID|MXN|IVA|runtime|xml|pdf|zip|xlsx|key|secret|token|factura/i.test(value), value);
+    }
+    return callbackDataValues.join(", ");
+  });
+
   check("uses_action_allowlist", () => {
     assert(normalizeCode.includes("ACTION_MAP"));
+    assert(normalizeCode.includes("CALLBACK_ACTION_MAP"));
+    assert(normalizeCode.includes("CALLBACK_ALLOWLIST"));
     assert(normalizeCode.includes("Object.freeze"));
-    assert(normalizeCode.includes("requestedAction = ACTION_MAP[commandToken]"));
-    return "ACTION_MAP";
+    assert(normalizeCode.includes("ACTION_MAP[commandToken]"));
+    assert(normalizeCode.includes("CALLBACK_ACTION_MAP[callbackToken]"));
+    return "ACTION_MAP + CALLBACK_ACTION_MAP";
   });
 
   check("execute_command_node_is_single_and_allowlisted", () => {
     assert.strictEqual(executeNodes.length, 1);
     assert.strictEqual(executeNode.type, "n8n-nodes-base.executeCommand");
     assert.strictEqual(executeNode.parameters.command, "={{$json.execute_command}}");
-    assert(normalizeCode.includes("node scripts/run-sandbox-action.js ${requestedAction}"));
+    assert(normalizeCode.includes("'node scripts/run-sandbox-action.js ' + requestedAction"));
     return "node scripts/run-sandbox-action.js <action>";
   });
 
@@ -203,6 +271,74 @@ if (workflow) {
     assert.strictEqual(result.execute_command, "node scripts/run-sandbox-action.js sandbox.report.generate");
     assert(!result.execute_command.includes("cualquier texto extra"));
     return result.execute_command;
+  });
+
+  check("callback_report_builds_safe_command", () => {
+    const result = executeCode(normalizeCode, makeCallback("cfdi_sbx:report"))[0].json;
+    assert.strictEqual(result.source_kind, "CALLBACK_QUERY");
+    assert.strictEqual(result.callback_data, "cfdi_sbx:report");
+    assert.strictEqual(result.should_execute, true);
+    assert.strictEqual(result.requested_action, "sandbox.report.generate");
+    assert.strictEqual(result.execute_command, "node scripts/run-sandbox-action.js sandbox.report.generate");
+    return result.execute_command;
+  });
+
+  check("callback_full_builds_safe_command", () => {
+    const result = executeCode(normalizeCode, makeCallback("cfdi_sbx:full"))[0].json;
+    assert.strictEqual(result.should_execute, true);
+    assert.strictEqual(result.requested_action, "sandbox.full.monthly.package");
+    assert.strictEqual(result.execute_command, "node scripts/run-sandbox-action.js sandbox.full.monthly.package");
+    return result.requested_action;
+  });
+
+  check("callback_smoke_menu_no_execution", () => {
+    const result = executeCode(normalizeCode, makeCallback("cfdi_sbx:smoke_menu"))[0].json;
+    assert.strictEqual(result.should_execute, false);
+    assert.strictEqual(result.router_status, "smoke_menu");
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:smoke_create"));
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:smoke_download"));
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:smoke_cancel"));
+    return "submenu";
+  });
+
+  check("callback_smoke_actions_sandbox_only", () => {
+    for (const [callbackData, expectedAction] of [
+      ["cfdi_sbx:smoke_create", "sandbox.smoke.create"],
+      ["cfdi_sbx:smoke_download", "sandbox.smoke.download"],
+      ["cfdi_sbx:smoke_cancel", "sandbox.smoke.cancel"],
+    ]) {
+      const result = executeCode(normalizeCode, makeCallback(callbackData))[0].json;
+      assert.strictEqual(result.should_execute, true, callbackData);
+      assert.strictEqual(result.requested_action, expectedAction);
+      assert(!/production|api\.factura\.com/i.test(result.execute_command));
+    }
+    return "smoke sandbox callbacks";
+  });
+
+  check("unknown_callback_shows_menu", () => {
+    const result = executeCode(normalizeCode, makeCallback("cfdi_sbx:bad"))[0].json;
+    assert.strictEqual(result.should_execute, false);
+    assert.strictEqual(result.router_status, "help");
+    assert(result.reply_text.includes("Callback sandbox no reconocido"));
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:full"));
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:smoke_menu"));
+    return "menu";
+  });
+
+  check("cancel_callback_never_executes", () => {
+    const result = executeCode(normalizeCode, makeCallback("cfdi_sbx:cancel"))[0].json;
+    assert.strictEqual(result.should_execute, false);
+    assert.strictEqual(result.router_status, "cancelled");
+    assert.strictEqual(result.execute_command, "");
+    return result.router_status;
+  });
+
+  check("sandbox_menu_text_shows_buttons", () => {
+    const result = executeCode(normalizeCode, makeMessage("/sandbox_menu"))[0].json;
+    assert.strictEqual(result.should_execute, false);
+    assert.strictEqual(result.router_status, "menu");
+    assert(result.telegram_payload.reply_markup.inline_keyboard.flat().some((button) => button.callback_data === "cfdi_sbx:full"));
+    return "menu buttons";
   });
 
   check("unauthorized_chat_does_not_execute", () => {
@@ -237,6 +373,12 @@ if (workflow) {
   check("does_not_send_xml_pdf_files", () => {
     assert(!/sendDocument|sendPhoto|sendMediaGroup|binaryData|binaryProperty|\.xml|\.pdf/i.test(raw));
     return "no file sending";
+  });
+
+  check("does_not_send_documents_or_files", () => {
+    assert(!/sendDocument|sendPhoto|sendMediaGroup|sendAudio|sendVideo|multipart|binary/i.test(raw));
+    assert(!/zip_path|excel_path|accountant-review-.*xlsx|accountant-package-.*zip/i.test(raw));
+    return "no attachments";
   });
 
   check("does_not_mutate_catalog", () => {

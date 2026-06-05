@@ -751,6 +751,7 @@ solo una alerta corta y no muestra detalles largos.
 
 Comandos permitidos:
 
+- `/sandbox_menu`
 - `/sandbox_preflight`
 - `/sandbox_report`
 - `/sandbox_package`
@@ -760,5 +761,30 @@ Comandos permitidos:
 - `/sandbox_smoke_create`
 - `/sandbox_smoke_download`
 - `/sandbox_smoke_cancel`
+
+## Telegram Sandbox Buttons 6A.11
+
+El router sandbox agrega botones inline, pero Factura.com sigue fuera del
+workflow. Los botones usan solo `callback_data` corto:
+
+```text
+cfdi_sbx:report
+cfdi_sbx:package
+cfdi_sbx:excel
+cfdi_sbx:checklist
+cfdi_sbx:full
+cfdi_sbx:preflight
+cfdi_sbx:smoke_menu
+cfdi_sbx:smoke_create
+cfdi_sbx:smoke_download
+cfdi_sbx:smoke_cancel
+cfdi_sbx:cancel
+cfdi_sbx:menu
+```
+
+Estos tokens no contienen campos CFDI, RFC, UUID, UID, montos, rutas, XML/PDF,
+ZIP, Excel, headers Factura.com ni credenciales. El mapeo a acciones ocurre en
+n8n por allowlist y la ejecucion real sigue en `scripts/run-sandbox-action.js`.
+No se envian XML/PDF/ZIP/Excel por Telegram en esta fase.
 
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.

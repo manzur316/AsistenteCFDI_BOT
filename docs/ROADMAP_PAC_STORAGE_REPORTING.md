@@ -487,6 +487,7 @@ Responsabilidades que n8n no tiene:
 
 Comandos del router:
 
+- `/sandbox_menu` -> muestra menu de botones
 - `/sandbox_preflight` -> `sandbox.preflight`
 - `/sandbox_report` -> `sandbox.report.generate`
 - `/sandbox_package` -> `sandbox.package.generate`
@@ -496,6 +497,44 @@ Comandos del router:
 - `/sandbox_smoke_create` -> `sandbox.smoke.create`
 - `/sandbox_smoke_download` -> `sandbox.smoke.download`
 - `/sandbox_smoke_cancel` -> `sandbox.smoke.cancel`
+
+### Telegram Sandbox UI Buttons 6A.11
+
+La fase 6A.11 agrega `inline_keyboard` para operar el router sandbox desde
+Telegram sin abrir comandos libres ni exponer datos fiscales en callbacks.
+
+Documento:
+
+```text
+workflow/CFDI_SANDBOX_TELEGRAM_BUTTONS.md
+```
+
+Botones del menu principal:
+
+- Resumen mensual sandbox -> `cfdi_sbx:report`
+- Generar paquete contador -> `cfdi_sbx:package`
+- Generar Excel -> `cfdi_sbx:excel`
+- Generar checklist -> `cfdi_sbx:checklist`
+- Paquete completo -> `cfdi_sbx:full`
+- Smoke sandbox -> `cfdi_sbx:smoke_menu`
+- Estado / preflight -> `cfdi_sbx:preflight`
+- Cancelar -> `cfdi_sbx:cancel`
+
+Submenu smoke:
+
+- Crear CFDI sandbox -> `cfdi_sbx:smoke_create`
+- Crear + XML/PDF -> `cfdi_sbx:smoke_download`
+- Crear + cancelar -> `cfdi_sbx:smoke_cancel`
+- Volver -> `cfdi_sbx:menu`
+
+Reglas:
+
+- `callback_data` mide menos de 32 caracteres y solo contiene tokens
+  `cfdi_sbx:*` de allowlist.
+- No contiene RFC, UUID, UID, montos, rutas, XML/PDF, ZIP, Excel, credenciales,
+  headers ni secretos.
+- No envia documentos por Telegram; solo resumen seguro y botones siguientes.
+- Smoke sigue siendo sandbox y requiere opt-in local.
 
 ### Sandbox Reporting Engine 6A.8
 

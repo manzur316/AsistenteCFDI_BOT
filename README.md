@@ -621,6 +621,7 @@ node scripts/run-sandbox-action.js <action>
 
 Comandos:
 
+- `/sandbox_menu`
 - `/sandbox_preflight`
 - `/sandbox_report`
 - `/sandbox_package`
@@ -635,6 +636,18 @@ N8n no conoce Factura.com, PAC, XML/PDF, headers ni contratos fiscales internos.
 Si `TELEGRAM_BOT_TOKEN` existe localmente, puede responder por `sendMessage`; si
 no, responde por webhook local. No envia XML/PDF, ZIP, Excel ni otros archivos
 por Telegram en esta fase.
+
+Fase 6A.11 agrega botones inline sandbox sobre el mismo router:
+
+```text
+workflow/CFDI_SANDBOX_TELEGRAM_BUTTONS.md
+```
+
+El menu se abre con `/sandbox_menu` y usa `callback_data` corto de allowlist,
+por ejemplo `cfdi_sbx:report`, `cfdi_sbx:full`, `cfdi_sbx:smoke_menu` y
+`cfdi_sbx:cancel`. Los callbacks no contienen RFC, UUID, UID, montos, rutas,
+XML/PDF, ZIP, Excel, credenciales ni secretos. Los botones solo disparan
+acciones sandbox permitidas y siguen sin enviar archivos por Telegram.
 
 ### Politica conversacional 4.7
 

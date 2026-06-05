@@ -54,6 +54,7 @@ http://localhost:5678/webhook/cfdi-sandbox-action-router
 El router usa allowlist. No ejecuta comandos libres.
 
 ```text
+/sandbox_menu           -> muestra menu de botones
 /sandbox_preflight       -> sandbox.preflight
 /sandbox_report          -> sandbox.report.generate
 /sandbox_package         -> sandbox.package.generate
@@ -65,6 +66,35 @@ El router usa allowlist. No ejecuta comandos libres.
 /sandbox_smoke_cancel    -> sandbox.smoke.cancel
 ```
 
+## Botones Telegram Sandbox
+
+La fase 6A.11 agrega `inline_keyboard` con callback_data de allowlist. Ver:
+
+```text
+workflow/CFDI_SANDBOX_TELEGRAM_BUTTONS.md
+```
+
+Menu principal:
+
+- Resumen mensual sandbox -> `cfdi_sbx:report`
+- Generar paquete contador -> `cfdi_sbx:package`
+- Generar Excel -> `cfdi_sbx:excel`
+- Generar checklist -> `cfdi_sbx:checklist`
+- Paquete completo -> `cfdi_sbx:full`
+- Smoke sandbox -> `cfdi_sbx:smoke_menu`
+- Estado / preflight -> `cfdi_sbx:preflight`
+- Cancelar -> `cfdi_sbx:cancel`
+
+Submenu smoke:
+
+- Crear CFDI sandbox -> `cfdi_sbx:smoke_create`
+- Crear + XML/PDF -> `cfdi_sbx:smoke_download`
+- Crear + cancelar -> `cfdi_sbx:smoke_cancel`
+- Volver -> `cfdi_sbx:menu`
+
+Los callbacks nunca contienen RFC, UUID, UID, montos, rutas, XML/PDF, ZIP,
+Excel, credenciales ni secretos.
+
 ## Payload De Prueba Local
 
 Puedes probar con un HTTP POST local desde PowerShell:
@@ -74,7 +104,7 @@ $body = @{
   message = @{
     chat = @{ id = $env:CFDI_ALLOWED_TELEGRAM_CHAT_ID }
     from = @{ id = "LOCAL_USER" }
-    text = "/sandbox_full_package"
+    text = "/sandbox_menu"
   }
 } | ConvertTo-Json -Depth 10
 
@@ -96,16 +126,39 @@ Respuesta segura esperada:
 }
 ```
 
+Para simular un boton sin Telegram real:
+
+```powershell
+$body = @{
+  callback_query = @{
+    id = "LOCAL_CALLBACK"
+    from = @{ id = "LOCAL_USER" }
+    data = "cfdi_sbx:full"
+    message = @{
+      message_id = 1
+      chat = @{ id = $env:CFDI_ALLOWED_TELEGRAM_CHAT_ID }
+    }
+  }
+} | ConvertTo-Json -Depth 10
+
+Invoke-WebRequest `
+  -Uri "http://localhost:5678/webhook/cfdi-sandbox-action-router" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body $body
+```
+
 ## Seguridad
 
 - `CFDI_ALLOWED_TELEGRAM_CHAT_ID` es obligatorio.
 - Si `chat_id` no coincide, responde `No autorizado`.
 - El action sale de allowlist, no de texto libre.
+- `callback_data` sale de allowlist y mide menos de 32 caracteres.
 - `Execute Command` solo ejecuta `node scripts/run-sandbox-action.js <action>`.
 - No hay HTTP Request a Factura.com.
 - No contiene `F-Api-Key`, `F-Secret-Key` ni `F-PLUGIN`.
 - No imprime credenciales, `.env`, CSD, XML/PDF completos ni datos reales.
-- No envia XML/PDF por Telegram en esta fase.
+- No envia XML/PDF, ZIP ni Excel por Telegram en esta fase.
 - Si `sensitive_findings` no esta vacio, solo muestra conteo y alerta corta.
 - Produccion sigue bloqueada por el Action Layer.
 
@@ -118,5 +171,5 @@ observabilidad sandbox local para preparar la siguiente fase.
 Siguiente fase recomendada:
 
 ```text
-6A.11 Telegram UI buttons
+6A.12 Sandbox action audit history
 ```
