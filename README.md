@@ -797,6 +797,14 @@ contratos y modulos testeables:
 docs/PHASE_7_1B_TELEGRAM_N8N_WORKFLOW_TOPOLOGY.md
 ```
 
+Fase 7.1C estabiliza la UX real de borradores en Telegram: preview corto,
+botones de edicion por campo, aprobacion explicita, regreso a borrador y
+`Ver resumen` no ambiguo:
+
+```text
+docs/PHASE_7_1C_TELEGRAM_DRAFT_UX_STABILIZATION.md
+```
+
 Fase 7.2 agrega el renderer puro del menu producto Telegram. Produce payloads
 seguros de texto y `inline_keyboard`, pero no envia mensajes ni toca workflows:
 

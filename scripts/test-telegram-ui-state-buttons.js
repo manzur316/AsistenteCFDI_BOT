@@ -247,10 +247,20 @@ const requiredActions = [
   "VIEW_DRAFT",
   "APPROVE_DRAFT",
   "DISCARD_DRAFT",
+  "RESTORE_DRAFT",
   "BACK_PENDING",
   "HELP",
   "CANCEL_EDIT",
   "CANCEL_DRAFT",
+  "VIEW_SUMMARY",
+  "EDIT_CLIENT",
+  "EDIT_DESCRIPTION",
+  "EDIT_AMOUNT",
+  "EDIT_TAX_MODE",
+  "ADD_LINE",
+  "EDIT_LINE",
+  "REMOVE_LINE",
+  "BACK_TO_DRAFT",
   "CREATE_BASIC_CLIENT",
   "CONTINUE_UNVALIDATED_CLIENT",
 ];
@@ -269,8 +279,8 @@ checks.push({
   value: callbackData,
 });
 checks.push({
-  name: "approve_descartar_cancel_son_one_time",
-  pass: ["APPROVE_DRAFT", "DISCARD_DRAFT", "CANCEL_DRAFT"].every((action) =>
+  name: "approve_descartar_cancel_restore_son_one_time",
+  pass: ["APPROVE_DRAFT", "DISCARD_DRAFT", "CANCEL_DRAFT", "RESTORE_DRAFT"].every((action) =>
     validateActionTokenRecord({ token, chat_id: chatId, action, expires_at: "2099-01-01T00:00:00.000Z", used_at: "2026-06-04T00:00:00.000Z" }, { chatId }).reason === "token_usado"
   ),
   value: "one-time",
@@ -290,7 +300,12 @@ if (handleCode) {
     {
       name: "editing_state_botones",
       run: () => executeCode(handleCode, baseInput("ver", { update_id: 9302, chat_state: editingState(), clients: [], tax_rules: [] })),
-      expect: (result) => result.action === "EDITING_PREVIEW" && hasButtons(result, ["Ver borrador", "Confirmar", "Cancelar edicion", "Cancelar borrador"]) && callbacksSafe(result),
+      expect: (result) => result.action === "EDITING_PREVIEW" && hasButtons(result, ["Cliente", "Concepto / descripcion", "Monto", "IVA", "Agregar linea", "Editar linea", "Eliminar linea", "Regresar"]) && callbacksSafe(result),
+    },
+    {
+      name: "preview_sin_comandos_legacy_visibles",
+      run: () => executeCode(handleCode, baseInput("Privada Rivera, revise camaras por 800 +IVA", { update_id: 93023 })),
+      expect: (result) => result.action === "NEEDS_CONFIRM_DRAFT" && result.parse_mode === "HTML" && /<b>Cliente:<\/b>/.test(String(result.telegram_message || "")) && /<b>Total:<\/b>/.test(String(result.telegram_message || "")) && /<b>Estado:<\/b>/.test(String(result.telegram_message || "")) && /<b>Advertencias:<\/b>/.test(String(result.telegram_message || "")) && !/Responder:|confirmar\neditar\ncancelar|\/editlinea/i.test(String(result.telegram_message || "")) && String(result.telegram_message || "").includes("Usa los botones de abajo"),
     },
     {
       name: "pendientes_tiene_acciones_por_draft",
@@ -329,7 +344,7 @@ if (handleCode) {
     {
       name: "confirmado_tiene_detalle_pendientes_nueva",
       run: () => executeCode(handleCode, baseInput("confirmar", { update_id: 9311, chat_state: previewState(), clients: [], tax_rules: [] })),
-      expect: (result) => result.action === "DRAFT_CONFIRMED" && hasButtons(result, ["Ver detalle", "Pendientes", "Nueva factura"]) && callbacksSafe(result),
+      expect: (result) => result.action === "DRAFT_CONFIRMED" && hasButtons(result, ["Ver borrador", "Pendientes", "Nueva factura"]) && /Estado actual:<\/b> BORRADOR|Estado actual: BORRADOR/.test(String(result.telegram_message || "")) && result.parse_mode === "HTML" && callbacksSafe(result),
     },
     {
       name: "cliente_no_validado_tiene_botones_seguro",
@@ -339,7 +354,17 @@ if (handleCode) {
     {
       name: "approve_button_actualiza_pendiente_y_usa_token",
       run: () => executeCode(handleCode, callbackInput("APPROVE_DRAFT", { draft_id: "DRAFT-PEND-1" }, { update_id: 9313, recent_drafts: [pending] })),
-      expect: (result) => result.action === "COMMAND_APROBAR" && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'APROBADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_APROBAR" && String(result.telegram_message || "").includes("Borrador aprobado") && hasButtons(result, ["Ver borrador", "Regresar a borrador", "Menu principal"]) && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'APROBADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
+    },
+    {
+      name: "restore_button_regresa_aprobado_a_borrador",
+      run: () => executeCode(handleCode, callbackInput("RESTORE_DRAFT", { draft_id: "DRAFT-APROB-1" }, { update_id: 93131, recent_drafts: [approved] })),
+      expect: (result) => result.action === "COMMAND_REGRESAR_BORRADOR" && /Estado actual:<\/b> BORRADOR|Estado actual: BORRADOR/.test(String(result.telegram_message || "")) && result.parse_mode === "HTML" && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'PENDIENTE'") && hasButtons(result, ["Aprobar", "Descartar", "Volver a pendientes", "Ver resumen"]) && callbacksSafe(result),
+    },
+    {
+      name: "view_summary_no_abre_menu_silencioso",
+      run: () => executeCode(handleCode, callbackInput("VIEW_SUMMARY", {}, { update_id: 93132, recent_drafts: [], clients: [], tax_rules: [] })),
+      expect: (result) => result.action === "COMMAND_RESUMEN" && String(result.telegram_message || "").includes("Resumen mensual basico") && !String(result.telegram_message || "").includes("Comandos disponibles") && hasButtons(result, ["Nueva factura", "Pendientes", "Aprobadas", "Clientes", "Ayuda"]) && callbacksSafe(result),
     },
     {
       name: "discard_button_actualiza_pendiente_y_usa_token",
@@ -388,6 +413,11 @@ checks.push({
   name: "workflow_no_token_real",
   pass: !/\bbot?\d{6,}:[A-Za-z0-9_-]{20,}\b/.test(workflowText),
   value: "no token real",
+});
+checks.push({
+  name: "workflow_sendmessage_parse_mode_opt_in",
+  pass: workflowText.includes("$json.parse_mode") && workflowText.includes("body.parse_mode = $json.parse_mode"),
+  value: "parse_mode opt-in",
 });
 checks.push({
   name: "workflow_no_pac_timbrado_xml_pdf_whatsapp",

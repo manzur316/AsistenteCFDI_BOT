@@ -741,6 +741,19 @@ workflow `cfdi_sandbox_action_router.n8n.json` queda como `TECHNICAL_ADMIN`.
 Los workflows futuros deben tener responsabilidad separada y no recibir updates
 Telegram directamente.
 
+### Telegram Draft UX Stabilization 7.1C
+
+La fase 7.1C estabiliza la experiencia real de borradores CFDI en el workflow
+primario de Telegram: preview corto, botones de edicion por campo, aprobacion
+explicita, regreso de `APROBADO` a borrador operativo y `Ver resumen` como
+accion propia, sin cambiar scoring ni reglas fiscales.
+
+Documento:
+
+```text
+docs/PHASE_7_1C_TELEGRAM_DRAFT_UX_STABILIZATION.md
+```
+
 Siguiente fase recomendada: `7.2 Telegram Product Menu Renderer`.
 
 ### Telegram Product Menu Renderer 7.2
