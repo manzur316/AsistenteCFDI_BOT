@@ -424,6 +424,30 @@ Reglas fiscales de reporte:
 - Futuro: empaquetar ZIP/Excel mensual para contador sin mezclar sandbox con
   produccion.
 
+### Accountant Package Sandbox 6A.8B
+
+La fase 6A.8B crea un paquete mensual sandbox para revision del contador a
+partir de `runtime/reports-sandbox/` y `runtime/storage-sandbox/`. El resultado
+vive solo en `runtime/accountant-packages-sandbox/YYYY-MM/` y contiene una
+carpeta `package/` mas un ZIP local.
+
+Contenido:
+
+- `README_CONTADOR.txt` con leyenda de revision humana.
+- `manifest.json` del paquete.
+- Reportes JSON/CSV de monthly, client, document-control y accountant-review.
+- `XML/` y `PDF/` con artifacts disponibles.
+- `CREATED/`, `CANCELLED/` y `ERROR/` con indices por estatus.
+
+Restricciones:
+
+- No llama PAC, no timbra, no cancela, no envia email y no envia WhatsApp.
+- No versiona ZIP, XML/PDF, `.env`, CSD, credenciales ni datos reales.
+- Cancelados van separados y no se suman como ingresos vigentes.
+- Si falta XML/PDF, UUID o identidad, se reporta como alerta para revision.
+- Futuro: export Excel real y ZIP mensual para contador, sin mezclar sandbox
+  con produccion fiscal.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

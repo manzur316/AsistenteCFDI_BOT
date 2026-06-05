@@ -524,6 +524,21 @@ como `UNKNOWN` cuando no se pueden extraer de manifest/XML sanitizado. Los
 cancelados se cuentan aparte y no se suman como ingresos vigentes. Futuro:
 paquete contador ZIP/Excel.
 
+Fase 6A.8B agrega el paquete mensual sandbox para contador. Lee los reportes de
+`runtime/reports-sandbox` y los artifacts disponibles en `runtime/storage-sandbox`,
+crea una carpeta local y un ZIP bajo `runtime/accountant-packages-sandbox/YYYY-MM/`:
+
+```powershell
+node scripts/generate-sandbox-accountant-package.js
+node scripts/analyze-sandbox-accountant-package.js
+```
+
+El paquete contiene `README_CONTADOR.txt`, `manifest.json`, los reportes
+JSON/CSV, `accountant-review.json` y carpetas `XML/`, `PDF/`, `CREATED/`,
+`CANCELLED/` y `ERROR/`. No envia email, no envia WhatsApp, no llama PAC, no
+timbra y no sustituye contador. El ZIP, XML/PDF y todo `runtime/` quedan fuera
+de Git. Futuro: export Excel real para paquete mensual.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

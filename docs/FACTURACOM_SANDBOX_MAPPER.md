@@ -590,4 +590,45 @@ cuando puede extraer importes de manifest/XML local. Los documentos
 ingresos vigentes. Si no hay montos, el reporte marca `amount_status=UNKNOWN`;
 no inventa importes ni calcula ISR definitivo.
 
+## Accountant Package Sandbox 6A.8B
+
+El paquete mensual sandbox para contador empaqueta reportes y artifacts locales
+ya generados. No llama Factura.com, no descarga nuevos XML/PDF, no cancela, no
+envia email, no envia WhatsApp y no toca produccion.
+
+Comandos:
+
+```powershell
+node scripts/generate-sandbox-accountant-package.js
+node scripts/analyze-sandbox-accountant-package.js
+```
+
+Salida:
+
+```text
+runtime/accountant-packages-sandbox/YYYY-MM/
+  package/
+    README_CONTADOR.txt
+    manifest.json
+    monthly-summary.json
+    monthly-summary.csv
+    client-summary.json
+    client-summary.csv
+    document-control.json
+    document-control.csv
+    accountant-review.json
+    XML/
+    PDF/
+    CREATED/
+    CANCELLED/
+    ERROR/
+  accountant-package-YYYY-MM.zip
+```
+
+El paquete mantiene la leyenda `Borrador sujeto a revisión humana. No sustituye contador.`
+y separa cancelados de ingresos vigentes. Si faltan XML/PDF, UUID o identidad,
+la alerta vive en `document-control` y en `manifest.json`. El ZIP y todos los
+artifacts quedan solo en `runtime/` y no deben versionarse. Futuro: export Excel
+real del paquete mensual.
+
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.
