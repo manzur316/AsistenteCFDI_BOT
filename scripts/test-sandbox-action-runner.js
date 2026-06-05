@@ -4,10 +4,13 @@ const path = require("path");
 const { spawnSync, execFileSync } = require("child_process");
 const {
   ACTIONS,
+  ACTION_STATUSES,
   analyzeLatestActionResult,
   listSandboxActions,
   runSandboxAction,
 } = require("./lib/sandbox-action-runner");
+const { generateReports } = require("./generate-sandbox-monthly-report");
+const { createZipArchive } = require("./lib/sandbox-accountant-package");
 
 const root = path.resolve(__dirname, "..");
 const tempRoot = path.join(root, "runtime", "test-sandbox-action-runner");
@@ -43,6 +46,75 @@ function paths(name) {
   };
 }
 
+function writeText(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, String(value), "utf8");
+}
+
+function writeJson(filePath, value) {
+  writeText(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function makeUnsafeXlsx(targetPath, unsafeText = "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/runtime/demo") {
+  const sourceDir = path.join(tempRoot, `unsafe-xlsx-src-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  writeText(path.join(sourceDir, "xl", "workbook.xml"), "<workbook><sheets><sheet name=\"DEMO\" sheetId=\"1\"/></sheets></workbook>");
+  writeText(path.join(sourceDir, "xl", "worksheets", "sheet1.xml"), `<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>${unsafeText}</t></is></c></row></sheetData></worksheet>`);
+  createZipArchive(sourceDir, targetPath);
+  fs.rmSync(sourceDir, { recursive: true, force: true });
+}
+
+function writeMinimalStorage(storageRoot) {
+  const invoiceDir = path.join(storageRoot, "emitters", "EMITTER-DEMO", "2026", "06", "clients", "CLIENT-A", "invoices", "CFDI-ERROR");
+  writeJson(path.join(invoiceDir, "manifest.json"), {
+    schema_version: "sandbox_storage_invoice.v1",
+    generated_at: "2026-06-04T10:01:00.000Z",
+    human_review_warning: "BORRADOR SUJETO A REVISION HUMANA",
+    pac_provider: "factura.com",
+    pac_environment: "SANDBOX",
+    status: "ERROR",
+    identity_status: "MISSING",
+    emitter_id: "EMITTER-DEMO",
+    client_id: "CLIENT-A",
+    year: "2026",
+    month: "06",
+    draft_id: "DRAFT-ERROR",
+    invoice_id: "CFDI-ERROR",
+    cfdi_uid: null,
+    uuid: null,
+    serie: null,
+    folio: null,
+    has_xml: false,
+    has_pdf: false,
+    artifacts: [],
+  });
+  writeJson(path.join(storageRoot, "reports", "storage-index.json"), {
+    schema_version: "sandbox_storage.v1.index",
+    generated_at: "2026-06-04T10:02:00.000Z",
+    storage_root: "runtime/test-sandbox-action-runner/storage-sandbox",
+    document_count: 1,
+    documents: [{
+      manifest_path: "emitters/EMITTER-DEMO/2026/06/clients/CLIENT-A/invoices/CFDI-ERROR/manifest.json",
+      invoice_id: "CFDI-ERROR",
+      draft_id: "DRAFT-ERROR",
+      emitter_id: "EMITTER-DEMO",
+      client_id: "CLIENT-A",
+      year: "2026",
+      month: "06",
+      status: "ERROR",
+      identity_status: "MISSING",
+      cfdi_uid: null,
+      uuid: null,
+      has_xml: false,
+      has_pdf: false,
+      has_cancel_response: false,
+    }],
+  });
+  writeJson(path.join(storageRoot, "reports", "storage-summary.json"), {
+    schema_version: "sandbox_storage.v1.summary",
+    total_documents: 1,
+  });
+}
+
 function git(args) {
   try {
     return execFileSync("git", args, { cwd: root, encoding: "utf8" })
@@ -57,7 +129,7 @@ function git(args) {
 function assertStableResult(result, expectedAction) {
   assert.strictEqual(result.schema_version, "sandbox_action_result.v1");
   assert.strictEqual(result.action, expectedAction);
-  assert(["OK", "ERROR", "SKIPPED", "NEEDS_RUNTIME", "NEEDS_CONFIG"].includes(result.status), result.status);
+  assert(ACTION_STATUSES.includes(result.status), result.status);
   assert.strictEqual(typeof result.started_at, "string");
   assert.strictEqual(typeof result.finished_at, "string");
   assert.strictEqual(typeof result.duration_ms, "number");
@@ -188,6 +260,38 @@ cleanTemp();
     assert(!JSON.stringify(report).includes("PRODUCTION_BLOCKED"));
     assert(!JSON.stringify(pack).includes("PRODUCTION_BLOCKED"));
     return "no PAC";
+  });
+
+  await check("package_safety_error_no_es_needs_runtime", async () => {
+    const p = paths("package-safety-error");
+    writeMinimalStorage(p.storageRoot);
+    const reportResult = generateReports({ storageRoot: p.storageRoot, reportRoot: p.reportRoot, period: "2026-06" });
+    assert.strictEqual(reportResult.ok, true);
+    makeUnsafeXlsx(path.join(p.packageRoot, "2026-06", "accountant-review-2026-06.xlsx"));
+    const result = await runSandboxAction("sandbox.package.generate", { ...p, period: "2026-06", env: { FACTURACOM_SANDBOX_LIVE: "0" } });
+    assertStableResult(result, "sandbox.package.generate");
+    assert.strictEqual(result.status, "PACKAGE_SAFETY_ERROR");
+    assert.strictEqual(result.error_classification, "PACKAGE_SAFETY_ERROR");
+    assert.strictEqual(result.needs_runtime, false);
+    assert.strictEqual(result.safety_blocked, true);
+    assert.notStrictEqual(result.status, "NEEDS_RUNTIME");
+    assert(JSON.stringify(result.errors).includes("absolute_path"));
+    return result.status;
+  });
+
+  await check("full_monthly_package_safety_error_no_es_needs_runtime", async () => {
+    const p = paths("full-package-safety-error");
+    writeMinimalStorage(p.storageRoot);
+    makeUnsafeXlsx(path.join(p.packageRoot, "2026-06", "accountant-review-2026-06.xlsx"));
+    const result = await runSandboxAction("sandbox.full.monthly.package", { ...p, period: "2026-06", env: { FACTURACOM_SANDBOX_LIVE: "0" } });
+    assertStableResult(result, "sandbox.full.monthly.package");
+    assert.strictEqual(result.status, "PACKAGE_SAFETY_ERROR");
+    assert.strictEqual(result.error_classification, "PACKAGE_SAFETY_ERROR");
+    assert.strictEqual(result.needs_runtime, false);
+    assert.strictEqual(result.safety_blocked, true);
+    assert.notStrictEqual(result.status, "NEEDS_RUNTIME");
+    assert(JSON.stringify(result.errors).includes("absolute_path"));
+    return result.status;
   });
 
   await check("smoke_requiere_live_1", async () => {

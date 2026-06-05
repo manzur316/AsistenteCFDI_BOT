@@ -4,6 +4,7 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const {
   HUMAN_REVIEW_NOTICE,
+  createZipArchive,
 } = require("./lib/sandbox-accountant-package");
 const {
   REQUIRED_SHEETS,
@@ -51,6 +52,14 @@ function writeJson(filePath, value) {
 
 function relFromStorage(filePath) {
   return path.relative(storageRoot, filePath).replace(/\\/g, "/");
+}
+
+function makeUnsafeXlsx(targetPath, unsafeText = "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/runtime/demo") {
+  const sourceDir = path.join(tempRoot, `unsafe-xlsx-src-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  writeText(path.join(sourceDir, "xl", "workbook.xml"), "<workbook><sheets><sheet name=\"DEMO\" sheetId=\"1\"/></sheets></workbook>");
+  writeText(path.join(sourceDir, "xl", "worksheets", "sheet1.xml"), `<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>${unsafeText}</t></is></c></row></sheetData></worksheet>`);
+  createZipArchive(sourceDir, targetPath);
+  fs.rmSync(sourceDir, { recursive: true, force: true });
 }
 
 function git(args) {
@@ -286,6 +295,14 @@ check("no_incluye_credenciales_env_csd", () => {
   return "clean";
 });
 
+check("excel_no_contiene_rutas_absolutas", () => {
+  const repoRootText = root.replace(/\\/g, "/");
+  assert(!/C:[\\/]/i.test(combinedText));
+  assert(!combinedText.includes(repoRootText));
+  assert.strictEqual(analysis.absolute_path_findings.length, 0, analysis.absolute_path_findings.join(", "));
+  return "relative only";
+});
+
 check("escapa_formula_injection", () => {
   assert.strictEqual(analysis.formula_injection_findings.length, 0, analysis.formula_injection_findings.join(", "));
   assert(!/<t>[=+\-@]/.test(combinedText));
@@ -305,6 +322,19 @@ check("reporta_unknown_cuando_faltan_montos", () => {
 check("sensitive_findings_none", () => {
   assert.strictEqual(analysis.sensitive_findings.length, 0, analysis.sensitive_findings.join(", "));
   return "none";
+});
+
+check("analyzer_reporta_absolute_path_con_entry_y_celda", () => {
+  const unsafePath = path.join(tempRoot, "unsafe-excel", "accountant-review-2026-06.xlsx");
+  makeUnsafeXlsx(unsafePath);
+  const result = analyzeAccountantExcel({ excelPath: unsafePath });
+  assert(result.absolute_path_findings.some((finding) => (
+    finding.includes("accountant-review-2026-06.xlsx:xl/worksheets/sheet1.xml")
+    && finding.includes("DEMO!A1")
+    && finding.endsWith(":absolute_path")
+  )), result.absolute_path_findings.join(", "));
+  assert.strictEqual(result.ok, false);
+  return result.absolute_path_findings[0];
 });
 
 check("no_escribe_fuera_runtime", () => {

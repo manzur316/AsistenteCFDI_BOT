@@ -16,6 +16,7 @@ const runtimeRoot = path.join(repoRoot, "runtime");
 const DEFAULT_SMOKE_RUNTIME = path.join(runtimeRoot, "facturacom-sandbox");
 const DEFAULT_ACTION_RESULTS_ROOT = path.join(runtimeRoot, "action-results-sandbox");
 const ACTION_SCHEMA_VERSION = "sandbox_action_result.v1";
+const ACTION_STATUSES = ["OK", "ERROR", "SKIPPED", "NEEDS_RUNTIME", "NEEDS_CONFIG", "PACKAGE_SAFETY_ERROR"];
 
 const ACTIONS = [
   "sandbox.preflight",
@@ -188,6 +189,10 @@ function statusFromSkipped(result, fallbackReason = "SKIPPED") {
   return fallbackReason;
 }
 
+function isPackageSafetyErrorMessage(message) {
+  return /Paquete contador sandbox inseguro|Excel sandbox inseguro|absolute_path|Sensitive findings|package safety|sandbox inseguro/i.test(String(message || ""));
+}
+
 function stableStep(action, status, output = {}, warnings = [], errors = []) {
   return sanitizeValue({
     action,
@@ -316,6 +321,7 @@ function runPackageAnalyze(paths) {
 }
 
 function finalStatusFromSteps(steps) {
+  if (steps.some((step) => step.status === "PACKAGE_SAFETY_ERROR")) return "PACKAGE_SAFETY_ERROR";
   if (steps.some((step) => step.status === "ERROR")) return "ERROR";
   if (steps.some((step) => step.status === "NEEDS_CONFIG")) return "NEEDS_CONFIG";
   if (steps.some((step) => step.status === "NEEDS_RUNTIME")) return "NEEDS_RUNTIME";
@@ -355,6 +361,7 @@ async function runFullMonthlyPackage(paths) {
 
 function classifyCaughtError(error = {}) {
   const message = String(error.message || error);
+  if (isPackageSafetyErrorMessage(message)) return "PACKAGE_SAFETY_ERROR";
   if (/FACTURACOM_SANDBOX_LIVE|FACTURA_COM_ENV_REQUIRED|ENV_REQUIRED|LIVE_DISABLED|API_KEY|SECRET/i.test(message)) return "NEEDS_CONFIG";
   if (/No existe|Falta|MISSING|runtime|storage|report|package|manifest|summary/i.test(message)) return "NEEDS_RUNTIME";
   if (/Produccion|production|api\.factura\.com/i.test(message)) return "ERROR";
@@ -404,6 +411,11 @@ async function runSandboxAction(action, options = {}) {
     sensitive_findings: [],
   };
   const sanitized = sanitizeValue(base);
+  if (sanitized.status === "PACKAGE_SAFETY_ERROR") {
+    sanitized.error_classification = "PACKAGE_SAFETY_ERROR";
+    sanitized.needs_runtime = false;
+    sanitized.safety_blocked = true;
+  }
   const sensitiveFindings = findSensitiveFindings(sanitized);
   sanitized.sensitive_findings = sensitiveFindings;
   if (sensitiveFindings.length && sanitized.status === "OK") {
@@ -469,6 +481,7 @@ function scanRuntimeActionFindings(dir) {
 module.exports = {
   ACTIONS,
   ACTION_SCHEMA_VERSION,
+  ACTION_STATUSES,
   DEFAULT_ACTION_RESULTS_ROOT,
   analyzeLatestActionResult,
   listSandboxActions,

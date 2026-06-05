@@ -67,7 +67,7 @@ function requireCalls(text) {
   return calls;
 }
 
-function executeCode(code, input, config = {}) {
+function executeCode(code, input, config = {}, nodeOverrides = {}) {
   const nodeContext = {
     "Set Config": {
       json: {
@@ -78,6 +78,7 @@ function executeCode(code, input, config = {}) {
         ...config,
       },
     },
+    ...nodeOverrides,
   };
   const fn = new Function("require", "$json", "$node", "$items", "$itemIndex", code);
   return fn(require, input, nodeContext, () => [], 0);
@@ -372,6 +373,75 @@ if (workflow) {
     assert(summaryCode.includes("latest.json"));
     assert(summaryCode.includes("fs.readFileSync"));
     return "runtime/action-results-sandbox/latest.json";
+  });
+
+  check("summary_produces_non_empty_webhook_response", () => {
+    const routed = executeCode(normalizeCode, makeCallback("cfdi_sbx:full"))[0].json;
+    const result = executeCode(
+      summaryCode,
+      {
+        stdout: JSON.stringify({
+          schema_version: "sandbox_action_result.v1",
+          action: "sandbox.full.monthly.package",
+          status: "OK",
+          ok: true,
+          duration_ms: 123,
+          artifacts: [{ key: "latest_path", path: "runtime/action-results-sandbox/latest.json" }],
+          warnings: [],
+          errors: [],
+          sensitive_findings: [],
+        }),
+      },
+      { projectRoot: path.join(root, "runtime", "nonexistent-project-root") },
+      { "Normalize Input And Route": { json: routed } },
+    )[0].json;
+    assert(result.webhook_response);
+    assert.strictEqual(result.webhook_response.ok, true);
+    assert.strictEqual(result.webhook_response.status, "OK");
+    assert.strictEqual(result.webhook_response.action, "sandbox.full.monthly.package");
+    assert(result.webhook_response.message.includes("Sandbox action: sandbox.full.monthly.package"));
+    assert(Array.isArray(result.webhook_response.warnings));
+    assert(Array.isArray(result.webhook_response.errors));
+    assert(JSON.stringify(result.webhook_response).length > 20);
+    return result.webhook_response.status;
+  });
+
+  check("summary_reports_package_safety_error_body", () => {
+    const routed = executeCode(normalizeCode, makeCallback("cfdi_sbx:full"))[0].json;
+    const result = executeCode(
+      summaryCode,
+      {
+        stdout: JSON.stringify({
+          schema_version: "sandbox_action_result.v1",
+          action: "sandbox.full.monthly.package",
+          status: "PACKAGE_SAFETY_ERROR",
+          ok: false,
+          error_classification: "PACKAGE_SAFETY_ERROR",
+          needs_runtime: false,
+          safety_blocked: true,
+          duration_ms: 42,
+          artifacts: [],
+          warnings: [],
+          errors: ["Paquete contador sandbox inseguro: accountant-review-2026-06.xlsx:xl/worksheets/sheet1.xml:DEMO!A1:absolute_path"],
+          sensitive_findings: [],
+        }),
+      },
+      { projectRoot: path.join(root, "runtime", "nonexistent-project-root") },
+      { "Normalize Input And Route": { json: routed } },
+    )[0].json;
+    assert.strictEqual(result.webhook_response.ok, false);
+    assert.strictEqual(result.webhook_response.status, "PACKAGE_SAFETY_ERROR");
+    assert.strictEqual(result.webhook_response.action, "sandbox.full.monthly.package");
+    assert(result.webhook_response.errors.join(" | ").includes("absolute_path"));
+    assert(!result.webhook_response.message.includes("undefined"));
+    return result.webhook_response.status;
+  });
+
+  check("respond_to_webhook_uses_webhook_response_with_fallback", () => {
+    assert.strictEqual(respondNode.parameters.responseBody.includes("$json.webhook_response"), true);
+    assert(respondNode.parameters.responseBody.includes("MISSING_WEBHOOK_RESPONSE"));
+    assert.strictEqual(respondNode.parameters.respondWith, "json");
+    return "webhook_response";
   });
 
   check("summary_hides_sensitive_details", () => {

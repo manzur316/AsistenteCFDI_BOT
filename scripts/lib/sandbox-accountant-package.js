@@ -667,6 +667,14 @@ function assertAccountantPackageSafe(packageRoot) {
   const findings = [];
   for (const file of listFiles(resolvedPackageRoot)) {
     if (file.toLowerCase().endsWith(".zip")) findings.push(`${relFromRoot(file)}:zip_inside_package_folder`);
+    if (file.toLowerCase().endsWith(".xlsx")) {
+      const { analyzeAccountantExcel } = require("./sandbox-accountant-excel");
+      const analysis = analyzeAccountantExcel({ excelPath: file });
+      findings.push(...(analysis.absolute_path_findings || []));
+      findings.push(...(analysis.sensitive_findings || []));
+      findings.push(...(analysis.formula_injection_findings || []));
+      continue;
+    }
     let content = "";
     try {
       content = fs.readFileSync(file, "utf8");

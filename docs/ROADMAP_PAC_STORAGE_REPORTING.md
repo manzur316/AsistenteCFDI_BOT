@@ -569,6 +569,23 @@ Orden recomendado:
 Criterio para cerrar 6A: pruebas offline PASS, smoke local OK y checklist E2E
 manual sin credenciales, produccion, CSD, runtime versionado ni datos reales.
 
+### Sandbox Package Safety + Webhook Response 6A.11B
+
+La fase 6A.11B corrige dos riesgos del E2E local sin tocar produccion ni
+workflows productivos:
+
+- El paquete mensual ya no escanea `.xlsx` como texto plano. El analizador abre
+  el workbook OOXML, revisa strings visibles y reporta `absolute_path_findings`
+  con workbook, entry y celda aproximada cuando aplica.
+- Un bloqueo real de paquete, ruta absoluta o finding sensible se clasifica como
+  `PACKAGE_SAFETY_ERROR`, con `needs_runtime=false` y `safety_blocked=true`.
+- El router sandbox de n8n debe devolver body JSON no vacio en el path de accion:
+  `ok`, `status`, `action`, `message`, `warnings` y `errors`.
+
+El hotfix mantiene la restriccion de no versionar `runtime/`, Excel, ZIP,
+XML/PDF, CSD, `.env`, credenciales ni datos reales. Tampoco envia archivos por
+Telegram.
+
 ### Sandbox Reporting Engine 6A.8
 
 La fase 6A.8 agrega reportes mensuales locales a partir de

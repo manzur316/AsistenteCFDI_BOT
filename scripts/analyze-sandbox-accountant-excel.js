@@ -16,6 +16,7 @@ function printAnalysis(result) {
   for (const [sheet, count] of Object.entries(result.row_counts || {})) {
     console.log(` - ${sheet}: ${count}`);
   }
+  console.log(`Absolute path findings: ${result.absolute_path_findings.length ? result.absolute_path_findings.join(" | ") : "none"}`);
   console.log(`Sensitive findings: ${result.sensitive_findings.length ? result.sensitive_findings.join(" | ") : "none"}`);
   console.log(`Formula injection findings: ${result.formula_injection_findings.length ? result.formula_injection_findings.join(" | ") : "none"}`);
 }
@@ -25,7 +26,7 @@ if (require.main === module) {
     const arg = process.argv[2];
     const result = analyzeAccountantExcel(arg ? { excelPath: arg } : {});
     printAnalysis(result);
-    if (!result.exists || !result.runtime_path_ok || result.sensitive_findings.length || result.formula_injection_findings.length) {
+    if (!result.exists || !result.runtime_path_ok || result.absolute_path_findings.length || result.sensitive_findings.length || result.formula_injection_findings.length) {
       process.exit(1);
     }
   } catch (error) {

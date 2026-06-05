@@ -402,8 +402,12 @@ function generateAccountantExcel(options = {}) {
   const sheets = buildWorkbookSheets(data);
   const workbook = generateXlsxFile(sheets, target, options);
   const analysis = analyzeAccountantExcel(target);
-  if (analysis.sensitive_findings.length || analysis.formula_injection_findings.length) {
-    throw new Error(`Excel sandbox inseguro: ${[...analysis.sensitive_findings, ...analysis.formula_injection_findings].join(" | ")}`);
+  if (analysis.sensitive_findings.length || analysis.absolute_path_findings.length || analysis.formula_injection_findings.length) {
+    throw new Error(`Excel sandbox inseguro: ${[
+      ...analysis.sensitive_findings,
+      ...analysis.absolute_path_findings,
+      ...analysis.formula_injection_findings,
+    ].join(" | ")}`);
   }
   return {
     ok: true,
@@ -417,6 +421,7 @@ function generateAccountantExcel(options = {}) {
     sheets: sheets.map((sheet) => sheet.name),
     row_counts: Object.fromEntries(sheets.map((sheet) => [sheet.name, sheet.rows.length])),
     sensitive_findings: [],
+    absolute_path_findings: [],
     formula_injection_findings: [],
   };
 }
@@ -464,21 +469,84 @@ function detectRowCounts(entries) {
   return counts;
 }
 
-function findSensitiveFindings(entries) {
+function xmlDecode(value) {
+  return String(value || "")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, "\"")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function sheetNameByEntry(entries) {
+  const names = detectSheetNames(entries);
+  const map = {};
+  names.forEach((name, index) => {
+    map[`xl/worksheets/sheet${index + 1}.xml`] = name;
+  });
+  return map;
+}
+
+function absolutePathMatches(text) {
+  const raw = String(text || "");
+  const patterns = [
+    /\b[A-Za-z]:[\\/][^\s<>"']*/g,
+    /\\\\[A-Za-z0-9._$-]+[\\/][^\s<>"']*/g,
+  ];
+  return patterns.flatMap((pattern) => Array.from(raw.matchAll(pattern)).map((match) => ({
+    index: match.index || 0,
+    value: match[0],
+  })));
+}
+
+function cellReferenceForIndex(text, index) {
+  const before = text.lastIndexOf("<c ", index);
+  if (before < 0) return "";
+  const after = text.indexOf("</c>", before);
+  if (after < index) return "";
+  const cellTagEnd = text.indexOf(">", before);
+  if (cellTagEnd < 0 || cellTagEnd > index) return "";
+  const cellTag = text.slice(before, cellTagEnd + 1);
+  const match = cellTag.match(/\sr="([^"]+)"/);
+  return match ? match[1] : "";
+}
+
+function findingPrefix(workbookName, entryName, sheetNames, text, index) {
+  const sheet = sheetNames[entryName] || "";
+  const cell = cellReferenceForIndex(text, index);
+  const location = sheet && cell ? `${sheet}!${cell}` : cell;
+  return [workbookName, entryName, location].filter(Boolean).join(":");
+}
+
+function findAbsolutePathFindings(entries, workbookName = "workbook.xlsx") {
+  const findings = [];
+  const sheetNames = sheetNameByEntry(entries);
+  for (const entry of entries) {
+    if (!/\.(xml|rels)$/i.test(entry.name)) continue;
+    const text = entry.data.toString("utf8");
+    for (const match of absolutePathMatches(xmlDecode(text))) {
+      const prefix = findingPrefix(workbookName, entry.name, sheetNames, text, match.index);
+      findings.push(`${prefix}:absolute_path`);
+    }
+  }
+  return findings;
+}
+
+function findSensitiveFindings(entries, workbookName = "workbook.xlsx") {
   const findings = [];
   for (const entry of entries) {
     const name = entry.name;
     const text = entry.data.toString("utf8");
-    if (/vbaProject\.bin|\.bin$/i.test(name)) findings.push(`${name}:macro_or_binary_part`);
-    if (/\.env(?:\.|$)/i.test(name) || /\.env(?:\.|$)/i.test(text)) findings.push(`${name}:env_reference`);
-    if (/\.(cer|key|pfx|p12)$/i.test(name) || /\.(cer|key|pfx|p12)\b/i.test(text)) findings.push(`${name}:csd_or_key_reference`);
-    if (/<cfdi:Comprobante|<tfd:TimbreFiscalDigital/i.test(text)) findings.push(`${name}:xml_content`);
-    if (/%PDF/i.test(text)) findings.push(`${name}:pdf_content`);
-    if (/https:\/\/api\.factura\.com/i.test(text)) findings.push(`${name}:production_url`);
+    const prefix = `${workbookName}:${name}`;
+    if (/vbaProject\.bin|\.bin$/i.test(name)) findings.push(`${prefix}:macro_or_binary_part`);
+    if (/\.env(?:\.|$)/i.test(name) || /\.env(?:\.|$)/i.test(text)) findings.push(`${prefix}:env_reference`);
+    if (/\.(cer|key|pfx|p12)$/i.test(name) || /\.(cer|key|pfx|p12)\b/i.test(text)) findings.push(`${prefix}:csd_or_key_reference`);
+    if (/<cfdi:Comprobante|<tfd:TimbreFiscalDigital/i.test(text)) findings.push(`${prefix}:xml_content`);
+    if (/%PDF/i.test(text)) findings.push(`${prefix}:pdf_content`);
+    if (/https:\/\/api\.factura\.com/i.test(text)) findings.push(`${prefix}:production_url`);
     if (/(FACTURACOM_API_KEY|FACTURACOM_SECRET_KEY|FACTURACOM_PLUGIN|F-Api-Key|F-Secret-Key|F-PLUGIN)["':=\s]+(?!\[REDACTED\]|REEMPLAZAR|PLACEHOLDER|TEST_)[A-Za-z0-9+/=_-]{8,}/i.test(text)) {
-      findings.push(`${name}:secret_like_value`);
+      findings.push(`${prefix}:secret_like_value`);
     }
-    if (/[A-Za-z]:[\\/](?![\\/])/.test(text) || /\\\\/.test(text)) findings.push(`${name}:absolute_path`);
   }
   return findings;
 }
@@ -508,6 +576,7 @@ function resolveExcelPath(options = {}) {
 function analyzeAccountantExcel(options = {}) {
   const excelPath = resolveExcelPath(options);
   const period = normalizePeriod(path.basename(path.dirname(excelPath))) || "UNKNOWN";
+  const workbookName = path.basename(excelPath);
   const exists = fs.existsSync(excelPath);
   if (!exists) {
     return {
@@ -519,6 +588,7 @@ function analyzeAccountantExcel(options = {}) {
       sheets: [],
       row_counts: {},
       sensitive_findings: [],
+      absolute_path_findings: [],
       formula_injection_findings: [],
       runtime_path_ok: isInside(runtimeRoot, excelPath),
     };
@@ -526,10 +596,11 @@ function analyzeAccountantExcel(options = {}) {
   const entries = listZipEntries(excelPath);
   const sheets = detectSheetNames(entries);
   const rowCounts = detectRowCounts(entries);
-  const sensitiveFindings = findSensitiveFindings(entries);
+  const absolutePathFindings = findAbsolutePathFindings(entries, workbookName);
+  const sensitiveFindings = findSensitiveFindings(entries, workbookName);
   const formulaFindings = findFormulaInjectionFindings(entries);
   return {
-    ok: sensitiveFindings.length === 0 && formulaFindings.length === 0,
+    ok: sensitiveFindings.length === 0 && absolutePathFindings.length === 0 && formulaFindings.length === 0,
     period,
     exists: true,
     path: relFromRoot(excelPath),
@@ -540,6 +611,7 @@ function analyzeAccountantExcel(options = {}) {
     row_counts: rowCounts,
     entries: entries.length,
     sensitive_findings: sensitiveFindings,
+    absolute_path_findings: absolutePathFindings,
     formula_injection_findings: formulaFindings,
     runtime_path_ok: isInside(runtimeRoot, excelPath),
   };
@@ -551,6 +623,7 @@ module.exports = {
   accountantExcelPathForPeriod,
   analyzeAccountantExcel,
   buildWorkbookSheets,
+  findAbsolutePathFindings,
   generateAccountantExcel,
   listZipEntries,
   loadPackageData,

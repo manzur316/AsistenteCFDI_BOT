@@ -6,6 +6,7 @@ const {
   HUMAN_REVIEW_NOTICE,
   assertAccountantPackageSafe,
   collectStorageArtifacts,
+  createZipArchive,
   loadMonthlyReports,
 } = require("./lib/sandbox-accountant-package");
 const { generateReports } = require("./generate-sandbox-monthly-report");
@@ -51,6 +52,14 @@ function writeJson(filePath, value) {
 
 function relFromStorage(filePath) {
   return path.relative(storageRoot, filePath).replace(/\\/g, "/");
+}
+
+function makeUnsafeXlsx(targetPath, unsafeText = "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/runtime/demo") {
+  const sourceDir = path.join(tempRoot, `unsafe-xlsx-src-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  writeText(path.join(sourceDir, "xl", "workbook.xml"), "<workbook><sheets><sheet name=\"DEMO\" sheetId=\"1\"/></sheets></workbook>");
+  writeText(path.join(sourceDir, "xl", "worksheets", "sheet1.xml"), `<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>${unsafeText}</t></is></c></row></sheetData></worksheet>`);
+  createZipArchive(sourceDir, targetPath);
+  fs.rmSync(sourceDir, { recursive: true, force: true });
 }
 
 function git(args) {
@@ -361,6 +370,25 @@ check("safety_detecta_env_y_csd", () => {
   writeText(path.join(unsafe, "demo.cer"), "CERT");
   assert.throws(() => assertAccountantPackageSafe(unsafe), /env_file|csd_or_key_file/);
   return "detected";
+});
+
+check("safety_detecta_absolute_path_en_json_y_xlsx", () => {
+  const unsafe = path.join(tempRoot, "unsafe-package-absolute-path");
+  fs.mkdirSync(unsafe, { recursive: true });
+  writeText(path.join(unsafe, "manifest.json"), JSON.stringify({ path: "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI/runtime/demo" }));
+  makeUnsafeXlsx(path.join(unsafe, "accountant-review-2026-06.xlsx"));
+  let error = null;
+  try {
+    assertAccountantPackageSafe(unsafe);
+  } catch (caught) {
+    error = caught;
+  }
+  assert(error, "Package safety debio bloquear rutas absolutas.");
+  assert(/absolute_path/.test(error.message), error.message);
+  assert(error.message.includes("manifest.json:absolute_path"), error.message);
+  assert(error.message.includes("accountant-review-2026-06.xlsx:xl/worksheets/sheet1.xml"), error.message);
+  assert(error.message.includes("DEMO!A1"), error.message);
+  return "json + xlsx detected";
 });
 
 check("no_escribe_fuera_runtime", () => {

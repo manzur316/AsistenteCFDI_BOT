@@ -597,13 +597,22 @@ Acciones disponibles:
 - `sandbox.full.monthly.package`
 
 Cada accion devuelve JSON estable con `status` en `OK`, `ERROR`,
-`SKIPPED`, `NEEDS_RUNTIME` o `NEEDS_CONFIG`, escribe resultados solo bajo
+`SKIPPED`, `NEEDS_RUNTIME`, `NEEDS_CONFIG` o `PACKAGE_SAFETY_ERROR`, escribe resultados solo bajo
 `runtime/action-results-sandbox/`, redacta secretos, bloquea produccion y no
 llama PAC salvo las acciones smoke sandbox explicitas. El full monthly package
 refresca storage si hay runtime smoke valido, genera reportes, paquete, Excel,
 checklist, regenera el paquete y analiza el resultado. Sigue siendo sandbox:
 no PAC productivo, no timbrado, no XML/PDF real fiscal y no sustitucion del
 contador.
+
+Fase 6A.11B endurece el paquete mensual sandbox y la respuesta del webhook:
+los `.xlsx` se analizan como OOXML, no como texto plano, para evitar falsos
+positivos de `absolute_path` por bytes internos del ZIP. Si aparece una ruta
+absoluta real, el reporte debe indicar workbook, entry interna y celda aproximada.
+Los bloqueos de paquete se clasifican como `PACKAGE_SAFETY_ERROR`, no como
+`NEEDS_RUNTIME`. El router n8n debe responder siempre con body JSON visible en
+las acciones, incluyendo `ok`, `status`, `action`, `message`, `warnings` y
+`errors`.
 
 Fase 6A.10 agrega el router n8n sandbox sobre esa Action Layer:
 
@@ -662,7 +671,9 @@ Orden recomendado: correr readiness, importar/activar el workflow, probar
 `runtime/action-results-sandbox/latest.json`, probar Telegram real solo con
 `CFDI_ALLOWED_TELEGRAM_CHAT_ID` y confirmar que no se envian archivos por
 Telegram. El cierre de 6A requiere `sensitive_findings=none` o alerta resumida
-sin exponer datos sensibles.
+sin exponer datos sensibles. Para callbacks como `cfdi_sbx:full`, el webhook
+debe regresar HTTP 200 con contenido JSON no vacio aun si la accion termina en
+error controlado.
 
 ### Politica conversacional 4.7
 

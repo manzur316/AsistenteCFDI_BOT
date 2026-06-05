@@ -290,10 +290,43 @@ node scripts/analyze-sandbox-action-result.js
 No hay storage/reportes suficientes para esa accion. Genera runtime sandbox o
 corre el paquete completo local.
 
+### Action returns PACKAGE_SAFETY_ERROR
+
+El runtime existe, pero el paquete o Excel sandbox fue bloqueado por seguridad.
+Revisa `runtime/action-results-sandbox/latest.json`, corre:
+
+```powershell
+node scripts/analyze-sandbox-accountant-excel.js
+node scripts/analyze-sandbox-action-result.js
+```
+
+La salida debe listar `absolute_path_findings`, `formula_injection_findings` o
+`sensitive_findings` sin exponer secretos. No subas el Excel, ZIP, XML/PDF ni
+runtime.
+
 ### Action returns NEEDS_CONFIG
 
 La accion requiere configuracion local, por ejemplo smoke live sandbox. Revisa
 variables de entorno locales. No las pegues en issues, docs ni logs.
+
+### Webhook responde body vacio
+
+El path de accion debe terminar en `Respond to Webhook` con JSON visible. Para
+`cfdi_sbx:full`, la respuesta esperada incluye:
+
+```json
+{
+  "ok": true,
+  "status": "OK",
+  "action": "sandbox.full.monthly.package",
+  "message": "...",
+  "warnings": [],
+  "errors": []
+}
+```
+
+Si hay error controlado, `ok` puede ser `false`, pero el body no debe estar
+vacio.
 
 ## Orden Recomendado Para Cerrar 6A
 
