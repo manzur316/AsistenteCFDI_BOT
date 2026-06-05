@@ -813,7 +813,16 @@ docs/PHASE_7_2_TELEGRAM_PRODUCT_MENU_RENDERER.md
 scripts/lib/telegram-product-menu-renderer.js
 ```
 
-Siguiente fase recomendada: `7.3 Telegram Product Menu Router Adapter`.
+Fase 7.3 conecta los callbacks visibles del menu producto con el router
+primario de Telegram; cada boton navega, ejecuta una accion segura existente o
+responde pendiente explicito:
+
+```text
+docs/PHASE_7_3_TELEGRAM_PRODUCT_MENU_ROUTER_ADAPTER.md
+scripts/test-telegram-product-menu-router-adapter.js
+```
+
+Siguiente fase recomendada: `7.4 Product Flow Integration`.
 
 ### Politica conversacional 4.7
 

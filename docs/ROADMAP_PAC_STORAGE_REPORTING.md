@@ -770,7 +770,22 @@ docs/PHASE_7_2_TELEGRAM_PRODUCT_MENU_RENDERER.md
 scripts/lib/telegram-product-menu-renderer.js
 ```
 
-Siguiente fase recomendada: `7.3 Telegram Product Menu Router Adapter`.
+### Telegram Product Menu Router Adapter 7.3
+
+La fase 7.3 conecta los callbacks visibles del menu producto con el workflow
+primario `cfdi_telegram_local_ingest.n8n.json`. Cada boton visible navega,
+ejecuta una accion segura existente o responde explicitamente que esta en
+preparacion. Admin/sandbox queda solo para OWNER y no se envia XML/PDF/ZIP/Excel
+por Telegram.
+
+Documento y prueba:
+
+```text
+docs/PHASE_7_3_TELEGRAM_PRODUCT_MENU_ROUTER_ADAPTER.md
+scripts/test-telegram-product-menu-router-adapter.js
+```
+
+Siguiente fase recomendada: `7.4 Product Flow Integration`.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
