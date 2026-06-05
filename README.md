@@ -771,9 +771,17 @@ Cierre formal del bloque 6A:
 docs/PHASE_6A_SANDBOX_BLOCK_SIGNOFF.md
 ```
 
-6A queda cerrado como sandbox local: no autoriza produccion, timbrado real,
-datos reales ni Fase 7. Siguiente fase recomendada: `7.0 Telegram Product
-Interface Planning`.
+6A queda cerrado como sandbox local: no autoriza produccion, timbrado real ni
+datos reales.
+
+Fase 7.0 documenta la planeacion de interfaz producto Telegram, sin implementar
+workflows ni PAC real:
+
+```text
+docs/PHASE_7_0_TELEGRAM_PRODUCT_INTERFACE_PLANNING.md
+```
+
+Siguiente fase recomendada: `7.1 Telegram Product Menu Contract`.
 
 ### Politica conversacional 4.7
 

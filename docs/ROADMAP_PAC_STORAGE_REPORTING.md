@@ -686,10 +686,23 @@ docs/PHASE_6A_SANDBOX_BLOCK_SIGNOFF.md
 
 El cierre consolida Action Layer sandbox, adapter/smoke controlado, storage,
 reporting, paquete contador, Excel/checklist, router n8n, botones Telegram,
-E2E manual y audit readiness 6A.13-6A.16. No autoriza produccion, timbrado real,
-datos reales ni Fase 7.
+E2E manual y audit readiness 6A.13-6A.16. No autoriza produccion, timbrado real
+ni datos reales.
 
-Siguiente fase recomendada: `7.0 Telegram Product Interface Planning`.
+### Telegram Product Interface Planning 7.0
+
+La fase 7.0 define la interfaz real de producto en Telegram, separando usuario
+final, admin/sandbox, comandos legacy y funciones futuras. Es una fase de
+planeacion y contrato UX: no modifica workflows, no llama PAC real, no timbra,
+no toca catalogo SAT y no envia documentos por Telegram.
+
+Documento:
+
+```text
+docs/PHASE_7_0_TELEGRAM_PRODUCT_INTERFACE_PLANNING.md
+```
+
+Siguiente fase recomendada: `7.1 Telegram Product Menu Contract`.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
