@@ -571,6 +571,40 @@ package, si el checklist existe se preserva, se declara en `manifest.json` y
 entra al ZIP. No llama PAC, no usa produccion, no timbra, no cancela, no envia
 mensajes y no sustituye contador.
 
+Fase 6A.9 agrega una capa local de acciones sandbox estable para que n8n o
+Telegram puedan invocar funciones sin conocer detalles fiscales internos:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.report.generate
+node scripts/run-sandbox-action.js sandbox.package.generate
+node scripts/run-sandbox-action.js sandbox.excel.generate
+node scripts/run-sandbox-action.js sandbox.checklist.generate
+node scripts/run-sandbox-action.js sandbox.full.monthly.package
+node scripts/analyze-sandbox-action-result.js
+```
+
+Acciones disponibles:
+
+- `sandbox.preflight`
+- `sandbox.smoke.create`
+- `sandbox.smoke.download`
+- `sandbox.smoke.cancel`
+- `sandbox.storage.refresh`
+- `sandbox.report.generate`
+- `sandbox.package.generate`
+- `sandbox.excel.generate`
+- `sandbox.checklist.generate`
+- `sandbox.full.monthly.package`
+
+Cada accion devuelve JSON estable con `status` en `OK`, `ERROR`,
+`SKIPPED`, `NEEDS_RUNTIME` o `NEEDS_CONFIG`, escribe resultados solo bajo
+`runtime/action-results-sandbox/`, redacta secretos, bloquea produccion y no
+llama PAC salvo las acciones smoke sandbox explicitas. El full monthly package
+refresca storage si hay runtime smoke valido, genera reportes, paquete, Excel,
+checklist, regenera el paquete y analiza el resultado. Sigue siendo sandbox:
+no PAC productivo, no timbrado, no XML/PDF real fiscal y no sustitucion del
+contador.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

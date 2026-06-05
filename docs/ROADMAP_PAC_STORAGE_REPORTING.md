@@ -397,6 +397,58 @@ Criterios de salida:
 - `Sensitive findings=none`.
 - Ningun runtime, XML/PDF, CSD, `.env`, credencial ni cliente real se versiona.
 
+### Sandbox Action Layer 6A.9
+
+La fase 6A.9 agrega una capa local de acciones sandbox para que n8n, Telegram o
+una miniapp futura invoquen capacidades por nombre estable sin conocer el motor
+fiscal, el PAC adapter, storage ni reporting.
+
+Entrypoint:
+
+```powershell
+node scripts/run-sandbox-action.js <action>
+node scripts/analyze-sandbox-action-result.js
+```
+
+Contrato de salida:
+
+- JSON estable con `schema_version=sandbox_action_result.v1`.
+- `status`: `OK`, `ERROR`, `SKIPPED`, `NEEDS_RUNTIME` o `NEEDS_CONFIG`.
+- `artifacts`, `warnings`, `errors` y `sensitive_findings` siempre presentes.
+- Resultados bajo `runtime/action-results-sandbox/`.
+- Sin credenciales, XML/PDF embebido, CSD, `.env` ni rutas fuera de runtime.
+
+Acciones:
+
+- `sandbox.preflight`
+- `sandbox.smoke.create`
+- `sandbox.smoke.download`
+- `sandbox.smoke.cancel`
+- `sandbox.storage.refresh`
+- `sandbox.report.generate`
+- `sandbox.package.generate`
+- `sandbox.excel.generate`
+- `sandbox.checklist.generate`
+- `sandbox.full.monthly.package`
+
+Reglas de seguridad:
+
+- Las acciones `report`, `package`, `excel`, `checklist` y
+  `full.monthly.package` no llaman PAC.
+- Las acciones smoke solo llaman sandbox si `FACTURACOM_SANDBOX_LIVE=1`.
+- Cualquier intento de usar `https://api.factura.com` queda bloqueado.
+- Produccion, PAC real, XML/PDF fiscal real y timbrado siguen fuera de alcance.
+
+Orden de `sandbox.full.monthly.package`:
+
+1. Refrescar storage si hay runtime smoke valido.
+2. Generar reporting.
+3. Generar paquete contador.
+4. Generar Excel.
+5. Generar checklist.
+6. Regenerar paquete para incluir Excel/checklist.
+7. Analizar paquete.
+
 ### Sandbox Reporting Engine 6A.8
 
 La fase 6A.8 agrega reportes mensuales locales a partir de

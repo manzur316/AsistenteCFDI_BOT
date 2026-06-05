@@ -705,4 +705,33 @@ preserva, lo declara en `manifest.json` como `validation_checklist` y lo incluye
 en el ZIP. No llama Factura.com, no usa produccion, no timbra, no cancela, no
 envia email y no envia WhatsApp.
 
+## Sandbox Action Layer 6A.9
+
+La capa local `scripts/lib/sandbox-action-runner.js` expone acciones estables
+para n8n/Telegram sin acoplarlos a Factura.com:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.full.monthly.package
+node scripts/analyze-sandbox-action-result.js
+```
+
+Acciones relacionadas con Factura.com:
+
+- `sandbox.preflight`
+- `sandbox.smoke.create`
+- `sandbox.smoke.download`
+- `sandbox.smoke.cancel`
+
+Estas acciones solo pueden llamar sandbox con `FACTURACOM_SANDBOX_LIVE=1`,
+rechazan `https://api.factura.com` y escriben resultados sanitizados en
+`runtime/action-results-sandbox/`. Las acciones de storage, reporting, paquete,
+Excel, checklist y full monthly package no llaman Factura.com ni ningun PAC:
+solo procesan artifacts locales existentes en `runtime/`.
+
+El resultado JSON estable contiene `status`, `artifacts`, `warnings`, `errors`
+y `sensitive_findings`. No debe imprimir credenciales, XML/PDF completos, CSD,
+`.env`, RFC/clientes reales ni rutas fuera de runtime. N8n debe consumir esta
+capa como una caja negra local; no debe conocer endpoints, headers ni shapes
+internos de Factura.com.
+
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.
