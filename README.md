@@ -765,7 +765,15 @@ scripts/test-sandbox-audit-signoff-checklist.js
 El modo `--mark-reviewed` exige `--reviewer-note`, se niega si hay FAIL y solo
 crea `HUMAN_REVIEWED.local.json` en runtime.
 
-Siguiente fase recomendada: cierre formal de 6A o transicion planificada a Fase 7.
+Cierre formal del bloque 6A:
+
+```text
+docs/PHASE_6A_SANDBOX_BLOCK_SIGNOFF.md
+```
+
+6A queda cerrado como sandbox local: no autoriza produccion, timbrado real,
+datos reales ni Fase 7. Siguiente fase recomendada: `7.0 Telegram Product
+Interface Planning`.
 
 ### Politica conversacional 4.7
 

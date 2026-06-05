@@ -676,7 +676,20 @@ runtime/sandbox-action-audit/signoff/sandbox-audit-signoff-checklist.csv
 `HUMAN_REVIEWED.local.json` en runtime. No cambia workflows, no cambia logica
 fiscal y no habilita PAC productivo.
 
-Siguiente fase recomendada: cierre formal de 6A o transicion planificada a Fase 7.
+### Sandbox Block Signoff 6A
+
+El bloque 6A queda cerrado formalmente como sandbox local en:
+
+```text
+docs/PHASE_6A_SANDBOX_BLOCK_SIGNOFF.md
+```
+
+El cierre consolida Action Layer sandbox, adapter/smoke controlado, storage,
+reporting, paquete contador, Excel/checklist, router n8n, botones Telegram,
+E2E manual y audit readiness 6A.13-6A.16. No autoriza produccion, timbrado real,
+datos reales ni Fase 7.
+
+Siguiente fase recomendada: `7.0 Telegram Product Interface Planning`.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
