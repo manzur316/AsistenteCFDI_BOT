@@ -668,4 +668,41 @@ antes de regenerar el paquete contador, `generate-sandbox-accountant-package.js`
 lo copia a `package/`, lo agrega al ZIP y lo declara en `manifest.json` como
 `accountant_excel`. Si no existe, se reporta como opcional y el paquete no falla.
 
+## Accountant Validation Checklist Sandbox 6A.8D
+
+La fase 6A.8D agrega una lista de validacion mensual para revisar antes de
+compartir el paquete contador. Se genera dentro del `package/` activo:
+
+```powershell
+node scripts/generate-sandbox-accountant-checklist.js
+node scripts/analyze-sandbox-accountant-checklist.js
+```
+
+Archivos:
+
+```text
+VALIDATION_CHECKLIST.md
+validation-checklist.json
+validation-checklist.csv
+```
+
+El checklist revisa:
+
+- Identidad fiscal: RFC emisor sandbox, regimen, lugar de expedicion, perfil
+  receptor, UsoCFDI, UUID y cfdi_uid.
+- Documentos: total, creados, cancelados, errores, sin XML, sin PDF, sin UUID
+  e identity missing.
+- Montos: subtotal, IVA y total activo; cancelados separados; amount status y
+  cancelled amount status.
+- Archivos: XML/PDF, Excel, CSV/JSON, ZIP, rutas relativas y runtime-only.
+- Seguridad: sin credenciales, sin `.env`, sin CSD, sin datos reales y sin
+  hallazgos sensibles.
+- Revision humana: no sustituye contador, revisar cancelados, `UNKNOWN`,
+  XML/PDF faltantes y UUID faltantes.
+
+Si el checklist existe antes de regenerar el package, el empaquetador lo
+preserva, lo declara en `manifest.json` como `validation_checklist` y lo incluye
+en el ZIP. No llama Factura.com, no usa produccion, no timbra, no cancela, no
+envia email y no envia WhatsApp.
+
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.

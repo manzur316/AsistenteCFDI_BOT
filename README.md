@@ -555,6 +555,22 @@ se escapan como texto para evitar formula injection. Si el Excel ya existe,
 el package sandbox lo incluye en `package/` y en el ZIP. Sigue siendo
 `Borrador sujeto a revisión humana. No sustituye contador.`
 
+Fase 6A.8D agrega el checklist mensual sandbox de validacion para contador y
+usuario. Genera `VALIDATION_CHECKLIST.md`, `validation-checklist.json` y
+`validation-checklist.csv` dentro de `package/`:
+
+```powershell
+node scripts/generate-sandbox-accountant-checklist.js
+node scripts/analyze-sandbox-accountant-checklist.js
+```
+
+El checklist revisa identidad fiscal, documentos, montos, archivos, seguridad
+y pendientes de revision humana. Marca XML/PDF/UUID faltantes, identity missing,
+amount `UNKNOWN`, cancelados separados y hallazgos sensibles. Al regenerar el
+package, si el checklist existe se preserva, se declara en `manifest.json` y
+entra al ZIP. No llama PAC, no usa produccion, no timbra, no cancela, no envia
+mensajes y no sustituye contador.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

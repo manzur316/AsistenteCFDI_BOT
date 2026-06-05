@@ -12,6 +12,11 @@ const runtimeRoot = path.join(repoRoot, "runtime");
 const DEFAULT_REPORT_ROOT = path.join(runtimeRoot, "reports-sandbox");
 const DEFAULT_PACKAGE_ROOT = path.join(runtimeRoot, "accountant-packages-sandbox");
 const PACKAGE_SCHEMA_VERSION = "sandbox_accountant_package.v1";
+const CHECKLIST_FILES = [
+  "VALIDATION_CHECKLIST.md",
+  "validation-checklist.json",
+  "validation-checklist.csv",
+];
 
 function isInside(parent, child) {
   const relative = path.relative(parent, child);
@@ -233,6 +238,60 @@ function optionalAccountantExcel(packageRoot, period, explicitPath) {
   };
 }
 
+function readOptionalValidationChecklist(packageDir) {
+  const resolvedPackageDir = assertRuntimePath(packageDir, "packageDir");
+  const files = [];
+  for (const name of CHECKLIST_FILES) {
+    const source = path.join(resolvedPackageDir, name);
+    if (!fs.existsSync(source)) continue;
+    assertInside(resolvedPackageDir, source, "validationChecklistSource");
+    files.push({
+      file_name: name,
+      content: fs.readFileSync(source),
+    });
+  }
+  if (files.length === 0) {
+    return {
+      optional: true,
+      included: false,
+      reason: "VALIDATION_CHECKLIST_NOT_FOUND",
+      files: [],
+    };
+  }
+  return {
+    optional: true,
+    included: files.length === CHECKLIST_FILES.length,
+    reason: files.length === CHECKLIST_FILES.length ? null : "VALIDATION_CHECKLIST_PARTIAL",
+    files,
+  };
+}
+
+function writeOptionalValidationChecklist(packageDir, validationChecklist) {
+  const resolvedPackageDir = assertRuntimePath(packageDir, "packageDir");
+  if (!validationChecklist || !validationChecklist.files?.length) return {
+    optional: true,
+    included: false,
+    reason: "VALIDATION_CHECKLIST_NOT_FOUND",
+    files: [],
+  };
+  const written = [];
+  for (const file of validationChecklist.files) {
+    const target = path.join(resolvedPackageDir, file.file_name);
+    assertInside(resolvedPackageDir, target, "validationChecklistTarget");
+    fs.writeFileSync(target, file.content);
+    written.push({
+      file_name: file.file_name,
+      package_path: relFromPackage(resolvedPackageDir, target),
+    });
+  }
+  return {
+    optional: true,
+    included: written.length === CHECKLIST_FILES.length,
+    reason: written.length === CHECKLIST_FILES.length ? null : "VALIDATION_CHECKLIST_PARTIAL",
+    files: written,
+  };
+}
+
 function buildAccountantPackageManifest(context = {}) {
   const reports = context.reports || {};
   const monthly = reports.monthly || {};
@@ -242,6 +301,12 @@ function buildAccountantPackageManifest(context = {}) {
     optional: true,
     included: false,
     reason: "ACCOUNTANT_EXCEL_NOT_FOUND",
+  };
+  const validationChecklist = context.validationChecklist || {
+    optional: true,
+    included: false,
+    reason: "VALIDATION_CHECKLIST_NOT_FOUND",
+    files: [],
   };
   const statusCounts = monthly.status_counts || {};
   const alerts = [];
@@ -284,6 +349,7 @@ function buildAccountantPackageManifest(context = {}) {
       "accountant-review.json",
     ],
     accountant_excel: accountantExcel,
+    validation_checklist: validationChecklist,
     included_artifacts: artifacts.map((artifact) => ({
       type: artifact.type,
       status: artifact.status,
@@ -325,6 +391,7 @@ function readmeText(manifest) {
     "- document-control.json/csv",
     "- accountant-review.json",
     "- accountant-review-YYYY-MM.xlsx si fue generado antes de empaquetar",
+    "- VALIDATION_CHECKLIST.md/json/csv si fue generado antes de empaquetar",
     "- XML/ y PDF/ con artifacts disponibles",
     "- CREATED/, CANCELLED/ y ERROR/ con indices por estatus",
     "",
@@ -366,6 +433,7 @@ function copyAccountantPackageFiles(context = {}) {
   const packageDir = assertRuntimePath(context.packageDir, "packageDir");
   const reportDir = assertRuntimePath(reports.report_dir, "reportDir");
   const storageRoot = assertRuntimePath(context.storageRoot || DEFAULT_STORAGE_ROOT, "storageRoot");
+  const preservedChecklist = readOptionalValidationChecklist(packageDir);
   if (fs.existsSync(packageDir)) fs.rmSync(packageDir, { recursive: true, force: true });
   fs.mkdirSync(packageDir, { recursive: true });
 
@@ -393,6 +461,7 @@ function copyAccountantPackageFiles(context = {}) {
     fs.copyFileSync(source, target);
     accountantExcel.package_path = relFromPackage(packageDir, target);
   }
+  const validationChecklist = writeOptionalValidationChecklist(packageDir, preservedChecklist);
 
   const copiedArtifacts = [];
   for (const artifact of artifacts) {
@@ -417,6 +486,7 @@ function copyAccountantPackageFiles(context = {}) {
     ...context,
     artifacts: copiedArtifacts,
     accountantExcel,
+    validationChecklist,
   });
   writeText(path.join(packageDir, "README_CONTADOR.txt"), readmeText(manifest));
   writeJson(path.join(packageDir, "manifest.json"), {
@@ -430,6 +500,7 @@ function copyAccountantPackageFiles(context = {}) {
     copied_reports: reportCopies.length,
     copied_artifacts: copiedArtifacts.length,
     accountant_excel: accountantExcel,
+    validation_checklist: validationChecklist,
   };
 }
 

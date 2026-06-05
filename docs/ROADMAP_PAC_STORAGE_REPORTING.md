@@ -477,6 +477,40 @@ Restricciones:
   datos reales.
 - Todo el archivo mantiene la advertencia `Borrador sujeto a revisión humana. No sustituye contador.`
 
+### Accountant Validation Checklist Sandbox 6A.8D
+
+La fase 6A.8D agrega una lista de validacion mensual legible antes de compartir
+el paquete con contador o usuario. Se genera dentro de `package/` como Markdown,
+JSON y CSV:
+
+- `VALIDATION_CHECKLIST.md`
+- `validation-checklist.json`
+- `validation-checklist.csv`
+
+Categorias:
+
+- Identidad fiscal: RFC emisor sandbox, regimen, lugar de expedicion, perfil
+  receptor, UsoCFDI, UUID y cfdi_uid.
+- Documentos: total, creados, cancelados, errores, documentos sin XML, sin PDF,
+  sin UUID e identity missing.
+- Montos: subtotal, IVA y total activo; cancelados separados; amount status,
+  cancelled amount status y `UNKNOWN` explicito.
+- Archivos: XML, PDF, Excel, CSV/JSON, ZIP, rutas relativas y runtime-only.
+- Seguridad: sin credenciales, sin `.env`, sin CSD, sin datos reales, sensitive
+  findings none y formula injection findings none.
+- Revision humana: borrador sujeto a revision humana, no sustituye contador,
+  revisar cancelados, `UNKNOWN`, XML/PDF faltantes y UUID faltantes.
+
+Restricciones:
+
+- Solo sandbox; no produccion.
+- No llama PAC, no timbra, no cancela, no envia email y no envia WhatsApp.
+- No versiona runtime, ZIP, Excel, XML/PDF, `.env`, CSD, credenciales ni datos
+  reales.
+- Si el checklist existe, el package lo preserva, lo declara en `manifest.json`
+  y lo incluye en el ZIP. Si no existe, el package no falla y lo marca como
+  opcional no incluido.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del
