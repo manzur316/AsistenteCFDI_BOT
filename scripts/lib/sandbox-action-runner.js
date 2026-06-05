@@ -9,6 +9,7 @@ const { generateAccountantExcel } = require("../generate-sandbox-accountant-exce
 const { generateAccountantChecklist } = require("../generate-sandbox-accountant-checklist");
 const { analyze: analyzePackage } = require("../analyze-sandbox-accountant-package");
 const { analyzeAudit } = require("../analyze-sandbox-action-audit");
+const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
 const { DEFAULT_STORAGE_ROOT, scanSensitiveFiles } = require("./sandbox-storage-engine");
 const { DEFAULT_PACKAGE_ROOT } = require("./sandbox-accountant-package");
 
@@ -34,6 +35,7 @@ const ACTIONS = [
   "sandbox.full.monthly.package",
   "sandbox.latest.result",
   "sandbox.audit.summary",
+  "sandbox.draft.stamp",
 ];
 
 function isInside(parent, child) {
@@ -426,6 +428,15 @@ function runAuditSummary(paths) {
   );
 }
 
+async function runDraftStamp(paths, env, options = {}) {
+  const result = await runSandboxDraftStamp({
+    ...options,
+    env,
+    storageRoot: paths.storageRoot,
+  });
+  return stableStep("sandbox.draft.stamp", result.status, result.output, result.warnings, result.errors);
+}
+
 function finalStatusFromSteps(steps) {
   if (steps.some((step) => step.status === "PACKAGE_SAFETY_ERROR")) return "PACKAGE_SAFETY_ERROR";
   if (steps.some((step) => step.status === "ERROR")) return "ERROR";
@@ -491,6 +502,7 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.full.monthly.package") return runFullMonthlyPackage(paths);
   if (action === "sandbox.latest.result") return runLatestResult(paths);
   if (action === "sandbox.audit.summary") return runAuditSummary(paths);
+  if (action === "sandbox.draft.stamp") return runDraftStamp(paths, env, options);
   return stableStep(action, "ERROR", {}, [], ["UNHANDLED_ACTION"]);
 }
 

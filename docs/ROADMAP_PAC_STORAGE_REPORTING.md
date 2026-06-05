@@ -830,7 +830,22 @@ docs/PHASE_7_5_TELEGRAM_PAC_SANDBOX_STAMPING_CONSOLE.md
 scripts/test-telegram-pac-sandbox-console.js
 ```
 
-Siguiente fase recomendada: `7.6 Approved Draft to PAC Sandbox`.
+### Approved Draft To PAC Sandbox 7.6
+
+La fase 7.6 permite a OWNER/admin enviar un borrador `APROBADO` real del flujo
+Telegram a `sandbox.draft.stamp` en el Action Layer. El workflow usa action token
+`cfdi:<token>`, marca `SANDBOX_TIMBRANDO`, persiste el resultado como
+`SANDBOX_TIMBRADO` o `SANDBOX_ERROR`, registra eventos y mantiene bloqueada la
+produccion fiscal real.
+
+Documento y prueba:
+
+```text
+docs/PHASE_7_6_APPROVED_DRAFT_TO_PAC_SANDBOX.md
+scripts/test-approved-draft-to-pac-sandbox.js
+```
+
+Siguiente fase recomendada: `7.7 Sandbox CFDI Lifecycle and Cancellation`.
 
 ### PAC Sandbox To Production Roadmap
 

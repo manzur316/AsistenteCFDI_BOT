@@ -841,7 +841,17 @@ docs/PHASE_7_5_TELEGRAM_PAC_SANDBOX_STAMPING_CONSOLE.md
 scripts/test-telegram-pac-sandbox-console.js
 ```
 
-Siguiente fase recomendada: `7.6 Approved Draft to PAC Sandbox`.
+Fase 7.6 conecta borradores `APROBADO` reales del flujo Telegram con el Action
+Layer `sandbox.draft.stamp`. El workflow usa `cfdi:<token>`, no construye
+payload PAC, no llama Factura.com directo y no envia XML/PDF/ZIP/Excel por
+Telegram:
+
+```text
+docs/PHASE_7_6_APPROVED_DRAFT_TO_PAC_SANDBOX.md
+scripts/test-approved-draft-to-pac-sandbox.js
+```
+
+Siguiente fase recomendada: `7.7 Sandbox CFDI Lifecycle and Cancellation`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

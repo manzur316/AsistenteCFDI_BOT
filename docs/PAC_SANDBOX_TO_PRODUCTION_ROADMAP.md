@@ -115,6 +115,9 @@ real sigue bloqueada.
 Proposito: tomar un borrador aprobado real creado desde Telegram y enviarlo a
 timbrado sandbox.
 
+Estado: implementada como fase sandbox-only. Ver
+`docs/PHASE_7_6_APPROVED_DRAFT_TO_PAC_SANDBOX.md`.
+
 Flujo objetivo:
 
 ```text

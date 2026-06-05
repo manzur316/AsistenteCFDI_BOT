@@ -6,6 +6,7 @@ const {
 function parseArgs(argv) {
   const [action, ...rest] = argv;
   const auditContext = {};
+  const options = {};
   const optionMap = {
     "--audit-source-kind": "source_kind",
     "--audit-chat-redacted": "chat_id_redacted",
@@ -20,11 +21,24 @@ function parseArgs(argv) {
     auditContext[optionMap[key]] = rest[index + 1] || "";
     index += 1;
   }
-  return { action, auditContext };
+  for (let index = 0; index < rest.length; index += 1) {
+    const key = rest[index];
+    if (key === "--draft-id") {
+      options.draftId = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--draft-json-b64") {
+      options.draftJsonBase64 = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--idempotency-key") {
+      options.idempotencyKey = rest[index + 1] || "";
+      index += 1;
+    }
+  }
+  return { action, auditContext, options };
 }
 
 async function main() {
-  const { action, auditContext } = parseArgs(process.argv.slice(2));
+  const { action, auditContext, options } = parseArgs(process.argv.slice(2));
   if (!action || action === "--help" || action === "-h") {
     console.log(JSON.stringify({
       ok: false,
@@ -34,7 +48,7 @@ async function main() {
     }, null, 2));
     process.exit(action ? 0 : 1);
   }
-  const result = await runSandboxAction(action, { auditContext });
+  const result = await runSandboxAction(action, { ...options, auditContext });
   console.log(JSON.stringify(result, null, 2));
   if (result.status === "ERROR") process.exit(1);
 }

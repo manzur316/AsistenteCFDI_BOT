@@ -268,6 +268,7 @@ const requiredActions = [
   "BACK_TO_DRAFT",
   "CREATE_BASIC_CLIENT",
   "CONTINUE_UNVALIDATED_CLIENT",
+  "STAMP_DRAFT_SANDBOX",
 ];
 
 checks.push({
@@ -285,7 +286,7 @@ checks.push({
 });
 checks.push({
   name: "approve_descartar_cancel_restore_son_one_time",
-  pass: ["APPROVE_DRAFT", "DISCARD_DRAFT", "CANCEL_DRAFT", "RESTORE_DRAFT"].every((action) =>
+  pass: ["APPROVE_DRAFT", "DISCARD_DRAFT", "CANCEL_DRAFT", "RESTORE_DRAFT", "STAMP_DRAFT_SANDBOX"].every((action) =>
     validateActionTokenRecord({ token, chat_id: chatId, action, expires_at: "2099-01-01T00:00:00.000Z", used_at: "2026-06-04T00:00:00.000Z" }, { chatId }).reason === "token_usado"
   ),
   value: "one-time",
