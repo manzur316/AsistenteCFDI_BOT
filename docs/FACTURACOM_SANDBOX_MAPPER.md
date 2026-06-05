@@ -631,4 +631,41 @@ la alerta vive en `document-control` y en `manifest.json`. El ZIP y todos los
 artifacts quedan solo en `runtime/` y no deben versionarse. Futuro: export Excel
 real del paquete mensual.
 
+## Accountant Excel Sandbox 6A.8C
+
+La fase 6A.8C genera un Excel sandbox mensual para revision contable a partir
+del paquete local. No llama Factura.com, no usa produccion, no timbra, no
+cancela, no envia email, no envia WhatsApp y no sustituye contador.
+
+Comandos:
+
+```powershell
+node scripts/generate-sandbox-accountant-excel.js
+node scripts/analyze-sandbox-accountant-excel.js
+```
+
+Salida:
+
+```text
+runtime/accountant-packages-sandbox/YYYY-MM/accountant-review-YYYY-MM.xlsx
+```
+
+Formato: OOXML `.xlsx` real generado con Node puro. No usa macros, no genera
+formulas y escapa cualquier celda de texto que empiece con `=`, `+`, `-` o `@`.
+El libro contiene hojas:
+
+- `RESUMEN`
+- `FACTURAS`
+- `CLIENTES`
+- `CANCELADAS`
+- `CONTROL`
+- `ALERTAS`
+- `README`
+
+El Excel no incrusta XML/PDF completos; solo conserva metadatos, estatus,
+montos extraidos si existen y rutas relativas del sandbox. Si el archivo existe
+antes de regenerar el paquete contador, `generate-sandbox-accountant-package.js`
+lo copia a `package/`, lo agrega al ZIP y lo declara en `manifest.json` como
+`accountant_excel`. Si no existe, se reporta como opcional y el paquete no falla.
+
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.

@@ -539,6 +539,22 @@ JSON/CSV, `accountant-review.json` y carpetas `XML/`, `PDF/`, `CREATED/`,
 timbra y no sustituye contador. El ZIP, XML/PDF y todo `runtime/` quedan fuera
 de Git. Futuro: export Excel real para paquete mensual.
 
+Fase 6A.8C agrega el Excel sandbox mensual para revision contable. Genera un
+OOXML `.xlsx` real con Node puro, sin macros y sin formulas, bajo
+`runtime/accountant-packages-sandbox/YYYY-MM/accountant-review-YYYY-MM.xlsx`:
+
+```powershell
+node scripts/generate-sandbox-accountant-excel.js
+node scripts/analyze-sandbox-accountant-excel.js
+```
+
+El libro contiene hojas `RESUMEN`, `FACTURAS`, `CLIENTES`, `CANCELADAS`,
+`CONTROL`, `ALERTAS` y `README`. No incrusta XML/PDF completos; solo usa
+metadatos y rutas relativas. Las celdas que empiezan con `=`, `+`, `-` o `@`
+se escapan como texto para evitar formula injection. Si el Excel ya existe,
+el package sandbox lo incluye en `package/` y en el ZIP. Sigue siendo
+`Borrador sujeto a revisión humana. No sustituye contador.`
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

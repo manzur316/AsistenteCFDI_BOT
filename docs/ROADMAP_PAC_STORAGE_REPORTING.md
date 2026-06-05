@@ -448,6 +448,35 @@ Restricciones:
 - Futuro: export Excel real y ZIP mensual para contador, sin mezclar sandbox
   con produccion fiscal.
 
+### Accountant Excel Sandbox 6A.8C
+
+La fase 6A.8C agrega un workbook mensual local para contador. Se genera bajo
+`runtime/accountant-packages-sandbox/YYYY-MM/accountant-review-YYYY-MM.xlsx` y
+se alimenta del package sandbox ya creado. Si el workbook existe antes de
+regenerar el paquete, queda incluido tambien en `package/`, el ZIP y el
+`manifest.json`.
+
+Hojas:
+
+- `RESUMEN`: periodo, conteos, totales activos, cancelados y leyenda.
+- `FACTURAS`: metadata por documento, estatus, UUID/UID y montos si existen.
+- `CLIENTES`: resumen por cliente sandbox.
+- `CANCELADAS`: documentos cancelados separados, no sumados como ingreso.
+- `CONTROL`: faltantes de XML/PDF/UUID, identity missing, amount unknown y
+  sensitive findings.
+- `ALERTAS`: alertas y recomendaciones de revision humana.
+- `README`: alcance sandbox, no produccion y advertencias fiscales.
+
+Restricciones:
+
+- OOXML `.xlsx` real generado con Node puro, sin macros y sin formulas.
+- Cualquier texto que inicia con `=`, `+`, `-` o `@` se escapa para evitar
+  formula injection.
+- No incrusta XML/PDF completos; solo metadatos y rutas relativas.
+- No versionar el Excel generado, ZIP, XML/PDF, `.env`, CSD, credenciales ni
+  datos reales.
+- Todo el archivo mantiene la advertencia `Borrador sujeto a revisión humana. No sustituye contador.`
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

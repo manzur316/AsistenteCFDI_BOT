@@ -208,11 +208,41 @@ function packageZipForPeriod(packageRoot, period) {
   return assertRuntimePath(path.join(packageRoot, safePeriod, `accountant-package-${safePeriod}.zip`), "targetZip");
 }
 
+function accountantExcelPathForPeriod(packageRoot, period) {
+  const { period: safePeriod } = periodPathParts(period);
+  return assertRuntimePath(path.join(packageRoot, safePeriod, `accountant-review-${safePeriod}.xlsx`), "accountantExcelPath");
+}
+
+function optionalAccountantExcel(packageRoot, period, explicitPath) {
+  const source = explicitPath
+    ? assertRuntimePath(explicitPath, "accountantExcelPath")
+    : accountantExcelPathForPeriod(packageRoot || DEFAULT_PACKAGE_ROOT, period);
+  if (!fs.existsSync(source)) {
+    return {
+      optional: true,
+      included: false,
+      reason: "ACCOUNTANT_EXCEL_NOT_FOUND",
+      source_path: relFromRoot(source),
+    };
+  }
+  return {
+    optional: true,
+    included: true,
+    source_path: relFromRoot(source),
+    file_name: path.basename(source),
+  };
+}
+
 function buildAccountantPackageManifest(context = {}) {
   const reports = context.reports || {};
   const monthly = reports.monthly || {};
   const control = reports.control || {};
   const artifacts = context.artifacts || [];
+  const accountantExcel = context.accountantExcel || {
+    optional: true,
+    included: false,
+    reason: "ACCOUNTANT_EXCEL_NOT_FOUND",
+  };
   const statusCounts = monthly.status_counts || {};
   const alerts = [];
   if ((control.documents_without_xml || []).length) alerts.push("DOCUMENTS_WITHOUT_XML");
@@ -253,6 +283,7 @@ function buildAccountantPackageManifest(context = {}) {
       "document-control.csv",
       "accountant-review.json",
     ],
+    accountant_excel: accountantExcel,
     included_artifacts: artifacts.map((artifact) => ({
       type: artifact.type,
       status: artifact.status,
@@ -293,6 +324,7 @@ function readmeText(manifest) {
     "- client-summary.json/csv",
     "- document-control.json/csv",
     "- accountant-review.json",
+    "- accountant-review-YYYY-MM.xlsx si fue generado antes de empaquetar",
     "- XML/ y PDF/ con artifacts disponibles",
     "- CREATED/, CANCELLED/ y ERROR/ con indices por estatus",
     "",
@@ -348,6 +380,20 @@ function copyAccountantPackageFiles(context = {}) {
     reportCopies.push(relFromPackage(packageDir, target));
   }
 
+  const accountantExcel = optionalAccountantExcel(
+    context.packageRoot || DEFAULT_PACKAGE_ROOT,
+    reports.period,
+    context.accountantExcelPath,
+  );
+  if (accountantExcel.included) {
+    const source = path.resolve(repoRoot, accountantExcel.source_path);
+    const target = path.join(packageDir, accountantExcel.file_name);
+    assertRuntimePath(source, "accountantExcelSource");
+    assertInside(packageDir, target, "accountantExcelTarget");
+    fs.copyFileSync(source, target);
+    accountantExcel.package_path = relFromPackage(packageDir, target);
+  }
+
   const copiedArtifacts = [];
   for (const artifact of artifacts) {
     const typeDir = artifact.type === "PDF" ? "PDF" : "XML";
@@ -370,6 +416,7 @@ function copyAccountantPackageFiles(context = {}) {
   const manifest = buildAccountantPackageManifest({
     ...context,
     artifacts: copiedArtifacts,
+    accountantExcel,
   });
   writeText(path.join(packageDir, "README_CONTADOR.txt"), readmeText(manifest));
   writeJson(path.join(packageDir, "manifest.json"), {
@@ -382,6 +429,7 @@ function copyAccountantPackageFiles(context = {}) {
     manifest,
     copied_reports: reportCopies.length,
     copied_artifacts: copiedArtifacts.length,
+    accountant_excel: accountantExcel,
   };
 }
 
@@ -539,7 +587,7 @@ function findSensitiveText(filePath, content) {
   if (/(FACTURACOM_API_KEY|FACTURACOM_SECRET_KEY|FACTURACOM_PLUGIN|F-Api-Key|F-Secret-Key|F-PLUGIN)["':=\s]+(?!\[REDACTED\]|REEMPLAZAR|PLACEHOLDER|TEST_)[A-Za-z0-9+/=_-]{8,}/i.test(content)) {
     findings.push(`${name}:secret_like_value`);
   }
-  if (/[A-Za-z]:[\\/]/.test(content) || /\\\\/.test(content)) findings.push(`${name}:absolute_path`);
+  if (/[A-Za-z]:[\\/](?![\\/])/.test(content) || /\\\\/.test(content)) findings.push(`${name}:absolute_path`);
   return findings;
 }
 
@@ -570,6 +618,7 @@ module.exports = {
   DEFAULT_REPORT_ROOT,
   DEFAULT_STORAGE_ROOT,
   HUMAN_REVIEW_NOTICE,
+  accountantExcelPathForPeriod,
   assertAccountantPackageSafe,
   buildAccountantPackageManifest,
   collectStorageArtifacts,

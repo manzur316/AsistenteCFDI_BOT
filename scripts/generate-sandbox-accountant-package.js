@@ -86,6 +86,7 @@ function generateAccountantPackage(options = {}) {
     zip_entries: zip.entries,
     copied_reports: copyResult.copied_reports,
     copied_artifacts: copyResult.copied_artifacts,
+    accountant_excel: copyResult.accountant_excel,
     artifact_counts: copyResult.manifest.artifact_counts,
     totals: copyResult.manifest.totals,
     alerts: copyResult.manifest.alerts,
@@ -105,6 +106,7 @@ function printResult(result) {
   console.log(`Package: ${result.package_dir}`);
   console.log(`ZIP: ${result.zip_path}`);
   console.log(`ZIP entries: ${result.zip_entries}`);
+  console.log(`Accountant Excel included: ${result.accountant_excel?.included ? "yes" : "no"}`);
   console.log(`XML included: ${result.artifact_counts.xml}`);
   console.log(`PDF included: ${result.artifact_counts.pdf}`);
   console.log(`Alerts: ${result.alerts.join(", ") || "none"}`);

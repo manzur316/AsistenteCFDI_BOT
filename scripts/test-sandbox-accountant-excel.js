@@ -4,17 +4,18 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const {
   HUMAN_REVIEW_NOTICE,
-  assertAccountantPackageSafe,
-  collectStorageArtifacts,
-  loadMonthlyReports,
 } = require("./lib/sandbox-accountant-package");
+const {
+  REQUIRED_SHEETS,
+  analyzeAccountantExcel,
+  generateAccountantExcel,
+  listZipEntries,
+} = require("./lib/sandbox-accountant-excel");
 const { generateReports } = require("./generate-sandbox-monthly-report");
 const { generateAccountantPackage } = require("./generate-sandbox-accountant-package");
-const { generateAccountantExcel } = require("./generate-sandbox-accountant-excel");
-const { analyze } = require("./analyze-sandbox-accountant-package");
 
 const root = path.resolve(__dirname, "..");
-const tempRoot = path.join(root, "runtime", "test-sandbox-accountant-package");
+const tempRoot = path.join(root, "runtime", "test-sandbox-accountant-excel");
 const storageRoot = path.join(tempRoot, "storage-sandbox");
 const reportRoot = path.join(tempRoot, "reports-sandbox");
 const packageRoot = path.join(tempRoot, "accountant-packages-sandbox");
@@ -105,7 +106,7 @@ function writeInvoice(invoice) {
   }
   if (invoice.cancel) {
     const cancelPath = path.join(dir, "cancel", `${invoice.invoice_id}-cancel.json`);
-    writeJson(cancelPath, { ok: true, status: "cancelled" });
+    writeJson(cancelPath, { ok: true, status: "cancelled", reason: "sandbox" });
     artifacts.push({
       type: "CFDI_CANCEL_RESPONSE",
       category: "cancel",
@@ -163,11 +164,11 @@ function createFixture() {
   const documents = [
     writeInvoice({
       invoice_id: "CFDI-CREATED",
-      draft_id: "DRAFT-CREATED",
-      client_id: "CLIENT-A",
+      draft_id: "+DRAFT-DANGER",
+      client_id: "=CLIENT-DANGER",
       status: "CREATED",
       identity_status: "COMPLETE",
-      cfdi_uid: "CFDI-CREATED",
+      cfdi_uid: "@UID-DANGER",
       uuid: "11111111-1111-4111-8111-111111111111",
       serie: "A",
       folio: "1",
@@ -182,9 +183,9 @@ function createFixture() {
       pdf: "%PDF-SANDBOX-FIXTURE%",
     }),
     writeInvoice({
-      invoice_id: "CFDI-CANCELLED",
+      invoice_id: "-CFDI-CANCELLED",
       draft_id: "DRAFT-CANCELLED",
-      client_id: "CLIENT-A",
+      client_id: "=CLIENT-DANGER",
       status: "CANCELLED",
       identity_status: "COMPLETE",
       cfdi_uid: "CFDI-CANCELLED",
@@ -204,7 +205,7 @@ function createFixture() {
     writeInvoice({
       invoice_id: "CFDI-ERROR",
       draft_id: "DRAFT-ERROR",
-      client_id: "CLIENT-A",
+      client_id: "CLIENT-ERROR",
       status: "ERROR",
       identity_status: "MISSING",
       cfdi_uid: null,
@@ -216,7 +217,7 @@ function createFixture() {
   writeJson(path.join(storageRoot, "reports", "storage-index.json"), {
     schema_version: "sandbox_storage.v1.index",
     generated_at: "2026-06-04T10:02:00.000Z",
-    storage_root: "runtime/test-sandbox-accountant-package/storage-sandbox",
+    storage_root: "runtime/test-sandbox-accountant-excel/storage-sandbox",
     document_count: documents.length,
     documents,
   });
@@ -226,155 +227,102 @@ function createFixture() {
   });
   const reportResult = generateReports({ storageRoot, reportRoot, period: "2026-06" });
   assert.strictEqual(reportResult.ok, true);
+  const packageResult = generateAccountantPackage({ reportRoot, storageRoot, packageRoot, period: "2026-06" });
+  assert.strictEqual(packageResult.ok, true);
 }
 
 createFixture();
 
-check("load_monthly_reports", () => {
-  const reports = loadMonthlyReports(reportRoot, { period: "2026-06" });
-  assert.strictEqual(reports.period, "2026-06");
-  assert.strictEqual(reports.monthly.total_documents, 3);
-  return reports.period;
-});
+let excelResult;
+let analysis;
+let combinedText;
 
-check("collect_storage_artifacts_xml_pdf", () => {
-  const reports = loadMonthlyReports(reportRoot, { period: "2026-06" });
-  const artifacts = collectStorageArtifacts(storageRoot, reports);
-  assert.strictEqual(artifacts.filter((artifact) => artifact.type === "XML").length, 2);
-  assert.strictEqual(artifacts.filter((artifact) => artifact.type === "PDF").length, 1);
-  assert(artifacts.every((artifact) => !path.isAbsolute(artifact.source_path)));
-  return `${artifacts.length} artifacts`;
-});
-
-let packageResult;
-
-check("generate_package_folder_y_zip", () => {
-  const initialPackage = generateAccountantPackage({ reportRoot, storageRoot, packageRoot, period: "2026-06" });
-  assert.strictEqual(initialPackage.ok, true);
-  assert.strictEqual(initialPackage.accountant_excel.included, false);
-  const excelResult = generateAccountantExcel({ packageRoot, period: "2026-06" });
+check("genera_xlsx_ooxml_local", () => {
+  excelResult = generateAccountantExcel({ packageRoot, period: "2026-06" });
   assert.strictEqual(excelResult.ok, true);
-  packageResult = generateAccountantPackage({ reportRoot, storageRoot, packageRoot, period: "2026-06" });
-  assert.strictEqual(packageResult.ok, true);
-  assert.strictEqual(packageResult.accountant_excel.included, true);
-  assert(fs.existsSync(path.join(root, packageResult.package_dir)), "package dir");
-  assert(fs.existsSync(path.join(root, packageResult.zip_path)), "zip");
-  assert(fs.existsSync(path.join(root, packageResult.package_dir, "accountant-review-2026-06.xlsx")), "excel in package");
-  const zipHeader = fs.readFileSync(path.join(root, packageResult.zip_path)).subarray(0, 4).toString("binary");
-  assert.strictEqual(zipHeader, "PK\u0003\u0004");
-  assert(packageResult.zip_entries > 0);
-  return packageResult.zip_path;
+  assert.strictEqual(excelResult.format, "XLSX_OOXML_NODE_PURE");
+  const excelPath = path.join(root, excelResult.excel_path);
+  assert(fs.existsSync(excelPath), excelResult.excel_path);
+  const header = fs.readFileSync(excelPath).subarray(0, 4).toString("binary");
+  assert.strictEqual(header, "PK\u0003\u0004");
+  return excelResult.excel_path;
 });
 
-check("incluye_readme_manifest_reportes", () => {
-  const packageDir = path.join(root, packageResult.package_dir);
-  for (const file of [
-    "README_CONTADOR.txt",
-    "manifest.json",
-    "monthly-summary.json",
-    "monthly-summary.csv",
-    "client-summary.json",
-    "client-summary.csv",
-    "document-control.json",
-    "document-control.csv",
-    "accountant-review.json",
-    "accountant-review-2026-06.xlsx",
-  ]) {
-    assert(fs.existsSync(path.join(packageDir, file)), file);
-  }
-  const readme = fs.readFileSync(path.join(packageDir, "README_CONTADOR.txt"), "utf8");
-  assert(readme.includes(HUMAN_REVIEW_NOTICE));
-  return "root files";
+check("analyzer_detecta_hojas_requeridas", () => {
+  analysis = analyzeAccountantExcel({ packageRoot, period: "2026-06" });
+  assert.strictEqual(analysis.exists, true);
+  assert.strictEqual(analysis.required_sheets_present, true);
+  for (const sheet of REQUIRED_SHEETS) assert(analysis.sheets.includes(sheet), sheet);
+  assert.strictEqual(analysis.runtime_path_ok, true);
+  return analysis.sheets.join(", ");
 });
 
-check("incluye_xml_pdf_y_separa_estatus", () => {
-  const packageDir = path.join(root, packageResult.package_dir);
-  assert(fs.existsSync(path.join(packageDir, "XML", "CREATED", "CFDI-CREATED", "CFDI-CREATED.xml")));
-  assert(fs.existsSync(path.join(packageDir, "XML", "CANCELLED", "CFDI-CANCELLED", "CFDI-CANCELLED.xml")));
-  assert(fs.existsSync(path.join(packageDir, "PDF", "CREATED", "CFDI-CREATED", "CFDI-CREATED.pdf")));
-  assert(fs.existsSync(path.join(packageDir, "CREATED", "documents.json")));
-  assert(fs.existsSync(path.join(packageDir, "CANCELLED", "documents.json")));
-  assert(fs.existsSync(path.join(packageDir, "ERROR", "documents.json")));
-  return "xml/pdf/status";
+check("incluye_leyenda_revision_humana", () => {
+  const entries = listZipEntries(path.join(root, excelResult.excel_path));
+  combinedText = entries.map((entry) => entry.data.toString("utf8")).join("\n");
+  assert(combinedText.includes(HUMAN_REVIEW_NOTICE));
+  return "leyenda";
 });
 
-check("manifest_no_suma_cancelados_como_activos", () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, packageResult.package_dir, "manifest.json"), "utf8"));
-  assert.strictEqual(manifest.totals.active_total, 1160);
-  assert.strictEqual(manifest.totals.cancelled_total, 580);
-  assert.notStrictEqual(manifest.totals.active_total, 1740);
-  assert(manifest.alerts.includes("CANCELLED_NOT_INCLUDED_IN_ACTIVE_INCOME"));
-  return `active=${manifest.totals.active_total} cancelled=${manifest.totals.cancelled_total}`;
+check("cancelados_no_suman_ingreso_activo", () => {
+  const monthly = JSON.parse(fs.readFileSync(path.join(packageRoot, "2026-06", "package", "monthly-summary.json"), "utf8"));
+  assert.strictEqual(monthly.fiscal_totals.total, 1160);
+  assert.strictEqual(monthly.fiscal_totals.cancelled_total, 580);
+  assert.notStrictEqual(monthly.fiscal_totals.total, 1740);
+  assert(combinedText.includes("Cancelados no se suman como ingresos vigentes."));
+  return `active=${monthly.fiscal_totals.total} cancelled=${monthly.fiscal_totals.cancelled_total}`;
 });
 
-check("analyzer_package", () => {
-  const result = analyze(path.join(root, packageResult.package_dir));
-  assert.strictEqual(result.period, "2026-06");
-  assert.strictEqual(result.zip_exists, true);
-  assert(result.total_files >= 14);
-  assert.strictEqual(result.xml_included, 2);
-  assert.strictEqual(result.pdf_included, 1);
-  assert(result.csv_included >= 3);
-  assert(result.json_included >= 7);
-  assert.strictEqual(result.created, 1);
-  assert.strictEqual(result.cancelled, 1);
-  assert.strictEqual(result.error, 1);
-  assert.strictEqual(result.sensitive_findings.length, 0);
-  return `${result.total_files} files`;
+check("no_incluye_xml_pdf_completos", () => {
+  assert(!/<cfdi:Comprobante|<tfd:TimbreFiscalDigital/i.test(combinedText));
+  assert(!/%PDF/i.test(combinedText));
+  return "sin contenido XML/PDF";
 });
 
-check("rutas_relativas_y_sin_absolutos", () => {
-  const manifestText = fs.readFileSync(path.join(root, packageResult.package_dir, "manifest.json"), "utf8");
-  assert(!/[A-Za-z]:[\\/]/.test(manifestText));
-  assert(!/\\\\/.test(manifestText));
-  assert(manifestText.includes("XML/CREATED/CFDI-CREATED/CFDI-CREATED.xml"));
-  return "relative";
-});
-
-check("no_incluye_env_csd_secretos", () => {
-  const safety = assertAccountantPackageSafe(path.join(root, packageResult.package_dir));
-  assert.strictEqual(safety.sensitive_findings.length, 0);
-  const allText = fs.readdirSync(path.join(root, packageResult.package_dir))
-    .filter((file) => /\.(json|csv|txt)$/i.test(file))
-    .map((file) => fs.readFileSync(path.join(root, packageResult.package_dir, file), "utf8"))
-    .join("\n");
-  assert(!allText.includes("FACTURACOM_API_KEY"));
-  assert(!allText.includes("F-Secret-Key"));
-  assert(!allText.includes(".env"));
-  assert(!allText.includes(".cer"));
-  assert(!allText.includes(".key"));
+check("no_incluye_credenciales_env_csd", () => {
+  assert(!/FACTURACOM_API_KEY|FACTURACOM_SECRET_KEY|F-Api-Key|F-Secret-Key/i.test(combinedText));
+  assert(!/\.env(?:\.|$)/i.test(combinedText));
+  assert(!/\.(cer|key|pfx|p12)\b/i.test(combinedText));
   return "clean";
 });
 
-check("safety_detecta_env_y_csd", () => {
-  const unsafe = path.join(tempRoot, "unsafe-package");
-  fs.mkdirSync(unsafe, { recursive: true });
-  writeText(path.join(unsafe, "README_CONTADOR.txt"), HUMAN_REVIEW_NOTICE);
-  writeText(path.join(unsafe, ".env"), "PLACEHOLDER=REEMPLAZAR_LOCALMENTE");
-  writeText(path.join(unsafe, "demo.cer"), "CERT");
-  assert.throws(() => assertAccountantPackageSafe(unsafe), /env_file|csd_or_key_file/);
-  return "detected";
+check("escapa_formula_injection", () => {
+  assert.strictEqual(analysis.formula_injection_findings.length, 0, analysis.formula_injection_findings.join(", "));
+  assert(!/<t>[=+\-@]/.test(combinedText));
+  assert(combinedText.includes("&apos;=CLIENT-DANGER"));
+  assert(combinedText.includes("&apos;+DRAFT-DANGER"));
+  assert(combinedText.includes("&apos;@UID-DANGER"));
+  assert(combinedText.includes("&apos;-CFDI-CANCELLED"));
+  return "escaped";
+});
+
+check("reporta_unknown_cuando_faltan_montos", () => {
+  assert(combinedText.includes("UNKNOWN"));
+  assert(analysis.row_counts.CONTROL >= 6);
+  return "UNKNOWN";
+});
+
+check("sensitive_findings_none", () => {
+  assert.strictEqual(analysis.sensitive_findings.length, 0, analysis.sensitive_findings.join(", "));
+  return "none";
 });
 
 check("no_escribe_fuera_runtime", () => {
-  assert.throws(() => generateAccountantPackage({
-    reportRoot,
-    storageRoot,
-    packageRoot: path.join(root, "accountant-packages-outside"),
+  assert.throws(() => generateAccountantExcel({
+    packageRoot,
     period: "2026-06",
+    targetPath: path.join(root, "accountant-review-outside.xlsx"),
   }), /fuera de runtime/);
   return "blocked";
 });
 
 check("missing_runtime_skip_controlado", () => {
-  const result = generateAccountantPackage({
-    reportRoot: path.join(tempRoot, "missing-reports"),
-    storageRoot,
-    packageRoot,
+  const result = generateAccountantExcel({
+    packageRoot: path.join(tempRoot, "missing-accountant-package"),
     period: "2026-06",
   });
   assert.strictEqual(result.skipped, true);
-  assert.strictEqual(result.reason, "REPORTS_SANDBOX_MISSING");
+  assert.strictEqual(result.reason, "ACCOUNTANT_PACKAGE_ROOT_MISSING");
   return result.reason;
 });
 
@@ -393,7 +341,7 @@ check("workflows_catalogo_y_fuentes_no_modificados", () => {
   return "protected clean";
 });
 
-console.log("Sandbox Accountant Package Tests");
+console.log("Sandbox Accountant Excel Tests");
 for (const item of checks) printCheck(item.name, item.pass, item.value);
 const failed = checks.filter((item) => !item.pass);
 console.log(`\nPASS total: ${checks.length - failed.length}/${checks.length}`);
