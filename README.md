@@ -507,6 +507,23 @@ sin versionar ningun artifact de `runtime/`. El analyzer debe reportar
 `Sensitive findings: none`, `identity missing=0` para documentos almacenados con
 identidad completa y rutas bajo `runtime/storage-sandbox`.
 
+Fase 6A.8 agrega Reporting Engine sandbox local. Lee solo
+`runtime/storage-sandbox`, no llama Factura.com y escribe reportes bajo
+`runtime/reports-sandbox/YYYY-MM/`:
+
+```powershell
+node scripts/generate-sandbox-monthly-report.js
+node scripts/analyze-sandbox-reporting.js
+```
+
+Genera `monthly-summary`, `client-summary`, `document-control` y
+`accountant-review` en JSON/CSV. Los reportes incluyen el aviso
+`Borrador sujeto a revisión humana. No sustituye contador.`, separan
+`CREATED`, `CANCELLED` y `ERROR`, cuentan XML/PDF disponibles y marcan montos
+como `UNKNOWN` cuando no se pueden extraer de manifest/XML sanitizado. Los
+cancelados se cuentan aparte y no se suman como ingresos vigentes. Futuro:
+paquete contador ZIP/Excel.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.

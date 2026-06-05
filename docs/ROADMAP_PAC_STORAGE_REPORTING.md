@@ -397,6 +397,33 @@ Criterios de salida:
 - `Sensitive findings=none`.
 - Ningun runtime, XML/PDF, CSD, `.env`, credencial ni cliente real se versiona.
 
+### Sandbox Reporting Engine 6A.8
+
+La fase 6A.8 agrega reportes mensuales locales a partir de
+`runtime/storage-sandbox/`. No llama PAC, no timbra, no cancela, no descarga
+archivos y no toca workflows productivos.
+
+Salidas:
+
+- `monthly-summary.json/csv`: conteo mensual general, status, XML/PDF,
+  identidad y totales sandbox.
+- `client-summary.json/csv`: agregados por cliente.
+- `document-control.json/csv`: sin XML, sin PDF, sin UUID, cancelados,
+  `identity_status=MISSING`, errores y sensitive findings.
+- `accountant-review.json`: paquete JSON consolidado para revision humana.
+
+Reglas fiscales de reporte:
+
+- Todos los reportes dicen `Borrador sujeto a revisión humana. No sustituye contador.`
+- Los cancelados no se suman como ingresos vigentes; se reportan en campos
+  separados como `cancelled_total`.
+- Si no hay monto extraible desde manifest, metadata sanitizada o XML local, se
+  marca `amount_status=UNKNOWN`.
+- IVA trasladado es solo suma informativa de CFDI `CREATED` con importe
+  extraible; no calcula ISR definitivo ni presenta declaracion.
+- Futuro: empaquetar ZIP/Excel mensual para contador sin mezclar sandbox con
+  produccion.
+
 ## Reporting Engine
 
 El Reporting Engine debe generar reportes locales para revisar actividad del

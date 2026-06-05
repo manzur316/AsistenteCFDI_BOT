@@ -551,4 +551,43 @@ Storage debe guardar manifests bajo `runtime/storage-sandbox/`, marcar status
 checksums SHA-256 por artifact. `client_uid` sigue siendo solo identidad del
 receptor y nunca se usa como `invoice_id`.
 
+## Sandbox Reporting Engine 6A.8
+
+El Reporting Engine sandbox local lee exclusivamente los manifests e indices de
+`runtime/storage-sandbox/` y genera reportes en:
+
+```text
+runtime/reports-sandbox/YYYY-MM/
+  monthly-summary.json
+  monthly-summary.csv
+  client-summary.json
+  client-summary.csv
+  document-control.json
+  document-control.csv
+  accountant-review.json
+```
+
+Comandos:
+
+```powershell
+node scripts/generate-sandbox-monthly-report.js
+node scripts/analyze-sandbox-reporting.js
+```
+
+No llama Factura.com, no descarga XML/PDF, no cancela y no toca produccion. Los
+reportes contienen rutas relativas y metadatos; no incrustan XML/PDF completos,
+credenciales ni artifacts de `runtime/` en Git.
+
+Cada reporte debe incluir:
+
+```text
+Borrador sujeto a revisión humana. No sustituye contador.
+```
+
+Totales: suma subtotal, IVA trasladado y total solo para documentos `CREATED`
+cuando puede extraer importes de manifest/XML local. Los documentos
+`CANCELLED` se reportan aparte en `cancelled_total` y nunca se suman como
+ingresos vigentes. Si no hay montos, el reporte marca `amount_status=UNKNOWN`;
+no inventa importes ni calcula ISR definitivo.
+
 No subas `.env.pac.sandbox.local`, XML/PDF, responses, manifests ni runtime.
