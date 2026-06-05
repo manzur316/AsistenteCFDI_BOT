@@ -874,7 +874,17 @@ scripts/review-sandbox-lifecycle-storage.js
 scripts/lib/sandbox-human-readable-storage-naming.js
 ```
 
-Siguiente fase recomendada: `7.9 Invoice Status and Payment Status Model`.
+Fase 7.9 separa formalmente `invoice_status` de `payment_status`, agrega
+migracion SQL aditiva, eventos de pago y helpers puros para resumen por cliente,
+pendientes, pagadas, vencidas y canceladas sin activar produccion:
+
+```text
+docs/PHASE_7_9_INVOICE_PAYMENT_STATUS_MODEL.md
+sql/007_invoice_payment_status.sql
+scripts/lib/invoice-payment-status-model.js
+```
+
+Siguiente fase recomendada: `7.10 Client Invoice Ledger View`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

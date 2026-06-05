@@ -882,7 +882,26 @@ scripts/test-sandbox-human-readable-storage-naming.js
 Los reportes generados no deben exponer RFC, UUID, UID, rutas absolutas,
 XML/PDF completos, secretos, `.env`, CSD, credenciales ni datos reales.
 
-Siguiente fase recomendada: `7.9 Invoice Status and Payment Status Model`.
+### Invoice Status and Payment Status Model 7.9
+
+La fase 7.9 separa formalmente `invoice_status` de `payment_status`. El estado
+documental/fiscal describe el ciclo del CFDI; el estado de pago describe si el
+cliente ya pago, pago parcialmente, sigue pendiente o esta vencido.
+
+Documento, migracion y helper:
+
+```text
+docs/PHASE_7_9_INVOICE_PAYMENT_STATUS_MODEL.md
+sql/007_invoice_payment_status.sql
+scripts/lib/invoice-payment-status-model.js
+```
+
+La migracion es aditiva, conserva `cfdi_drafts.status` para compatibilidad,
+agrega eventos de pago y vistas para consultar facturas por cliente, pendientes,
+pagadas, vencidas, canceladas y resumen por cliente. Produccion fiscal real,
+timbrado productivo, cobro automatico y conciliacion bancaria siguen bloqueados.
+
+Siguiente fase recomendada: `7.10 Client Invoice Ledger View`.
 
 ### PAC Sandbox To Production Roadmap
 
