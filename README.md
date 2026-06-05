@@ -691,6 +691,7 @@ Layer sandbox sin agregar features productivas:
 ```text
 workflow/CFDI_SANDBOX_E2E_TEST_PLAN.md
 scripts/test-sandbox-e2e-readiness.js
+docs/PHASE_6A12_SANDBOX_E2E_SIGNOFF.md
 ```
 
 Orden recomendado: correr readiness, importar/activar el workflow, probar
@@ -701,6 +702,10 @@ Telegram. El cierre de 6A requiere `sensitive_findings=none` o alerta resumida
 sin exponer datos sensibles. Para callbacks como `cfdi_sbx:full`, el webhook
 debe regresar HTTP 200 con contenido JSON no vacio aun si la accion termina en
 error controlado.
+
+Cierre 6A.12: PASS documentado en
+`docs/PHASE_6A12_SANDBOX_E2E_SIGNOFF.md`. Siguiente fase recomendada:
+`6A.13 Sandbox action audit history`.
 
 ### Politica conversacional 4.7
 

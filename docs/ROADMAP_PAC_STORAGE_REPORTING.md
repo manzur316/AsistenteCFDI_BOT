@@ -546,6 +546,7 @@ Documento:
 
 ```text
 workflow/CFDI_SANDBOX_E2E_TEST_PLAN.md
+docs/PHASE_6A12_SANDBOX_E2E_SIGNOFF.md
 ```
 
 Verificacion local:
@@ -568,6 +569,11 @@ Orden recomendado:
 
 Criterio para cerrar 6A: pruebas offline PASS, smoke local OK y checklist E2E
 manual sin credenciales, produccion, CSD, runtime versionado ni datos reales.
+
+Estado de cierre 6A.12: PASS. La evidencia resumida queda en
+`docs/PHASE_6A12_SANDBOX_E2E_SIGNOFF.md`. Los `LEGACY-WARN` de workflows
+historicos se mantienen como deuda documentada, no como blocker del workflow
+sandbox soportado.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
