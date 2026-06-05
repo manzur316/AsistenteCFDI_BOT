@@ -15,7 +15,9 @@ const repoRoot = path.resolve(__dirname, "../..");
 const runtimeRoot = path.join(repoRoot, "runtime");
 const DEFAULT_SMOKE_RUNTIME = path.join(runtimeRoot, "facturacom-sandbox");
 const DEFAULT_ACTION_RESULTS_ROOT = path.join(runtimeRoot, "action-results-sandbox");
+const DEFAULT_ACTION_AUDIT_ROOT = path.join(runtimeRoot, "sandbox-action-audit");
 const ACTION_SCHEMA_VERSION = "sandbox_action_result.v1";
+const ACTION_AUDIT_SCHEMA_VERSION = "sandbox_action_audit.v1";
 const ACTION_STATUSES = ["OK", "ERROR", "SKIPPED", "NEEDS_RUNTIME", "NEEDS_CONFIG", "PACKAGE_SAFETY_ERROR"];
 
 const ACTIONS = [
@@ -143,6 +145,63 @@ function writeActionResult(result, options = {}) {
   return {
     result_path: rel(resultPath),
     latest_path: rel(latestPath),
+  };
+}
+
+function actionAuditRoot(options = {}) {
+  return assertRuntimePath(options.auditRoot || DEFAULT_ACTION_AUDIT_ROOT, "auditRoot");
+}
+
+function safeAuditText(value, maxLength = 96) {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  return text.replace(/[^A-Za-z0-9_:/.-]+/g, "_").slice(0, maxLength);
+}
+
+function normalizeAuditContext(context = {}) {
+  const sourceKind = safeAuditText(context.source_kind || context.sourceKind || "LOCAL_CLI", 32);
+  return {
+    source_kind: sourceKind || "LOCAL_CLI",
+    chat_id_redacted: safeAuditText(context.chat_id_redacted || context.chatIdRedacted || null, 80),
+    user_id_redacted: safeAuditText(context.user_id_redacted || context.userIdRedacted || null, 80),
+    callback_data: safeAuditText(context.callback_data || context.callbackData || null, 64),
+    command_token: safeAuditText(context.command_token || context.commandToken || null, 64),
+    workflow_version: safeAuditText(context.workflow_version || context.workflowVersion || null, 80),
+  };
+}
+
+function buildAuditRecord(result = {}, context = {}) {
+  const normalizedContext = normalizeAuditContext(context);
+  return {
+    schema_version: ACTION_AUDIT_SCHEMA_VERSION,
+    timestamp: result.finished_at || nowIso(),
+    source_kind: normalizedContext.source_kind,
+    chat_id_redacted: normalizedContext.chat_id_redacted,
+    user_id_redacted: normalizedContext.user_id_redacted,
+    callback_data: normalizedContext.callback_data,
+    command_token: normalizedContext.command_token,
+    action: safeAuditText(result.action || "UNKNOWN", 96) || "UNKNOWN",
+    status: safeAuditText(result.status || "ERROR", 48) || "ERROR",
+    ok: result.ok === true,
+    duration_ms: Number.isFinite(result.duration_ms) ? result.duration_ms : null,
+    artifacts_count: Array.isArray(result.artifacts) ? result.artifacts.length : 0,
+    warnings_count: Array.isArray(result.warnings) ? result.warnings.length : 0,
+    errors_count: Array.isArray(result.errors) ? result.errors.length : 0,
+    sensitive_findings_count: Array.isArray(result.sensitive_findings) ? result.sensitive_findings.length : 0,
+    workflow_version: normalizedContext.workflow_version,
+  };
+}
+
+function writeAuditRecord(result, options = {}) {
+  if (options.writeAudit === false) return null;
+  const root = actionAuditRoot(options);
+  fs.mkdirSync(root, { recursive: true });
+  const filePath = path.join(root, "actions.jsonl");
+  const record = sanitizeValue(buildAuditRecord(result, options.auditContext || {}));
+  fs.appendFileSync(filePath, `${JSON.stringify(record)}\n`, "utf8");
+  return {
+    audit_path: rel(filePath),
+    record,
   };
 }
 
@@ -430,6 +489,8 @@ async function runSandboxAction(action, options = {}) {
     writeJson(path.resolve(repoRoot, paths.result_path), sanitized);
     writeJson(path.resolve(repoRoot, paths.latest_path), sanitized);
   }
+  const audit = writeAuditRecord(sanitized, options);
+  if (audit) sanitized.audit_path = audit.audit_path;
   return sanitized;
 }
 
@@ -480,11 +541,15 @@ function scanRuntimeActionFindings(dir) {
 
 module.exports = {
   ACTIONS,
+  ACTION_AUDIT_SCHEMA_VERSION,
   ACTION_SCHEMA_VERSION,
   ACTION_STATUSES,
+  DEFAULT_ACTION_AUDIT_ROOT,
   DEFAULT_ACTION_RESULTS_ROOT,
   analyzeLatestActionResult,
+  buildAuditRecord,
   listSandboxActions,
   runSandboxAction,
   sanitizeValue,
+  writeAuditRecord,
 };

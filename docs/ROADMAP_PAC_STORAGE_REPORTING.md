@@ -575,6 +575,34 @@ Estado de cierre 6A.12: PASS. La evidencia resumida queda en
 historicos se mantienen como deuda documentada, no como blocker del workflow
 sandbox soportado.
 
+### Sandbox Action Audit History 6A.13
+
+La fase 6A.13 registra historial auditable local para cada accion sandbox
+ejecutada por el Action Layer, incluyendo acciones disparadas desde n8n/Telegram
+sandbox.
+
+Documentos y scripts:
+
+```text
+docs/PHASE_6A13_SANDBOX_ACTION_AUDIT_HISTORY.md
+scripts/analyze-sandbox-action-audit.js
+scripts/test-sandbox-action-audit-history.js
+```
+
+El audit vive solo en:
+
+```text
+runtime/sandbox-action-audit/actions.jsonl
+```
+
+Cada registro guarda `source_kind`, refs redacted de chat/user, callback o
+comando allowlisted, accion, estado, duracion y conteos. No guarda tokens,
+chat_id completo, RFC, UUID, UID, rutas, XML/PDF, ZIP/Excel, CSD, `.env`,
+credenciales PAC ni datos reales. N8n no escribe audit ni lee filesystem; solo
+pasa metadata segura `--audit-*` al comando allowlisted del Action Layer.
+
+Siguiente fase recomendada: `6A.14 Sandbox audit review and retention policy`.
+
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
 La fase 6A.11B corrige dos riesgos del E2E local sin tocar produccion ni

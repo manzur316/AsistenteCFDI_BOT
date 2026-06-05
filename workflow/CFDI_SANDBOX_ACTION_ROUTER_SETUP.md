@@ -14,6 +14,12 @@ n8n. N8n solo orquesta y llama:
 node scripts/run-sandbox-action.js <action>
 ```
 
+Desde 6A.13 puede agregar argumentos `--audit-*` con metadata segura y redacted
+para que el Action Layer registre historial local en
+`runtime/sandbox-action-audit/actions.jsonl`. Esos argumentos no contienen texto
+libre, chat_id completo, user_id completo, RFC, UUID, UID, montos, rutas,
+credenciales ni nombres de archivos.
+
 Reglas obligatorias de workflow n8n:
 
 ```text
@@ -221,7 +227,8 @@ Orden recomendado:
 - Si `chat_id` no coincide, responde `No autorizado`.
 - El action sale de allowlist, no de texto libre.
 - `callback_data` sale de allowlist y mide menos de 32 caracteres.
-- `Execute Command` solo ejecuta `node scripts/run-sandbox-action.js <action>`.
+- `Execute Command` solo ejecuta `node scripts/run-sandbox-action.js <action>`
+  con metadata opcional `--audit-*` segura.
 - No hay HTTP Request a Factura.com.
 - No contiene `F-Api-Key`, `F-Secret-Key` ni `F-PLUGIN`.
 - No imprime credenciales, `.env`, CSD, XML/PDF completos ni datos reales.
@@ -235,8 +242,14 @@ Esto no timbra CFDI, no llama PAC productivo, no descarga archivos nuevos, no
 manda documentos por Telegram y no sustituye revision humana. El resultado es
 observabilidad sandbox local para preparar la siguiente fase.
 
+Fase 6A.13:
+
+```text
+docs/PHASE_6A13_SANDBOX_ACTION_AUDIT_HISTORY.md
+```
+
 Siguiente fase recomendada:
 
 ```text
-6A.13 Sandbox action audit history
+6A.14 Sandbox audit review and retention policy
 ```

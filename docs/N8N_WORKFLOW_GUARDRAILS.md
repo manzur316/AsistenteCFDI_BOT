@@ -88,6 +88,16 @@ The action must come from an internal allowlist. Never concatenate raw user
 input into shell commands. Never accept arbitrary shell text from Telegram,
 webhooks or workflow input.
 
+The sandbox router may append sanitized audit metadata flags generated from
+allowlisted or redacted values:
+
+```powershell
+node scripts/run-sandbox-action.js <action_allowlisted> --audit-source-kind CALLBACK_QUERY --audit-callback-data cfdi_sbx:full
+```
+
+Those flags must never contain raw message text, full chat/user IDs, RFC, UUID,
+UID, amounts, paths, credentials or file names.
+
 ## PAC And Factura.com Boundary
 
 n8n must not:
@@ -146,7 +156,8 @@ Then inspect the n8n JSON for:
 - no secrets or placeholders that look like real tokens;
 - no file sending nodes;
 - only allowlisted `cfdi_sbx:*` callbacks;
-- only allowlisted `node scripts/run-sandbox-action.js <action>` execution.
+- only allowlisted `node scripts/run-sandbox-action.js <action>` execution,
+  optionally with safe `--audit-*` metadata.
 
 ## Legacy Workflows
 

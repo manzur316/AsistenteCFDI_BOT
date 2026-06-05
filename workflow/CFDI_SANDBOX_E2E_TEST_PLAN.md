@@ -16,6 +16,7 @@ Confirmar que el workflow local:
 - actualiza `runtime/action-results-sandbox/latest.json`;
 - no expone secretos ni datos sensibles.
 - no requiere `fs/path` en Code Nodes de n8n.
+- registra historial auditable local de acciones sandbox en runtime.
 
 ## Requisitos Previos
 
@@ -242,11 +243,18 @@ cfdi_sbx:cancel
 - n8n execution log del workflow.
 - `runtime/action-results-sandbox/latest.json`.
 - `runtime/action-results-sandbox/*.json`.
+- `runtime/sandbox-action-audit/actions.jsonl`.
 - `runtime/reports-sandbox/` si se ejecuto reporte.
 - `runtime/accountant-packages-sandbox/` si se ejecuto paquete.
 - `runtime/storage-sandbox/` si se refresco storage.
 
 Estos archivos son locales y no deben versionarse.
+
+Para validar el historial audit:
+
+```powershell
+node scripts/analyze-sandbox-action-audit.js
+```
 
 ## Lo Que NO Debe Pasar
 

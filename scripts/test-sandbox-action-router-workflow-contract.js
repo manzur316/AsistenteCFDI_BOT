@@ -327,7 +327,9 @@ if (workflow) {
     assert.strictEqual(executeNode.type, "n8n-nodes-base.executeCommand");
     assert.strictEqual(executeNode.parameters.command, "={{$json.execute_command}}");
     assert(normalizeCode.includes("'node scripts/run-sandbox-action.js ' + requestedAction"));
-    return "node scripts/run-sandbox-action.js <action>";
+    assert(normalizeCode.includes("--audit-source-kind"));
+    assert(normalizeCode.includes("redactIdentifier"));
+    return "node scripts/run-sandbox-action.js <action> --audit-*";
   });
 
   check("does_not_execute_arbitrary_input", () => {
@@ -342,8 +344,12 @@ if (workflow) {
     const result = executeCode(normalizeCode, makeMessage("/sandbox_report cualquier texto extra"))[0].json;
     assert.strictEqual(result.should_execute, true);
     assert.strictEqual(result.requested_action, "sandbox.report.generate");
-    assert.strictEqual(result.execute_command, "node scripts/run-sandbox-action.js sandbox.report.generate");
+    assert(result.execute_command.startsWith("node scripts/run-sandbox-action.js sandbox.report.generate "));
+    assert(result.execute_command.includes("--audit-source-kind MESSAGE"));
+    assert(result.execute_command.includes("--audit-command-token /sandbox_report"));
+    assert(result.execute_command.includes("--audit-workflow-version CFDI_SANDBOX_ACTION_ROUTER_V1"));
     assert(!result.execute_command.includes("cualquier texto extra"));
+    assert(!result.execute_command.includes("12345"));
     return result.execute_command;
   });
 
@@ -353,7 +359,11 @@ if (workflow) {
     assert.strictEqual(result.callback_data, "cfdi_sbx:report");
     assert.strictEqual(result.should_execute, true);
     assert.strictEqual(result.requested_action, "sandbox.report.generate");
-    assert.strictEqual(result.execute_command, "node scripts/run-sandbox-action.js sandbox.report.generate");
+    assert(result.execute_command.startsWith("node scripts/run-sandbox-action.js sandbox.report.generate "));
+    assert(result.execute_command.includes("--audit-source-kind CALLBACK_QUERY"));
+    assert(result.execute_command.includes("--audit-callback-data cfdi_sbx:report"));
+    assert(result.execute_command.includes("--audit-chat-redacted redacted:"));
+    assert(!result.execute_command.includes("12345"));
     return result.execute_command;
   });
 
@@ -361,7 +371,8 @@ if (workflow) {
     const result = executeCode(normalizeCode, makeCallback("cfdi_sbx:full"))[0].json;
     assert.strictEqual(result.should_execute, true);
     assert.strictEqual(result.requested_action, "sandbox.full.monthly.package");
-    assert.strictEqual(result.execute_command, "node scripts/run-sandbox-action.js sandbox.full.monthly.package");
+    assert(result.execute_command.startsWith("node scripts/run-sandbox-action.js sandbox.full.monthly.package "));
+    assert(result.execute_command.includes("--audit-callback-data cfdi_sbx:full"));
     return result.requested_action;
   });
 

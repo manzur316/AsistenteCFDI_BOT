@@ -707,6 +707,23 @@ Cierre 6A.12: PASS documentado en
 `docs/PHASE_6A12_SANDBOX_E2E_SIGNOFF.md`. Siguiente fase recomendada:
 `6A.13 Sandbox action audit history`.
 
+Fase 6A.13 agrega historial auditable local para acciones sandbox:
+
+```text
+docs/PHASE_6A13_SANDBOX_ACTION_AUDIT_HISTORY.md
+runtime/sandbox-action-audit/actions.jsonl
+scripts/analyze-sandbox-action-audit.js
+scripts/test-sandbox-action-audit-history.js
+```
+
+Cada ejecucion del Action Layer agrega un registro JSONL con estado, conteos y
+metadata redacted. N8n sigue sin leer ni escribir filesystem; solo pasa metadata
+segura `--audit-*` al mismo comando allowlisted. No se guardan tokens, chat_id
+completo, RFC, UUID, UID, rutas, XML/PDF, ZIP/Excel, CSD, `.env`, credenciales
+PAC ni datos reales.
+
+Siguiente fase recomendada: `6A.14 Sandbox audit review and retention policy`.
+
 ### Politica conversacional 4.7
 
 El bot mantiene una sola factura activa por chat. Si hay un preview abierto, cualquier mensaje normal actualiza ese borrador en lugar de iniciar otro flujo aislado.
