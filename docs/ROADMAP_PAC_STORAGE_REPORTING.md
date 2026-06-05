@@ -601,7 +601,31 @@ chat_id completo, RFC, UUID, UID, rutas, XML/PDF, ZIP/Excel, CSD, `.env`,
 credenciales PAC ni datos reales. N8n no escribe audit ni lee filesystem; solo
 pasa metadata segura `--audit-*` al comando allowlisted del Action Layer.
 
-Siguiente fase recomendada: `6A.14 Sandbox audit review and retention policy`.
+### Sandbox Audit Review And Retention 6A.14
+
+La fase 6A.14 agrega politica local para revisar, resumir, retener y limpiar de
+forma segura el audit sandbox, sin tocar produccion, PAC real, workflows ni
+logica fiscal.
+
+Documentos y scripts:
+
+```text
+docs/PHASE_6A14_SANDBOX_AUDIT_REVIEW_RETENTION.md
+scripts/review-sandbox-action-audit.js
+scripts/test-sandbox-action-audit-retention.js
+```
+
+El resumen seguro se genera solo en runtime local:
+
+```text
+runtime/sandbox-action-audit/summary.json
+```
+
+La revision es `--dry-run` por defecto. La limpieza real exige `--apply`, crea
+respaldo/archivo local bajo `runtime/sandbox-action-audit/archives/` y bloquea
+cualquier politica que dejaria el audit activo vacio sin revision humana.
+
+Siguiente fase recomendada: `6A.15 Sandbox audit dashboard/export for human review`.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 

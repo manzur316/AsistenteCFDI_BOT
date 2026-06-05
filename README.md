@@ -722,7 +722,21 @@ segura `--audit-*` al mismo comando allowlisted. No se guardan tokens, chat_id
 completo, RFC, UUID, UID, rutas, XML/PDF, ZIP/Excel, CSD, `.env`, credenciales
 PAC ni datos reales.
 
-Siguiente fase recomendada: `6A.14 Sandbox audit review and retention policy`.
+Fase 6A.14 agrega politica local de revision, resumen, retencion y limpieza
+segura del audit sandbox:
+
+```text
+docs/PHASE_6A14_SANDBOX_AUDIT_REVIEW_RETENTION.md
+runtime/sandbox-action-audit/summary.json
+scripts/review-sandbox-action-audit.js
+scripts/test-sandbox-action-audit-retention.js
+```
+
+La revision es `--dry-run` por defecto. La limpieza real requiere `--apply`,
+crea respaldo/archivo local en runtime antes de modificar `actions.jsonl` y no
+versiona audit, resumen, XML/PDF, ZIP/Excel, credenciales ni datos reales.
+
+Siguiente fase recomendada: `6A.15 Sandbox audit dashboard/export for human review`.
 
 ### Politica conversacional 4.7
 
