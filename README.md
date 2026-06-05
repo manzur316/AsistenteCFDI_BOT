@@ -736,7 +736,21 @@ La revision es `--dry-run` por defecto. La limpieza real requiere `--apply`,
 crea respaldo/archivo local en runtime antes de modificar `actions.jsonl` y no
 versiona audit, resumen, XML/PDF, ZIP/Excel, credenciales ni datos reales.
 
-Siguiente fase recomendada: `6A.15 Sandbox audit dashboard/export for human review`.
+Fase 6A.15 agrega export local para revision humana del audit sandbox:
+
+```text
+docs/PHASE_6A15_SANDBOX_AUDIT_DASHBOARD_EXPORT.md
+runtime/sandbox-action-audit/review/audit-review.md
+runtime/sandbox-action-audit/review/audit-review.csv
+runtime/sandbox-action-audit/review/audit-review.json
+scripts/export-sandbox-action-audit-review.js
+scripts/test-sandbox-action-audit-export.js
+```
+
+El export no modifica `actions.jsonl`, falla si el analyzer detecta datos
+sensibles y solo produce reportes locales ignorados por Git.
+
+Siguiente fase recomendada: `6A.16 Sandbox audit review checklist and signoff workflow`.
 
 ### Politica conversacional 4.7
 

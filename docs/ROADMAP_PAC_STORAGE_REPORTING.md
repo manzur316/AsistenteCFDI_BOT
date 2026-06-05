@@ -625,7 +625,33 @@ La revision es `--dry-run` por defecto. La limpieza real exige `--apply`, crea
 respaldo/archivo local bajo `runtime/sandbox-action-audit/archives/` y bloquea
 cualquier politica que dejaria el audit activo vacio sin revision humana.
 
-Siguiente fase recomendada: `6A.15 Sandbox audit dashboard/export for human review`.
+### Sandbox Audit Dashboard Export 6A.15
+
+La fase 6A.15 agrega export local revisable por humano para el audit sandbox,
+sin interfaz web, sin PAC productivo, sin enviar archivos por Telegram y sin
+modificar `actions.jsonl`.
+
+Documentos y scripts:
+
+```text
+docs/PHASE_6A15_SANDBOX_AUDIT_DASHBOARD_EXPORT.md
+scripts/export-sandbox-action-audit-review.js
+scripts/test-sandbox-action-audit-export.js
+```
+
+Los reportes se generan solo en runtime local:
+
+```text
+runtime/sandbox-action-audit/review/audit-review.md
+runtime/sandbox-action-audit/review/audit-review.csv
+runtime/sandbox-action-audit/review/audit-review.json
+```
+
+El export valida el audit con el analyzer, usa `summary.json` si existe y falla
+si detecta datos sensibles. No guarda chat_id/user_id completos, RFC, UUID, UID,
+rutas absolutas, artifacts, CSD, credenciales PAC ni datos reales.
+
+Siguiente fase recomendada: `6A.16 Sandbox audit review checklist and signoff workflow`.
 
 ### Sandbox Package Safety + Webhook Response 6A.11B
 
