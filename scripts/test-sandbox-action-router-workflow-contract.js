@@ -121,12 +121,14 @@ let workflow = null;
 let raw = "";
 let normalizeCode = "";
 let summaryCode = "";
+let prepareWebhookCode = "";
 
 try {
   raw = fs.readFileSync(workflowPath, "utf8");
   workflow = JSON.parse(raw);
   normalizeCode = getNode(workflow, "Normalize Input And Route").parameters.jsCode;
   summaryCode = getNode(workflow, "Build Safe Action Summary").parameters.jsCode;
+  prepareWebhookCode = getNode(workflow, "Prepare Webhook JSON Body").parameters.jsCode;
   checks.push({ name: "workflow_exists", pass: true, value: expectedWorkflow });
   checks.push({ name: "workflow_valid_json", pass: true, value: workflow.name });
 } catch (error) {
@@ -139,6 +141,7 @@ if (workflow) {
   const webhookNode = getNode(workflow, "Webhook Sandbox Action Router");
   const configNode = getNode(workflow, "Set Config");
   const executeNode = getNode(workflow, "Execute Sandbox Action");
+  const prepareWebhookNode = getNode(workflow, "Prepare Webhook JSON Body");
   const respondNode = getNode(workflow, "Respond to Webhook");
   const telegramNode = getNode(workflow, "Telegram sendMessage");
   const executeNodes = nodes.filter((node) => node.type === "n8n-nodes-base.executeCommand");
@@ -156,8 +159,20 @@ if (workflow) {
 
   check("responds_with_response_node", () => {
     assert.strictEqual(respondNode.type, "n8n-nodes-base.respondToWebhook");
-    assert.strictEqual(respondNode.parameters.respondWith, "json");
-    return "Respond to Webhook";
+    assert.strictEqual(respondNode.parameters.respondWith, "firstIncomingItem");
+    assert(!("responseBody" in respondNode.parameters));
+    assert.strictEqual(respondNode.parameters.options.responseCode, 200);
+    return "Respond to Webhook firstIncomingItem";
+  });
+
+  check("prepare_webhook_json_body_node_present", () => {
+    assert.strictEqual(prepareWebhookNode.type, "n8n-nodes-base.code");
+    assert(prepareWebhookCode.includes("webhook_response"));
+    assert(prepareWebhookCode.includes("warnings"));
+    assert(prepareWebhookCode.includes("errors"));
+    assert(prepareWebhookCode.includes("source_kind"));
+    assert(prepareWebhookCode.includes("callback_data"));
+    return "Prepare Webhook JSON Body";
   });
 
   check("no_hardcoded_credentials_or_tokens", () => {
@@ -406,6 +421,39 @@ if (workflow) {
     return result.webhook_response.status;
   });
 
+  check("prepared_callback_full_response_is_json_body", () => {
+    const routed = executeCode(normalizeCode, makeCallback("cfdi_sbx:full"))[0].json;
+    const summary = executeCode(
+      summaryCode,
+      {
+        stdout: JSON.stringify({
+          schema_version: "sandbox_action_result.v1",
+          action: "sandbox.full.monthly.package",
+          status: "OK",
+          ok: true,
+          duration_ms: 122,
+          artifacts: [{ key: "latest_path", path: "runtime/action-results-sandbox/latest.json" }],
+          warnings: [],
+          errors: [],
+          sensitive_findings: [],
+        }),
+      },
+      { projectRoot: path.join(root, "runtime", "nonexistent-project-root") },
+      { "Normalize Input And Route": { json: routed } },
+    )[0].json;
+    const body = executeCode(prepareWebhookCode, summary)[0].json;
+    assert.deepStrictEqual(Object.keys(body).sort(), ["action", "callback_data", "errors", "message", "ok", "source_kind", "status", "warnings"].sort());
+    assert.strictEqual(body.ok, true);
+    assert.strictEqual(body.status, "OK");
+    assert.strictEqual(body.action, "sandbox.full.monthly.package");
+    assert.strictEqual(body.source_kind, "CALLBACK_QUERY");
+    assert.strictEqual(body.callback_data, "cfdi_sbx:full");
+    assert(Array.isArray(body.warnings));
+    assert(Array.isArray(body.errors));
+    assert(JSON.stringify(body).length > 20);
+    return `${body.status}/${body.action}`;
+  });
+
   check("summary_reports_package_safety_error_body", () => {
     const routed = executeCode(normalizeCode, makeCallback("cfdi_sbx:full"))[0].json;
     const result = executeCode(
@@ -433,15 +481,54 @@ if (workflow) {
     assert.strictEqual(result.webhook_response.status, "PACKAGE_SAFETY_ERROR");
     assert.strictEqual(result.webhook_response.action, "sandbox.full.monthly.package");
     assert(result.webhook_response.errors.join(" | ").includes("absolute_path"));
+    assert(!/\.xlsx|\.xml|\.pdf|\.zip/i.test(JSON.stringify(result.webhook_response)));
     assert(!result.webhook_response.message.includes("undefined"));
     return result.webhook_response.status;
   });
 
-  check("respond_to_webhook_uses_webhook_response_with_fallback", () => {
-    assert.strictEqual(respondNode.parameters.responseBody.includes("$json.webhook_response"), true);
-    assert(respondNode.parameters.responseBody.includes("MISSING_WEBHOOK_RESPONSE"));
-    assert.strictEqual(respondNode.parameters.respondWith, "json");
-    return "webhook_response";
+  check("prepared_package_safety_error_body_not_empty", () => {
+    const body = executeCode(prepareWebhookCode, {
+      source_kind: "CALLBACK_QUERY",
+      callback_data: "cfdi_sbx:full",
+      requested_action: "sandbox.full.monthly.package",
+      reply_text: "Sandbox action: sandbox.full.monthly.package",
+      action_result: {
+        action: "sandbox.full.monthly.package",
+        status: "PACKAGE_SAFETY_ERROR",
+        warnings: [],
+        errors: ["Paquete contador sandbox inseguro: accountant-review-2026-06.xlsx:xl/worksheets/sheet1.xml:DEMO!A1:absolute_path"],
+      },
+      webhook_response: {
+        ok: false,
+        status: "PACKAGE_SAFETY_ERROR",
+        action: "sandbox.full.monthly.package",
+        message: "Sandbox action: sandbox.full.monthly.package",
+        warnings: [],
+        errors: ["Paquete contador sandbox inseguro: accountant-review-2026-06.xlsx:xl/worksheets/sheet1.xml:DEMO!A1:absolute_path"],
+      },
+    })[0].json;
+    assert.strictEqual(body.ok, false);
+    assert.strictEqual(body.status, "PACKAGE_SAFETY_ERROR");
+    assert.strictEqual(body.action, "sandbox.full.monthly.package");
+    assert.strictEqual(body.source_kind, "CALLBACK_QUERY");
+    assert.strictEqual(body.callback_data, "cfdi_sbx:full");
+    assert(body.errors.join(" | ").includes("absolute_path"));
+    assert(!/\.xlsx|\.xml|\.pdf|\.zip/i.test(JSON.stringify(body)));
+    return body.status;
+  });
+
+  check("respond_to_webhook_returns_prepared_first_item", () => {
+    assert.strictEqual(respondNode.parameters.respondWith, "firstIncomingItem");
+    assert(!/noData|responseBody/i.test(JSON.stringify(respondNode.parameters)));
+    const summaryConnections = workflow.connections["Build Safe Action Summary"].main[0].map((item) => item.node);
+    const immediateConnections = workflow.connections["Build Immediate Response"].main[0].map((item) => item.node);
+    const prepareConnections = workflow.connections["Prepare Webhook JSON Body"].main[0].map((item) => item.node);
+    assert(summaryConnections.includes("Prepare Webhook JSON Body"));
+    assert(immediateConnections.includes("Prepare Webhook JSON Body"));
+    assert(!summaryConnections.includes("Respond to Webhook"));
+    assert(!immediateConnections.includes("Respond to Webhook"));
+    assert.deepStrictEqual(prepareConnections, ["Respond to Webhook"]);
+    return "prepared first item";
   });
 
   check("summary_hides_sensitive_details", () => {

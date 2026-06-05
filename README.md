@@ -614,6 +614,14 @@ Los bloqueos de paquete se clasifican como `PACKAGE_SAFETY_ERROR`, no como
 las acciones, incluyendo `ok`, `status`, `action`, `message`, `warnings` y
 `errors`.
 
+Fase 6A.11C fija el body HTTP del webhook sandbox en n8n: el workflow prepara
+un item final con `ok`, `status`, `action`, `source_kind`, `callback_data`,
+`message`, `warnings` y `errors`, y el nodo `Respond to Webhook` responde ese
+primer item como JSON. Si `latest.json` queda `OK` pero PowerShell muestra
+`RawContentLength=0`, la accion corrio, pero n8n sigue usando un workflow viejo
+o mal importado. Despues de `git pull`, reimporta
+`workflow/cfdi_sandbox_action_router.n8n.json` en n8n.
+
 Fase 6A.10 agrega el router n8n sandbox sobre esa Action Layer:
 
 ```text

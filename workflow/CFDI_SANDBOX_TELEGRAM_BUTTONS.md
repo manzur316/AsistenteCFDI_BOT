@@ -119,6 +119,14 @@ Invoke-WebRequest `
   -Body $body
 ```
 
+La respuesta HTTP debe tener `StatusCode=200`, `RawContentLength > 0` y JSON
+parseable. Para `cfdi_sbx:full`, el body debe incluir `action:
+sandbox.full.monthly.package`, `source_kind: CALLBACK_QUERY`,
+`callback_data: cfdi_sbx:full`, `warnings` y `errors`. Si `latest.json` se
+actualiza pero `Content` llega vacio, reimporta
+`workflow/cfdi_sandbox_action_router.n8n.json` en n8n; `git pull` no actualiza
+workflows ya importados.
+
 ## Plan Manual E2E
 
 La fase 6A.12 deja el checklist completo para validar Telegram + n8n + Action

@@ -586,6 +586,14 @@ El hotfix mantiene la restriccion de no versionar `runtime/`, Excel, ZIP,
 XML/PDF, CSD, `.env`, credenciales ni datos reales. Tampoco envia archivos por
 Telegram.
 
+La fase 6A.11C separa la ejecucion local del Action Layer de la respuesta HTTP
+del webhook. `latest.json` con `status=OK` confirma ejecucion; el webhook solo
+queda aprobado si PowerShell muestra `StatusCode=200`, `RawContentLength > 0` y
+`Content` parseable como JSON. El workflow prepara un item final minimo y
+`Respond to Webhook` responde ese primer item, evitando defaults o expresiones
+que puedan producir body vacio en n8n. Despues de `git pull`, el JSON debe
+reimportarse en n8n porque los workflows importados no se actualizan solos.
+
 ### Sandbox Reporting Engine 6A.8
 
 La fase 6A.8 agrega reportes mensuales locales a partir de

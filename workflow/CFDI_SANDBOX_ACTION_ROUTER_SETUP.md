@@ -43,6 +43,10 @@ No guardes tokens reales en este archivo, en el workflow ni en Git.
    - `telegramBotToken`: `={{$env.TELEGRAM_BOT_TOKEN || ''}}`
 4. Activa el workflow solo cuando quieras probar el webhook local.
 
+Importante: n8n no actualiza workflows importados automaticamente despues de
+`git pull`. Si este archivo cambia, reimporta el JSON o reemplaza el workflow
+en n8n antes de repetir el E2E.
+
 Webhook local:
 
 ```text
@@ -120,9 +124,13 @@ Respuesta segura esperada:
 ```json
 {
   "ok": true,
-  "status": "OK",
-  "action": "sandbox.full.monthly.package",
-  "message": "Sandbox action: sandbox.full.monthly.package\n..."
+  "status": "menu",
+  "action": null,
+  "source_kind": "MESSAGE",
+  "callback_data": null,
+  "message": "Menu sandbox CFDI",
+  "warnings": [],
+  "errors": []
 }
 ```
 
@@ -147,6 +155,25 @@ Invoke-WebRequest `
   -ContentType "application/json" `
   -Body $body
 ```
+
+Para confirmar que el webhook no regreso body vacio:
+
+```powershell
+$response = Invoke-WebRequest `
+  -Uri "http://localhost:5678/webhook/cfdi-sandbox-action-router" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body $body
+
+$response.StatusCode
+$response.RawContentLength
+$response.Content | ConvertFrom-Json
+```
+
+El criterio es `StatusCode=200`, `RawContentLength > 0` y JSON parseable. Si
+`runtime/action-results-sandbox/latest.json` queda en `OK` pero
+`RawContentLength=0`, la accion si corrio, pero el workflow importado en n8n no
+esta devolviendo el item preparado por `Prepare Webhook JSON Body`.
 
 ## Plan Manual E2E 6A.12
 

@@ -311,14 +311,18 @@ variables de entorno locales. No las pegues en issues, docs ni logs.
 
 ### Webhook responde body vacio
 
-El path de accion debe terminar en `Respond to Webhook` con JSON visible. Para
-`cfdi_sbx:full`, la respuesta esperada incluye:
+`latest.json` en `OK` valida que el Action Layer ejecuto. No valida por si solo
+que el webhook respondio bien. El path de accion debe terminar en
+`Prepare Webhook JSON Body` y luego `Respond to Webhook`, con body JSON visible.
+Para `cfdi_sbx:full`, la respuesta esperada incluye:
 
 ```json
 {
   "ok": true,
   "status": "OK",
   "action": "sandbox.full.monthly.package",
+  "source_kind": "CALLBACK_QUERY",
+  "callback_data": "cfdi_sbx:full",
   "message": "...",
   "warnings": [],
   "errors": []
@@ -327,6 +331,28 @@ El path de accion debe terminar en `Respond to Webhook` con JSON visible. Para
 
 Si hay error controlado, `ok` puede ser `false`, pero el body no debe estar
 vacio.
+
+Despues de `git pull`, n8n no actualiza workflows importados automaticamente.
+Reimporta `workflow/cfdi_sandbox_action_router.n8n.json` antes de repetir este
+caso.
+
+Prueba PowerShell minima:
+
+```powershell
+$response = Invoke-WebRequest `
+  -Uri "http://localhost:5678/webhook/cfdi-sandbox-action-router" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body $body
+
+$response.StatusCode
+$response.RawContentLength
+$response.Content | ConvertFrom-Json
+```
+
+Criterio: `StatusCode=200`, `RawContentLength > 0`, JSON parseable y
+`latest.json` con `action=sandbox.full.monthly.package`, `status=OK` cuando el
+chat esta autorizado.
 
 ## Orden Recomendado Para Cerrar 6A
 
