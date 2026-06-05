@@ -147,7 +147,7 @@ if (workflow) {
   const executeNodes = nodes.filter((node) => node.type === "n8n-nodes-base.executeCommand");
   const httpNodes = nodes.filter((node) => node.type === "n8n-nodes-base.httpRequest");
   const allCode = nodes.map((node) => node.parameters?.jsCode || "").join("\n");
-  const disallowedRequires = requireCalls(allCode).filter((item) => !["fs", "path"].includes(item));
+  const disallowedRequires = requireCalls(allCode);
   const callbackDataValues = workflowCallbackDataValues(raw);
 
   check("uses_webhook_local_test", () => {
@@ -382,12 +382,22 @@ if (workflow) {
     return result.router_status;
   });
 
-  check("summary_reads_latest_json", () => {
-    assert(summaryCode.includes("runtime"));
-    assert(summaryCode.includes("action-results-sandbox"));
-    assert(summaryCode.includes("latest.json"));
-    assert(summaryCode.includes("fs.readFileSync"));
-    return "runtime/action-results-sandbox/latest.json";
+  check("summary_parses_execute_command_stdout_only", () => {
+    assert(summaryCode.includes("$json.stdout"));
+    assert(summaryCode.includes("$json.data"));
+    assert(summaryCode.includes("JSON.parse"));
+    assert(summaryCode.includes("stdout del Action Layer"));
+    assert(!/require\(|readFileSync|latestPath|fs\.|path\./.test(summaryCode));
+    return "stdout/data";
+  });
+
+  check("workflow_code_nodes_do_not_use_fs_path_or_file_reads", () => {
+    assert.strictEqual(disallowedRequires.length, 0, disallowedRequires.join(", "));
+    assert(!/require\(\s*["']fs["']\s*\)/.test(allCode));
+    assert(!/require\(\s*["']path["']\s*\)/.test(allCode));
+    assert(!/readFileSync|writeFileSync|appendFileSync|existsSync/.test(allCode));
+    assert(!/action-results-sandbox['"],\s*['"]latest\.json|latestPath/.test(allCode));
+    return "no fs/path/readFileSync";
   });
 
   check("summary_produces_non_empty_webhook_response", () => {
@@ -558,7 +568,7 @@ if (workflow) {
     assert.strictEqual(disallowedRequires.length, 0, disallowedRequires.join(", "));
     assert(!/require\(\s*["'][.]{1,2}\//.test(allCode));
     assert(!raw.includes("scripts/scoring.js"));
-    return "builtins only";
+    return "no require";
   });
 
   check("no_pac_timbrado_csd_env_leak", () => {

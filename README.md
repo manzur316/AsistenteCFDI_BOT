@@ -622,6 +622,12 @@ primer item como JSON. Si `latest.json` queda `OK` pero PowerShell muestra
 o mal importado. Despues de `git pull`, reimporta
 `workflow/cfdi_sandbox_action_router.n8n.json` en n8n.
 
+Fase 6A.11D elimina `fs/path` del workflow sandbox de n8n. Los Code Nodes no
+usan `require`, `readFileSync` ni lectura del filesystem; `Build Safe Action
+Summary` parsea exclusivamente el JSON estable que `Execute Command` entrega en
+`stdout`/`data`. `latest.json` queda para diagnostico externo y no para lectura
+interna de n8n. No habilites `NODE_FUNCTION_ALLOW_BUILTIN` para este flujo.
+
 Fase 6A.10 agrega el router n8n sandbox sobre esa Action Layer:
 
 ```text
@@ -652,7 +658,8 @@ Comandos:
 N8n no conoce Factura.com, PAC, XML/PDF, headers ni contratos fiscales internos.
 Si `TELEGRAM_BOT_TOKEN` existe localmente, puede responder por `sendMessage`; si
 no, responde por webhook local. No envia XML/PDF, ZIP, Excel ni otros archivos
-por Telegram en esta fase.
+por Telegram en esta fase. Este router sandbox tampoco requiere `fs/path` en
+Code Nodes.
 
 Fase 6A.11 agrega botones inline sandbox sobre el mismo router:
 

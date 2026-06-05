@@ -15,6 +15,7 @@ Confirmar que el workflow local:
 - no envia XML/PDF/ZIP/Excel por Telegram;
 - actualiza `runtime/action-results-sandbox/latest.json`;
 - no expone secretos ni datos sensibles.
+- no requiere `fs/path` en Code Nodes de n8n.
 
 ## Requisitos Previos
 
@@ -36,11 +37,13 @@ PowerShell recomendado:
 ```powershell
 cd "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI"
 $env:N8N_PORT="5678"
-$env:NODE_FUNCTION_ALLOW_BUILTIN="fs,path"
 $env:CFDI_ALLOWED_TELEGRAM_CHAT_ID="REEMPLAZAR_CHAT_ID_AUTORIZADO"
 # Define TELEGRAM_BOT_TOKEN solo en tu terminal local si probaras Telegram real.
 n8n start
 ```
+
+No configures `NODE_FUNCTION_ALLOW_BUILTIN` para este router sandbox. Los Code
+Nodes no usan `fs/path`; el workflow consume solo `stdout` del Action Layer.
 
 Si no defines `TELEGRAM_BOT_TOKEN`, el webhook local sigue funcionando y n8n no
 intenta responder por Telegram.
@@ -314,6 +317,8 @@ variables de entorno locales. No las pegues en issues, docs ni logs.
 `latest.json` en `OK` valida que el Action Layer ejecuto. No valida por si solo
 que el webhook respondio bien. El path de accion debe terminar en
 `Prepare Webhook JSON Body` y luego `Respond to Webhook`, con body JSON visible.
+N8n no lee `latest.json` desde Code Nodes; ese archivo queda para diagnostico
+externo.
 Para `cfdi_sbx:full`, la respuesta esperada incluye:
 
 ```json

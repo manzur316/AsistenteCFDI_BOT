@@ -77,6 +77,7 @@ const immediateCode = getNode("Build Immediate Response").parameters.jsCode;
 const summaryCode = getNode("Build Safe Action Summary").parameters.jsCode;
 const prepareCode = getNode("Prepare Webhook JSON Body").parameters.jsCode;
 const respondNode = getNode("Respond to Webhook");
+const allWorkflowCode = (workflow.nodes || []).map((node) => node.parameters?.jsCode || "").join("\n");
 
 function normalize(input, config = {}) {
   return executeCode(normalizeCode, input, config)[0].json;
@@ -146,6 +147,25 @@ check("respond_to_webhook_returns_first_incoming_item", () => {
   return "firstIncomingItem";
 });
 
+check("workflow_code_nodes_no_usan_fs_path", () => {
+  assert(!/require\(\s*["']fs["']\s*\)/.test(allWorkflowCode));
+  assert(!/require\(\s*["']path["']\s*\)/.test(allWorkflowCode));
+  assert(!/readFileSync|writeFileSync|appendFileSync|existsSync/.test(allWorkflowCode));
+  assert(!/latestPath|fs\.|path\./.test(allWorkflowCode));
+  assert(!/require\(\s*["'][.]{1,2}\//.test(allWorkflowCode));
+  return "no fs/path/readFileSync";
+});
+
+check("summary_usa_stdout_del_execute_command", () => {
+  assert(summaryCode.includes("$json.stdout"));
+  assert(summaryCode.includes("$json.data"));
+  assert(summaryCode.includes("JSON.parse"));
+  assert(summaryCode.includes("stdout del Action Layer"));
+  assert(!summaryCode.includes("latestPath"));
+  assert(!summaryCode.includes("readFileSync"));
+  return "stdout/data";
+});
+
 check("sandbox_menu_body_json_no_vacio", () => {
   const body = prepare(immediate(normalize(makeMessage("/sandbox_menu"))));
   return assertBody(body, { ok: true, status: "menu", action: null, source_kind: "MESSAGE", callback_data: null });
@@ -189,6 +209,21 @@ check("accion_error_controlado_body_json_no_vacio", () => {
   const length = assertBody(body, { ok: false, status: "PACKAGE_SAFETY_ERROR", action: "sandbox.full.monthly.package", source_kind: "CALLBACK_QUERY", callback_data: "cfdi_sbx:full" });
   assert(body.errors.join(" | ").includes("absolute_path"));
   assert(!/\.xlsx|\.xml|\.pdf|\.zip/i.test(JSON.stringify(body)));
+  return length;
+});
+
+check("stdout_invalido_body_error_json_no_vacio", () => {
+  const routed = normalize(makeCallback("cfdi_sbx:full"));
+  const summaryResult = executeCode(
+    summaryCode,
+    { stdout: "NO ES JSON" },
+    {},
+    { "Normalize Input And Route": { json: routed } },
+  )[0].json;
+  const body = prepare(summaryResult);
+  const length = assertBody(body, { ok: false, status: "ERROR", action: "sandbox.full.monthly.package", source_kind: "CALLBACK_QUERY", callback_data: "cfdi_sbx:full" });
+  assert(body.message.includes("stdout del Action Layer"));
+  assert(body.errors.join(" | ").includes("stdout del Action Layer"));
   return length;
 });
 

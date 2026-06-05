@@ -594,6 +594,12 @@ queda aprobado si PowerShell muestra `StatusCode=200`, `RawContentLength > 0` y
 que puedan producir body vacio en n8n. Despues de `git pull`, el JSON debe
 reimportarse en n8n porque los workflows importados no se actualizan solos.
 
+La fase 6A.11D elimina la dependencia de `fs/path` dentro de Code Nodes de n8n.
+El router sandbox no lee `latest.json` ni ningun archivo desde n8n; consume solo
+`stdout`/`data` del Execute Command que corre el Action Layer. `latest.json`
+queda como diagnostico externo local. No se debe habilitar
+`NODE_FUNCTION_ALLOW_BUILTIN` para este flujo.
+
 ### Sandbox Reporting Engine 6A.8
 
 La fase 6A.8 agrega reportes mensuales locales a partir de

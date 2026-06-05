@@ -21,10 +21,14 @@ Desde la carpeta del proyecto:
 ```powershell
 cd "C:/Users/Juandi Gamer/Documents/Flujo N8N CFDI"
 $env:N8N_PORT="5678"
-$env:NODE_FUNCTION_ALLOW_BUILTIN="fs,path"
 $env:CFDI_ALLOWED_TELEGRAM_CHAT_ID="REEMPLAZAR_CHAT_ID_AUTORIZADO"
 n8n start
 ```
+
+Este workflow no requiere `NODE_FUNCTION_ALLOW_BUILTIN`. Los Code Nodes no usan
+`fs`, `path`, `readFileSync` ni lectura de filesystem; consumen el JSON estable
+que `Execute Command` recibe por `stdout` desde el Action Layer. No habilites
+`fs/path` para este flujo.
 
 Si no configuras la variable local `TELEGRAM_BOT_TOKEN`, el workflow responde
 por webhook local y no intenta enviar Telegram. Si defines esa variable solo en
@@ -174,6 +178,8 @@ El criterio es `StatusCode=200`, `RawContentLength > 0` y JSON parseable. Si
 `runtime/action-results-sandbox/latest.json` queda en `OK` pero
 `RawContentLength=0`, la accion si corrio, pero el workflow importado en n8n no
 esta devolviendo el item preparado por `Prepare Webhook JSON Body`.
+`latest.json` queda solo como diagnostico externo; n8n no lo lee desde Code
+Nodes.
 
 ## Plan Manual E2E 6A.12
 
