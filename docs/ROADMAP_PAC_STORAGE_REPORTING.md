@@ -979,7 +979,23 @@ scripts/local/start-n8n-pac-sandbox.example.ps1
 scripts/test-local-startup-and-stamp-diagnostics.js
 ```
 
-Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
+### Payment Status Command Adapter 7.11
+
+La fase 7.11 conecta botones seguros `cfdi:<token>` en el workflow primario de
+Telegram para cambiar manualmente `payment_status` de facturas
+`SANDBOX_TIMBRADO`. Los cambios registran eventos locales en
+`cfdi_payment_status_events`, son idempotentes si el estado ya coincide y no
+modifican `invoice_status`.
+
+Documento, helper y prueba:
+
+```text
+docs/PHASE_7_11_PAYMENT_STATUS_COMMAND_ADAPTER.md
+scripts/lib/payment-status-action.js
+scripts/test-payment-status-command-adapter.js
+```
+
+Siguiente fase recomendada: `7.12 Client Billing Summary and Aging View`.
 
 ### PAC Sandbox To Production Roadmap
 

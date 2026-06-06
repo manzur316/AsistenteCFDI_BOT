@@ -934,7 +934,17 @@ scripts/local/start-n8n-pac-sandbox.example.ps1
 scripts/test-local-startup-and-stamp-diagnostics.js
 ```
 
-Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
+Fase 7.11 agrega botones Telegram con `cfdi:<token>` para cambiar manualmente
+`payment_status` de facturas `SANDBOX_TIMBRADO`, registra eventos auditables y
+mantiene `invoice_status` intacto:
+
+```text
+docs/PHASE_7_11_PAYMENT_STATUS_COMMAND_ADAPTER.md
+scripts/lib/payment-status-action.js
+scripts/test-payment-status-command-adapter.js
+```
+
+Siguiente fase recomendada: `7.12 Client Billing Summary and Aging View`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:
