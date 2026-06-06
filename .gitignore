@@ -27,6 +27,7 @@ runner/*.log
 clients/
 constancias/
 sql/*clients*.local.sql
+scripts/local/*.local.ps1
 *.pdf
 data/base_cfdi_resico_n8n_emberhub_2026.xlsx
 data/sat_official/*

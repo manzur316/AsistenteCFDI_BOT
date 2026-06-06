@@ -924,6 +924,16 @@ scripts/export-telegram-latency-events.js
 scripts/test-telegram-latency-db-export.js
 ```
 
+Fase 7.10E agrega plantillas locales de arranque para n8n/runner con
+`NODE_OPTIONS=--dns-result-order=ipv4first`, diagnostico seguro de stdout/stderr
+del Action Layer y ayuda Telegram con comandos de usuario y OWNER separados:
+
+```text
+docs/PHASE_7_10E_LOCAL_RUNTIME_STARTUP_AND_STAMP_DIAGNOSTICS.md
+scripts/local/start-n8n-pac-sandbox.example.ps1
+scripts/test-local-startup-and-stamp-diagnostics.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

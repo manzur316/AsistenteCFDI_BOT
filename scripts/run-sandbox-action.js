@@ -3,6 +3,83 @@ const {
   runSandboxAction,
 } = require("./lib/sandbox-action-runner");
 
+function sanitizeDiagnosticText(value) {
+  return String(value || "")
+    .replace(/(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}/g, "[redacted-token]")
+    .replace(/\b[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}\b/gi, "[redacted-rfc]")
+    .replace(/[A-Za-z]:[\\/][^\s|]+/g, "[redacted-path]")
+    .replace(/runtime[\\/][A-Za-z0-9_.\\/-]+/gi, "[runtime-hidden]")
+    .replace(/https:\/\/api\.factura\.com/gi, "[production-url-blocked]")
+    .replace(/\b(F-Api-Key|F-Secret-Key|F-PLUGIN)\s*:\s*[^\s,'"{}]+/gi, "$1: [redacted]")
+    .replace(/\b(FACTURACOM_(?:API|SECRET)_KEY|FACTURACOM_PLUGIN)\s*=\s*[^\s,'"{}]+/gi, "$1=[redacted]")
+    .replace(/<\?xml[\s\S]*$/i, "[xml-hidden]")
+    .replace(/%PDF[\s\S]*$/i, "[pdf-hidden]")
+    .replace(/\r?\n/g, " ")
+    .trim()
+    .slice(0, 500);
+}
+
+async function runWithCapturedOutput(fn) {
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  const capturedStdout = [];
+  const capturedStderr = [];
+
+  console.log = (...args) => capturedStdout.push(args.map(String).join(" "));
+  console.error = (...args) => capturedStderr.push(args.map(String).join(" "));
+  process.stdout.write = (chunk, encoding, callback) => {
+    capturedStdout.push(Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk));
+    if (typeof encoding === "function") encoding();
+    if (typeof callback === "function") callback();
+    return true;
+  };
+  process.stderr.write = (chunk, encoding, callback) => {
+    capturedStderr.push(Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk));
+    if (typeof encoding === "function") encoding();
+    if (typeof callback === "function") callback();
+    return true;
+  };
+
+  try {
+    const result = await fn();
+    return {
+      result,
+      capturedStdout: sanitizeDiagnosticText(capturedStdout.join(" ")),
+      capturedStderr: sanitizeDiagnosticText(capturedStderr.join(" ")),
+    };
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+  }
+}
+
+function attachCapturedDiagnostics(result, captured) {
+  const output = result && typeof result === "object" ? result : {
+    ok: false,
+    status: "ERROR",
+    action: "UNKNOWN",
+    errors: ["ACTION_RESULT_NOT_OBJECT"],
+  };
+  const warnings = Array.isArray(output.warnings) ? [...output.warnings] : [];
+  if (captured.capturedStdout) warnings.push(`CAPTURED_STDOUT:${captured.capturedStdout}`);
+  if (captured.capturedStderr) warnings.push(`CAPTURED_STDERR:${captured.capturedStderr}`);
+  return {
+    ...output,
+    warnings,
+    diagnostics: {
+      ...(output.diagnostics || {}),
+      captured_stdout_present: Boolean(captured.capturedStdout),
+      captured_stderr_present: Boolean(captured.capturedStderr),
+      captured_stdout_preview: captured.capturedStdout || "",
+      captured_stderr_preview: captured.capturedStderr || "",
+    },
+  };
+}
+
 function parseArgs(argv) {
   const [action, ...rest] = argv;
   const auditContext = {};
@@ -48,7 +125,8 @@ async function main() {
     }, null, 2));
     process.exit(action ? 0 : 1);
   }
-  const result = await runSandboxAction(action, { ...options, auditContext });
+  const captured = await runWithCapturedOutput(() => runSandboxAction(action, { ...options, auditContext }));
+  const result = attachCapturedDiagnostics(captured.result, captured);
   console.log(JSON.stringify(result, null, 2));
   if (result.status === "ERROR") process.exit(1);
 }
@@ -66,5 +144,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+  attachCapturedDiagnostics,
   parseArgs,
+  runWithCapturedOutput,
+  sanitizeDiagnosticText,
 };

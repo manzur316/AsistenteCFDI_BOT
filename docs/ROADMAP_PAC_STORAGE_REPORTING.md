@@ -965,6 +965,20 @@ scripts/export-telegram-latency-events.js
 scripts/test-telegram-latency-db-export.js
 ```
 
+### Local Runtime Startup and Stamp Diagnostics 7.10E
+
+La fase 7.10E agrega plantillas locales seguras para arrancar n8n y el runner
+con IPv4 primero, valida que Execute Command no este bloqueado localmente,
+mantiene stdout JSON estable del Action Layer y mejora la ayuda de Telegram.
+
+Documento, plantillas y prueba:
+
+```text
+docs/PHASE_7_10E_LOCAL_RUNTIME_STARTUP_AND_STAMP_DIAGNOSTICS.md
+scripts/local/start-n8n-pac-sandbox.example.ps1
+scripts/test-local-startup-and-stamp-diagnostics.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 ### PAC Sandbox To Production Roadmap
