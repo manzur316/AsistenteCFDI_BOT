@@ -901,7 +901,27 @@ agrega eventos de pago y vistas para consultar facturas por cliente, pendientes,
 pagadas, vencidas, canceladas y resumen por cliente. Produccion fiscal real,
 timbrado productivo, cobro automatico y conciliacion bancaria siguen bloqueados.
 
-Siguiente fase recomendada: `7.10 Client Invoice Ledger View`.
+### Client Invoice Ledger View 7.10
+
+La fase 7.10 conecta una vista segura de ledger por cliente en el workflow
+primario de Telegram. Usa `cfdi_invoice_payment_state` y
+`cfdi_client_invoice_payment_summary` de 7.9, muestra estados documental/pago,
+pendientes, pagadas y canceladas separadas, y oculta RFC/UUID/UID/rutas en texto
+humano.
+
+Documento, helper y prueba:
+
+```text
+docs/PHASE_7_10_CLIENT_INVOICE_LEDGER_VIEW.md
+scripts/lib/client-invoice-ledger-view.js
+scripts/test-client-invoice-ledger-view.js
+```
+
+La vista es informativa: no implementa cobro automatico, conciliacion bancaria,
+timbrado productivo, cancelacion productiva ni envio de XML/PDF/ZIP/Excel por
+Telegram.
+
+Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 ### PAC Sandbox To Production Roadmap
 

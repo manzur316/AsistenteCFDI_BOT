@@ -884,7 +884,17 @@ sql/007_invoice_payment_status.sql
 scripts/lib/invoice-payment-status-model.js
 ```
 
-Siguiente fase recomendada: `7.10 Client Invoice Ledger View`.
+Fase 7.10 agrega una vista segura de ledger por cliente en el flujo primario de
+Telegram. Muestra `invoice_status`, `payment_status`, pendientes, pagadas y
+canceladas separadas, sin cobro automatico ni envio de XML/PDF/ZIP/Excel:
+
+```text
+docs/PHASE_7_10_CLIENT_INVOICE_LEDGER_VIEW.md
+scripts/lib/client-invoice-ledger-view.js
+scripts/test-client-invoice-ledger-view.js
+```
+
+Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:
