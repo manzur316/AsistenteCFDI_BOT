@@ -921,6 +921,21 @@ La vista es informativa: no implementa cobro automatico, conciliacion bancaria,
 timbrado productivo, cancelacion productiva ni envio de XML/PDF/ZIP/Excel por
 Telegram.
 
+### Telegram PAC Sandbox Draft Selection UX 7.10B
+
+La fase 7.10B separa la consola PAC Sandbox entre smoke tecnico del proveedor y
+timbrado sandbox de borradores `APROBADO`. Los smoke quedan etiquetados como
+fixtures tecnicos, la seleccion real lista solo borradores aprobados con action
+tokens `cfdi:<token>` y ejecuta `sandbox.draft.stamp`, no
+`sandbox.smoke.create`.
+
+Documento y prueba:
+
+```text
+docs/PHASE_7_10B_TELEGRAM_PAC_SANDBOX_DRAFT_SELECTION_UX.md
+scripts/test-telegram-pac-sandbox-draft-selection-ux.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 ### PAC Sandbox To Production Roadmap

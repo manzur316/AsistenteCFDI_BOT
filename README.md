@@ -894,6 +894,15 @@ scripts/lib/client-invoice-ledger-view.js
 scripts/test-client-invoice-ledger-view.js
 ```
 
+Fase 7.10B endurece la UX PAC Sandbox: renombra los smoke como fixtures
+tecnicos, agrega lista de borradores `APROBADO` para `sandbox.draft.stamp` y
+reduce duplicados de callback a respuestas minimas:
+
+```text
+docs/PHASE_7_10B_TELEGRAM_PAC_SANDBOX_DRAFT_SELECTION_UX.md
+scripts/test-telegram-pac-sandbox-draft-selection-ux.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

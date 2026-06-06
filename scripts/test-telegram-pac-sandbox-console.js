@@ -130,9 +130,11 @@ check("pac_sandbox_console_muestra_proveedor_y_modo", () => {
   const cb = callbacks(result);
   assert.strictEqual(result.action, "PRODUCT_PAC_SANDBOX_CONSOLE");
   assert(result.telegram_message.includes("Proveedor actual: Factura.com Sandbox"));
-  assert(result.telegram_message.includes("Modo: usa Estado / preflight sandbox"));
+  assert(result.telegram_message.includes("Proveedor / pruebas tecnicas"));
+  assert(result.telegram_message.includes("Borradores aprobados para timbrado sandbox"));
+  assert(result.telegram_message.includes("Smoke tecnico no usa borradores reales"));
   assert(result.telegram_message.includes("Factura.com Sandbox: CFDI de prueba. No es produccion fiscal real."));
-  for (const required of ["cfdi_sbx:preflight", "cfdi_sbx:smoke_create", "cfdi_sbx:smoke_download", "cfdi_sbx:smoke_cancel", "cfdi_sbx:latest", "cfdi_sbx:audit", "cfdi_nav:admin"]) {
+  for (const required of ["cfdi_sbx:preflight", "cfdi_nav:sbx_drafts", "cfdi_sbx:smoke_create", "cfdi_sbx:smoke_download", "cfdi_sbx:smoke_cancel", "cfdi_sbx:latest", "cfdi_sbx:audit", "cfdi_nav:admin"]) {
     assert(cb.includes(required), required);
   }
   return cb.join(",");
@@ -169,6 +171,9 @@ check("botones_mapean_action_layer_allowlisted", () => {
     assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_REQUESTED", callbackData);
     assert.strictEqual(result.requested_sandbox_action, expectedAction);
     assert.strictEqual(result.should_execute_sandbox_action, true);
+    if (expectedAction.startsWith("sandbox.smoke.")) {
+      assert(result.telegram_message.includes("Tipo: Smoke tecnico / fixture del proveedor"));
+    }
     assert(result.sandbox_execute_command.startsWith(`node scripts/run-sandbox-action.js ${expectedAction}`));
     assert(!/[;&|`$<>]/.test(result.sandbox_execute_command), result.sandbox_execute_command);
   }

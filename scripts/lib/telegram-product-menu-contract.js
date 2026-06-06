@@ -318,7 +318,7 @@ const SUBMENUS = freezeDeep({
       }),
       button({
         id: "sandbox_preflight",
-        text: "Estado / preflight sandbox",
+        text: "Preflight proveedor",
         callback_data: "cfdi_sbx:preflight",
         target_action: "RUN_SANDBOX_PREFLIGHT",
         roles: [ROLES.OWNER],
@@ -326,8 +326,17 @@ const SUBMENUS = freezeDeep({
         risk: "HIGH",
       }),
       button({
+        id: "sandbox_approved_drafts",
+        text: "Borradores aprobados para timbrar",
+        callback_data: "cfdi_nav:sbx_drafts",
+        target_action: "LIST_APPROVED_DRAFTS_FOR_SANDBOX_STAMP",
+        roles: [ROLES.OWNER],
+        classification: ACTION_CLASSIFICATION.SANDBOX_ONLY,
+        risk: "HIGH",
+      }),
+      button({
         id: "sandbox_smoke_create",
-        text: "Timbrar CFDI sandbox",
+        text: "Smoke: timbrar fixture sandbox",
         callback_data: "cfdi_sbx:smoke_create",
         target_action: "RUN_SANDBOX_SMOKE_CREATE",
         roles: [ROLES.OWNER],
@@ -336,7 +345,7 @@ const SUBMENUS = freezeDeep({
       }),
       button({
         id: "sandbox_smoke_download",
-        text: "Timbrar + XML/PDF sandbox",
+        text: "Smoke: timbrar + XML/PDF",
         callback_data: "cfdi_sbx:smoke_download",
         target_action: "RUN_SANDBOX_SMOKE_DOWNLOAD",
         roles: [ROLES.OWNER],
@@ -345,7 +354,7 @@ const SUBMENUS = freezeDeep({
       }),
       button({
         id: "sandbox_smoke_cancel",
-        text: "Timbrar + cancelar sandbox",
+        text: "Smoke: timbrar + cancelar",
         callback_data: "cfdi_sbx:smoke_cancel",
         target_action: "RUN_SANDBOX_SMOKE_CANCEL",
         roles: [ROLES.OWNER],
@@ -354,7 +363,7 @@ const SUBMENUS = freezeDeep({
       }),
       button({
         id: "sandbox_latest",
-        text: "Ultimo resultado sandbox",
+        text: "Ultimo resultado tecnico",
         callback_data: "cfdi_sbx:latest",
         target_action: "RUN_SANDBOX_LATEST_RESULT",
         roles: [ROLES.OWNER],

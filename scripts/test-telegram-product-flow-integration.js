@@ -238,7 +238,7 @@ check("clientes_muestra_opciones_claras", () => {
   const result = executeCode(handleCode, callbackInput("cfdi_nav:clients", "OWNER", { update_id: 7620 }));
   const callbacks = callbackDataList(result);
   assert.strictEqual(result.action, "COMMAND_CLIENTES");
-  assert(callbacks.includes("cfdi_nav:clients"));
+  assert(!callbacks.includes("cfdi_nav:clients"));
   assert(callbacks.includes("cfdi_nav:client_find"));
   assert(callbacks.includes("cfdi_nav:client_new"));
   assert(callbacks.includes("cfdi_nav:client_validate"));

@@ -94,10 +94,11 @@ Debe incluir:
 - `PAC Sandbox` en Admin/Sandbox.
 - `Proveedor actual: Factura.com Sandbox`.
 - Preflight.
-- Timbrar CFDI sandbox.
-- Timbrar + XML/PDF sandbox.
-- Timbrar + cancelar sandbox.
-- Ver ultimo resultado.
+- Borradores aprobados para timbrar con `sandbox.draft.stamp`.
+- Smoke: timbrar fixture sandbox.
+- Smoke: timbrar + XML/PDF.
+- Smoke: timbrar + cancelar.
+- Ultimo resultado tecnico.
 - Ver audit sandbox.
 
 No debe:

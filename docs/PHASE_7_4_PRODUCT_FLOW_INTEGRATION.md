@@ -55,7 +55,10 @@ confirmacion clara.
 
 - `cfdi_nav:clients` lista clientes o responde que no hay clientes cargados.
 - El submenu de clientes muestra:
-  - Ver clientes.
+  - Facturas del cliente.
+  - Pendientes pago.
+  - Pagadas.
+  - Canceladas.
   - Buscar cliente.
   - Nuevo cliente.
   - Validar cliente, solo OWNER.

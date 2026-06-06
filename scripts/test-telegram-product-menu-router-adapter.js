@@ -190,6 +190,7 @@ check("admin_sandbox_visible_only_for_owner", () => {
 check("admin_sandbox_submenu_callbacks_are_explicit", () => {
   const callbacks = flattenCallbacks(renderTelegramSubmenu("admin_sandbox", ROLES.OWNER, { includeSandbox: true }));
   assert(callbacks.includes("cfdi_nav:pac_sbx"));
+  assert(callbacks.includes("cfdi_nav:sbx_drafts"));
   assert(callbacks.includes("cfdi_sbx:full"));
   assert(callbacks.includes("cfdi_sbx:preflight"));
   assert(callbacks.includes("cfdi_sbx:smoke_create"));

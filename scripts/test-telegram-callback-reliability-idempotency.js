@@ -144,7 +144,9 @@ for (const callbackData of ["cfdi_sbx:smoke_create", "cfdi_sbx:smoke_download", 
     assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
     assert.strictEqual(result.should_execute_sandbox_action, undefined);
     assert.strictEqual(result.callback_ack_text, "Accion ya en proceso.");
-    assert(result.telegram_message.includes("Ya hay una accion PAC Sandbox en proceso."));
+    assert(result.telegram_message.trim().startsWith("Accion ya en proceso."));
+    assert(!result.reply_markup);
+    assert(result.telegram_message.length < 120);
     assert(result.persistence_sql.includes("CALLBACK_DUPLICATE_BLOCKED"));
     return "blocked";
   });
@@ -157,7 +159,9 @@ check("pac_sandbox_processed_duplicate_blocked", () => {
   }));
   assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
   assert.strictEqual(result.callback_ack_text, "Accion ya ejecutada.");
-  assert(result.telegram_message.includes("Accion ya ejecutada."));
+  assert(result.telegram_message.trim().startsWith("Accion ya ejecutada."));
+  assert(!result.reply_markup);
+  assert(result.telegram_message.length < 120);
   return "processed";
 });
 

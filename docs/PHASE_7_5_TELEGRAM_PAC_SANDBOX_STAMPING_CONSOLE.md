@@ -59,16 +59,21 @@ Botones:
 
 | Boton | Callback | Action Layer |
 | --- | --- | --- |
-| Estado / preflight sandbox | `cfdi_sbx:preflight` | `sandbox.preflight` |
-| Timbrar CFDI sandbox | `cfdi_sbx:smoke_create` | `sandbox.smoke.create` |
-| Timbrar + XML/PDF sandbox | `cfdi_sbx:smoke_download` | `sandbox.smoke.download` |
-| Timbrar + cancelar sandbox | `cfdi_sbx:smoke_cancel` | `sandbox.smoke.cancel` |
-| Ver ultimo resultado sandbox | `cfdi_sbx:latest` | `sandbox.latest.result` |
+| Preflight proveedor | `cfdi_sbx:preflight` | `sandbox.preflight` |
+| Borradores aprobados para timbrar | `cfdi_nav:sbx_drafts` | lista tokenizada para `sandbox.draft.stamp` |
+| Smoke: timbrar fixture sandbox | `cfdi_sbx:smoke_create` | `sandbox.smoke.create` |
+| Smoke: timbrar + XML/PDF | `cfdi_sbx:smoke_download` | `sandbox.smoke.download` |
+| Smoke: timbrar + cancelar | `cfdi_sbx:smoke_cancel` | `sandbox.smoke.cancel` |
+| Ultimo resultado tecnico | `cfdi_sbx:latest` | `sandbox.latest.result` |
 | Ver audit sandbox | `cfdi_sbx:audit` | `sandbox.audit.summary` |
 | Volver | `cfdi_nav:admin` | submenu admin |
 
 Los callbacks son cortos, no incluyen RFC, UUID, UID, montos, rutas,
 credenciales ni datos fiscales.
+
+Nota 7.10B: los botones `sandbox.smoke.*` son pruebas tecnicas con fixture del
+proveedor. El timbrado sandbox de un borrador real `APROBADO` se hace desde la
+lista `Borradores aprobados para timbrar` y usa `sandbox.draft.stamp`.
 
 ## Respuestas seguras
 
