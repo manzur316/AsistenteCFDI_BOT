@@ -953,7 +953,16 @@ scripts/lib/client-billing-summary-view.js
 scripts/test-client-billing-summary-view.js
 ```
 
-Siguiente fase recomendada: `7.13 Monthly Billing Dashboard`.
+Fase 7.13 agrega un dashboard mensual global de cobranza sandbox desde Telegram,
+usando `invoice_status`, `payment_status`, ledger por cliente y aging global:
+
+```text
+docs/PHASE_7_13_MONTHLY_BILLING_DASHBOARD.md
+scripts/lib/monthly-billing-dashboard-view.js
+scripts/test-monthly-billing-dashboard-view.js
+```
+
+Siguiente fase recomendada: `7.14 Accountant Package Product Integration`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

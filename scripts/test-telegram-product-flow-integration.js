@@ -300,10 +300,11 @@ check("resumen_sin_datos_responde_explicito", () => {
   const result = executeCode(handleCode, callbackInput("cfdi_nav:report", "OWNER", {
     update_id: 7670,
     recent_drafts: [],
+    client_invoice_ledger: [],
     today_summary: { pendientes: 0, aprobados: 0, descartados: 0, bloqueados: 0 },
   }));
   assert.strictEqual(result.action, "COMMAND_RESUMEN");
-  assert(result.telegram_message.includes("No hay datos suficientes para mostrar resumen mensual."));
+  assert(result.telegram_message.includes("No hay facturas sandbox registradas para este periodo."));
   return result.action;
 });
 

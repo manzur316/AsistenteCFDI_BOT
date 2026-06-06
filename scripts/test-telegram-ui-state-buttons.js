@@ -375,7 +375,7 @@ if (handleCode) {
     {
       name: "view_summary_no_abre_menu_silencioso",
       run: () => executeCode(handleCode, callbackInput("VIEW_SUMMARY", {}, { update_id: 93132, recent_drafts: [], clients: [], tax_rules: [], today_summary: { pendientes: 0, aprobados: 0, descartados: 0, bloqueados: 0 } })),
-      expect: (result) => result.action === "COMMAND_RESUMEN" && String(result.telegram_message || "").includes("No hay datos suficientes para mostrar resumen mensual.") && !String(result.telegram_message || "").includes("Comandos disponibles") && hasButtons(result, ["Nueva factura", "Clientes", "Pendientes", "Estado", "Ayuda"]) && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_RESUMEN" && String(result.telegram_message || "").includes("No hay facturas sandbox registradas para este periodo.") && !String(result.telegram_message || "").includes("Comandos disponibles") && hasButtons(result, ["Ver clientes con saldo", "Ver vencidas", "Ver pagadas", "Ver canceladas", "Menu principal"]) && callbacksSafe(result),
     },
     {
       name: "discard_button_actualiza_pendiente_y_usa_token",

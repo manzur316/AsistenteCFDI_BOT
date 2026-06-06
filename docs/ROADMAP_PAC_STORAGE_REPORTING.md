@@ -1010,7 +1010,21 @@ scripts/lib/client-billing-summary-view.js
 scripts/test-client-billing-summary-view.js
 ```
 
-Siguiente fase recomendada: `7.13 Monthly Billing Dashboard`.
+### Monthly Billing Dashboard 7.13
+
+La fase 7.13 agrega un dashboard mensual global de cobranza sandbox desde
+Telegram. Usa `invoice_status`, `payment_status`, ledger por cliente y aging
+global; no modifica estados, no cobra, no concilia bancos y no llama PAC.
+
+Documento, helper y prueba:
+
+```text
+docs/PHASE_7_13_MONTHLY_BILLING_DASHBOARD.md
+scripts/lib/monthly-billing-dashboard-view.js
+scripts/test-monthly-billing-dashboard-view.js
+```
+
+Siguiente fase recomendada: `7.14 Accountant Package Product Integration`.
 
 ### PAC Sandbox To Production Roadmap
 
