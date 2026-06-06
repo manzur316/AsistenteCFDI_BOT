@@ -226,14 +226,27 @@ check("minimum_required_routes_match_existing_actions", () => {
 check("pending_actions_answer_explicitly", () => {
   const accountant = executeCode(handleCode, baseInput("cfdi_nav:acctpkg", ROLES.OWNER, { update_id: 7360 }));
   const sandbox = executeCode(handleCode, baseInput("cfdi_sbx:full", ROLES.OWNER, { update_id: 7361 }));
-  assert.strictEqual(accountant.action, "PRODUCT_MENU_PENDING");
+  assert.strictEqual(accountant.action, "PAC_SANDBOX_ACTION_REQUESTED");
   assert.strictEqual(sandbox.action, "PAC_SANDBOX_ACTION_REQUESTED");
-  assert(accountant.telegram_message.includes("Esta opcion todavia esta en preparacion."));
+  assert(accountant.telegram_message.includes("Generando paquete contador sandbox."));
+  assert.strictEqual(accountant.requested_sandbox_action, "sandbox.full.monthly.package");
+  assert.strictEqual(accountant.should_execute_sandbox_action, true);
   assert(sandbox.telegram_message.includes("Factura.com Sandbox: CFDI de prueba. No es produccion fiscal real."));
   assert.strictEqual(sandbox.requested_sandbox_action, "sandbox.full.monthly.package");
   assert.strictEqual(sandbox.should_execute_sandbox_action, true);
+  assert(accountant.sandbox_execute_command.includes("node scripts/run-sandbox-action.js sandbox.full.monthly.package"));
   assert(sandbox.sandbox_execute_command.includes("node scripts/run-sandbox-action.js sandbox.full.monthly.package"));
-  return "explicit_pending_and_sandbox_action";
+  return "accountant_package_and_sandbox_action";
+});
+
+check("accountant_package_owner_only", () => {
+  const accountantReadonly = executeCode(handleCode, baseInput("cfdi_nav:acctpkg", ROLES.ACCOUNTANT_READONLY, { update_id: 7362 }));
+  const assistant = executeCode(handleCode, baseInput("cfdi_nav:acctpkg", ROLES.ASSISTANT_OPERATOR, { update_id: 7363 }));
+  assert.strictEqual(accountantReadonly.action, "ACCESS_DENIED");
+  assert.strictEqual(assistant.action, "ACCESS_DENIED");
+  assert.strictEqual(accountantReadonly.should_execute_sandbox_action, undefined);
+  assert.strictEqual(assistant.should_execute_sandbox_action, undefined);
+  return "owner_only";
 });
 
 check("unknown_product_callback_does_not_break", () => {

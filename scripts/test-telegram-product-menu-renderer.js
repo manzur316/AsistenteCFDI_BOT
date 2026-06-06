@@ -126,6 +126,14 @@ checks.push({
   value: callbacks(adminSubmenu).join(", "),
 });
 
+const accountantReports = renderTelegramSubmenu("reports", ROLES.ACCOUNTANT_READONLY);
+checks.push({
+  name: "accountant_readonly_report_menu_has_no_package_button",
+  pass: callbacks(accountantReports).includes("cfdi_nav:report")
+    && !callbacks(accountantReports).includes("cfdi_nav:acctpkg"),
+  value: callbacks(accountantReports).join(", "),
+});
+
 const blockedAdminSubmenu = renderTelegramSubmenu("admin_sandbox", ROLES.ASSISTANT_OPERATOR, { includeSandbox: true });
 checks.push({
   name: "admin_sandbox_submenu_hidden_for_normal_user",

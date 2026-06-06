@@ -94,7 +94,7 @@ Suggested buttons:
 - Ver vencidas
 - Ver pagadas
 - Ver canceladas
-- Paquete contador
+- Paquete contador (OWNER/admin desde 7.14)
 - Menu principal
 
 The workflow keeps the existing action name `COMMAND_RESUMEN` for compatibility

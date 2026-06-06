@@ -1024,7 +1024,23 @@ scripts/lib/monthly-billing-dashboard-view.js
 scripts/test-monthly-billing-dashboard-view.js
 ```
 
-Siguiente fase recomendada: `7.14 Accountant Package Product Integration`.
+### Accountant Package Product Integration 7.14
+
+La fase 7.14 conecta el boton producto `Paquete contador` del workflow primario
+Telegram con el Action Layer `sandbox.full.monthly.package`. El paquete se
+genera solo en `runtime/accountant-packages-sandbox/YYYY-MM/`; Telegram recibe
+un resumen seguro con periodo, status, conteos y flags de package/Excel/checklist,
+sin adjuntar ZIP/Excel/XML/PDF/CSV/JSON y sin habilitar produccion.
+
+Documento, helper y prueba:
+
+```text
+docs/PHASE_7_14_ACCOUNTANT_PACKAGE_PRODUCT_INTEGRATION.md
+scripts/lib/accountant-package-product-view.js
+scripts/test-accountant-package-product-integration.js
+```
+
+Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 ### PAC Sandbox To Production Roadmap
 

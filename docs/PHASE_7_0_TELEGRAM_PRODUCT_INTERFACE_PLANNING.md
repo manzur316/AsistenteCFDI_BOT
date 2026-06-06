@@ -271,7 +271,7 @@ Prohibido en `callback_data`:
 | Clientes | `/validarcliente ...` | Marcar cliente validado | OWNER | Actual -> 7.1 | ADMIN_ONLY | Alto | Debe registrar evidencia/audit. |
 | Clientes | `/setcliente` | Asociar cliente al draft activo | OWNER, ASSISTANT_OPERATOR | Actual legacy | DEPRECATED | Medio | Reemplazar por flujo guiado. |
 | Reportes | `cfdi_nav:report` | Resumen mensual | OWNER, ACCOUNTANT_READONLY | 7.1 | USER_SAFE | Medio | No adjuntar archivos todavia. |
-| Reportes | `cfdi_nav:acctpkg` | Paquete contador seguro | OWNER, ACCOUNTANT_READONLY | 7.1 | USER_SAFE | Alto | Solo resumen; artifacts no van por Telegram. |
+| Reportes | `cfdi_nav:acctpkg` | Paquete contador sandbox | OWNER | 7.14 | SANDBOX_ONLY | Alto | Genera artifacts locales; ACCOUNTANT_READONLY solo ve resumen mensual. |
 | Sistema | `cfdi_nav:status` | Estado del sistema | OWNER | 7.1 | USER_SAFE | Bajo | Sin rutas absolutas ni secretos. |
 | Ayuda | `cfdi_nav:help` | Ayuda de producto | Todos autorizados | 7.1 | USER_SAFE | Bajo | Debe ocultar sandbox si no es admin. |
 | Sandbox | `/sandbox_menu` | Menu admin sandbox | OWNER | 6A / admin | SANDBOX_ONLY | Alto | Oculto del producto diario. |

@@ -32,9 +32,9 @@ Ninguna accion fiscal sensible debe ejecutarse sin autenticacion y autorizacion.
 
 - `OWNER`: propietario. Puede operar todo en local/single-user excepto acciones
   bloqueadas por fase, como `STAMP_PRODUCTION`.
-- `ACCOUNTANT_READONLY`: lectura para contador. Puede ver reportes/exportar
-  paquete contador y documentos permitidos; no puede timbrar, cancelar, modificar
-  clientes ni configurar PAC.
+- `ACCOUNTANT_READONLY`: lectura para contador. Puede ver reportes permitidos;
+  desde 7.14 no genera paquete contador porque esa accion crea artifacts locales.
+  No puede timbrar, cancelar, modificar clientes ni configurar PAC.
 - `ASSISTANT_OPERATOR`: operador asistente. Puede crear y confirmar borradores
   conservadores, pero no configurar PAC, ver credenciales, timbrar produccion,
   cancelar facturas timbradas ni ver estados de cuenta.

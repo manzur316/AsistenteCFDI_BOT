@@ -143,6 +143,17 @@ checks.push({
   value: assistantClientCallbacks.join(", "),
 });
 
+const accountantMenuCallbacks = flattenButtons(getTelegramProductMenu(ROLES.ACCOUNTANT_READONLY)).map((item) => item.callback_data);
+const accountantReportsCallbacks = flattenButtons(getTelegramSubmenu("reports", ROLES.ACCOUNTANT_READONLY)).map((item) => item.callback_data);
+checks.push({
+  name: "accountant_readonly_only_sees_report_summary",
+  pass: accountantMenuCallbacks.includes("cfdi_nav:report")
+    && accountantReportsCallbacks.includes("cfdi_nav:report")
+    && !accountantMenuCallbacks.includes("cfdi_nav:acctpkg")
+    && !accountantReportsCallbacks.includes("cfdi_nav:acctpkg"),
+  value: accountantReportsCallbacks.join(", "),
+});
+
 const ownerAdminMenu = getTelegramProductMenu(ROLES.OWNER, { includeAdmin: true });
 const ownerAdminCallbacks = flattenButtons(ownerAdminMenu).map((item) => item.callback_data);
 checks.push({

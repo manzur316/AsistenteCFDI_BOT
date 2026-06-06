@@ -98,7 +98,7 @@ check("owner_puede_acciones_sensibles_excepto_produccion", () => {
 check("accountant_readonly_no_puede_timbrar_cancelar_configurar_pac", () => {
   const accountant = user(ROLES.ACCOUNTANT_READONLY);
   assert.strictEqual(canPerformAction(accountant, ACTIONS.VIEW_REPORTS).allowed, true);
-  assert.strictEqual(canPerformAction(accountant, ACTIONS.EXPORT_ACCOUNTANT_PACKAGE).allowed, true);
+  assert.strictEqual(canPerformAction(accountant, ACTIONS.EXPORT_ACCOUNTANT_PACKAGE).allowed, false);
   assert.strictEqual(canPerformAction(accountant, ACTIONS.STAMP_SANDBOX).allowed, false);
   assert.strictEqual(canPerformAction(accountant, ACTIONS.CANCEL_INVOICE).allowed, false);
   assert.strictEqual(canPerformAction(accountant, ACTIONS.CONFIGURE_PAC).allowed, false);

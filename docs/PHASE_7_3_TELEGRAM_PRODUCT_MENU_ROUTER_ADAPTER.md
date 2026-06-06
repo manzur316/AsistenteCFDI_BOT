@@ -38,7 +38,7 @@ admin/sandbox y no representa la experiencia diaria del usuario.
 | `cfdi_nav:clients` | lista clientes y muestra acciones de cliente | OWNER, ASSISTANT_OPERATOR |
 | `cfdi_nav:drafts` | lista borradores pendientes | OWNER, ASSISTANT_OPERATOR |
 | `cfdi_nav:report` | muestra resumen mensual seguro o sin datos | OWNER, ACCOUNTANT_READONLY |
-| `cfdi_nav:acctpkg` | responde pendiente explicito | OWNER, ACCOUNTANT_READONLY |
+| `cfdi_nav:acctpkg` | desde 7.14 ejecuta `sandbox.full.monthly.package` por Action Layer | OWNER |
 | `cfdi_nav:status` | muestra estado local seguro | OWNER, ASSISTANT_OPERATOR, ACCOUNTANT_READONLY |
 | `cfdi_nav:help` | muestra ayuda contextual | OWNER, ASSISTANT_OPERATOR, ACCOUNTANT_READONLY |
 | `cfdi_nav:admin` | abre submenu admin/sandbox | OWNER |
@@ -85,8 +85,8 @@ Borrador sujeto a revision humana. No sustituye contador.
 - `OWNER`: puede ver menu completo, admin/sandbox y acciones de reporte.
 - `ASSISTANT_OPERATOR`: puede crear borradores, ver clientes basicos,
   pendientes, estado y ayuda. No ve ni ejecuta admin/sandbox.
-- `ACCOUNTANT_READONLY`: puede ver reporte, paquete contador pendiente,
-  estado y ayuda. No crea borradores ni administra clientes.
+- `ACCOUNTANT_READONLY`: puede ver reporte, estado y ayuda. No crea borradores,
+  no administra clientes y no genera paquete contador desde 7.14.
 
 Los callbacks no autorizados responden de forma segura con `ACCESS_DENIED`.
 

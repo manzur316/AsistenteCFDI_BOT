@@ -962,7 +962,17 @@ scripts/lib/monthly-billing-dashboard-view.js
 scripts/test-monthly-billing-dashboard-view.js
 ```
 
-Siguiente fase recomendada: `7.14 Accountant Package Product Integration`.
+Fase 7.14 conecta `Paquete contador` del menu producto con el Action Layer
+`sandbox.full.monthly.package`. Genera artifacts solo en `runtime/` y devuelve
+un resumen seguro por Telegram, sin adjuntar ZIP/Excel/XML/PDF/CSV/JSON:
+
+```text
+docs/PHASE_7_14_ACCOUNTANT_PACKAGE_PRODUCT_INTEGRATION.md
+scripts/lib/accountant-package-product-view.js
+scripts/test-accountant-package-product-integration.js
+```
+
+Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

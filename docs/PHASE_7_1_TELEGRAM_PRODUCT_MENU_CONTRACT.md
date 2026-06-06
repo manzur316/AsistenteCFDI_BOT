@@ -100,7 +100,8 @@ Reglas base:
 - `OWNER` puede ver la superficie completa permitida por fase, incluyendo
   sandbox solo si se solicita explicitamente.
 - `ASSISTANT_OPERATOR` ve captura, clientes basicos, borradores, estado y ayuda.
-- `ACCOUNTANT_READONLY` ve reportes, paquete contador, estado y ayuda.
+- `ACCOUNTANT_READONLY` ve reportes, estado y ayuda. Desde 7.14 no genera
+  paquete contador; esa accion queda OWNER/admin por crear artifacts locales.
 - `ADMIN_FUTURE` no recibe permisos automaticos.
 
 ## Clasificacion De Acciones
