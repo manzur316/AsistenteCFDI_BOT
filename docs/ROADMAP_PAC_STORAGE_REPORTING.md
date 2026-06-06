@@ -936,6 +936,21 @@ docs/PHASE_7_10B_TELEGRAM_PAC_SANDBOX_DRAFT_SELECTION_UX.md
 scripts/test-telegram-pac-sandbox-draft-selection-ux.js
 ```
 
+### Telegram Bot Latency Observability 7.10C
+
+La fase 7.10C agrega instrumentacion segura de latencia al workflow primario de
+Telegram. Registra `TELEGRAM_LATENCY_EVENT` en `bot_events` y permite analizar
+ACK de callbacks, duplicados, locks, Action Layer, `sendMessage` y tiempo total
+sin cambiar decisiones productivas ni habilitar PAC real.
+
+Documento, analyzer y prueba:
+
+```text
+docs/PHASE_7_10C_TELEGRAM_BOT_PERFORMANCE_OBSERVABILITY.md
+scripts/analyze-telegram-bot-latency.js
+scripts/test-telegram-bot-latency-observability.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 ### PAC Sandbox To Production Roadmap

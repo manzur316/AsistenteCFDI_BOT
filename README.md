@@ -903,6 +903,17 @@ docs/PHASE_7_10B_TELEGRAM_PAC_SANDBOX_DRAFT_SELECTION_UX.md
 scripts/test-telegram-pac-sandbox-draft-selection-ux.js
 ```
 
+Fase 7.10C agrega observabilidad local de latencia para el flujo principal de
+Telegram. Registra eventos seguros `TELEGRAM_LATENCY_EVENT` en `bot_events`,
+analiza ACK de callbacks, duplicados, locks, `sendMessage` y tiempo total sin
+cambiar decisiones de negocio:
+
+```text
+docs/PHASE_7_10C_TELEGRAM_BOT_PERFORMANCE_OBSERVABILITY.md
+scripts/analyze-telegram-bot-latency.js
+scripts/test-telegram-bot-latency-observability.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
