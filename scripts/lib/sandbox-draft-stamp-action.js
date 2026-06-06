@@ -77,7 +77,6 @@ function normalizeClient(client = {}) {
 
 async function readDraftFromOptions(options = {}) {
   if (options.draft && typeof options.draft === "object") return options.draft;
-  if (options.draftJsonBase64) return base64UrlDecodeJson(options.draftJsonBase64);
   if (text(options.draftId)) {
     if (typeof options.draftLoader === "function") return options.draftLoader(text(options.draftId), options);
     return loadDraftFromPostgres(text(options.draftId), {
@@ -85,16 +84,29 @@ async function readDraftFromOptions(options = {}) {
       env: options.env || process.env,
     });
   }
+  if (options.draftJsonBase64) return base64UrlDecodeJson(options.draftJsonBase64);
   return null;
 }
 
 function hasSandboxStamp(draft = {}) {
   const status = String(draft.status || "").toUpperCase();
   const sandboxStatus = String(draft.sandbox_status || draft.invoice_status || "").toUpperCase();
+  const successfulResult = hasSuccessfulSandboxStampResult(draft.sandbox_stamp_result)
+    || hasSuccessfulSandboxStampResult(draft.pac_sandbox_result)
+    || hasSuccessfulSandboxStampResult(draft.pac_result);
   return status === SANDBOX_DRAFT_STAMP_STATUS.STAMPED
     || sandboxStatus === SANDBOX_DRAFT_STAMP_STATUS.STAMPED
     || draft.sandbox_stamped === true
-    || Boolean(draft.sandbox_stamp_result || draft.pac_sandbox_result);
+    || successfulResult;
+}
+
+function hasSuccessfulSandboxStampResult(result) {
+  if (!result || typeof result !== "object") return false;
+  const status = String(result.status || result.invoice_status || "").toUpperCase();
+  const ok = result.ok === true || status === "OK" || status === SANDBOX_DRAFT_STAMP_STATUS.STAMPED;
+  const identity = result.uuid || result.cfdi_uuid || result.pac_invoice_id || result.cfdi_uid || result.uid || result.invoice_id;
+  const identityFlags = result.uuid_present === true || result.pac_invoice_id_present === true;
+  return ok && Boolean(identity || identityFlags);
 }
 
 function hasSandboxStampInProgress(draft = {}) {
@@ -126,7 +138,9 @@ function validateDraftForSandboxStamp(draft, env = {}) {
   if (hasSandboxStamp(draft)) errors.push("DRAFT_ALREADY_SANDBOX_STAMPED");
   if (String(draft.status || "").toUpperCase() !== "APROBADO") errors.push("DRAFT_NOT_APPROVED");
 
-  const client = normalizeClient(draft.client_snapshot || draft.client || {});
+  if (text(draft.client_id) && draft.client_found === false) errors.push("CLIENT_NOT_FOUND");
+
+  const client = normalizeClient(draft.current_client || draft.client || draft.client_snapshot || {});
   if (!client.validated_by_human) errors.push("client_not_validated");
   if (!client.rfc) errors.push("client_rfc_required");
   if (!client.regimen_fiscal) errors.push("client_regimen_required");
@@ -157,6 +171,8 @@ function stableValidationCode(code) {
   const map = {
     DRAFT_NOT_FOUND: "DRAFT_CONTEXT_MISSING",
     DRAFT_ID_REQUIRED: "DRAFT_CONTEXT_MISSING",
+    CLIENT_NOT_FOUND: "CLIENT_NOT_FOUND",
+    CLIENT_MATCH_AMBIGUOUS: "CLIENT_MATCH_AMBIGUOUS",
     CLIENT_NOT_VALIDATED: "CLIENT_NOT_VALIDATED",
     CLIENT_RFC_REQUIRED: "RFC_MISSING",
     CLIENT_REGIMEN_REQUIRED: "REGIMEN_MISSING",
@@ -177,6 +193,8 @@ function stableValidationCodes(errors = []) {
 }
 
 function canonicalInputFromDraft(draft = {}) {
+  const hydratedClient = normalizeClient(draft.current_client || draft.client || draft.client_snapshot || {});
+  const historicalClient = normalizeClient(draft.historical_client_snapshot || draft.client_snapshot || {});
   const subtotal = number(draft.subtotal ?? draft.amount) || 0;
   const ivaAmount = number(draft.iva_amount ?? draft.calc?.iva_amount ?? draft.tax_summary?.iva_transferred) ?? 0;
   const isrRetention = number(draft.isr_retention_amount ?? draft.calc?.isr_retention_amount ?? draft.tax_summary?.isr_retained) ?? 0;
@@ -190,8 +208,9 @@ function canonicalInputFromDraft(draft = {}) {
     original_text: text(draft.original_text || draft.message_original || draft.text) || "Borrador aprobado Telegram",
     confirmed_by_human: true,
     requires_human_review: true,
-    client: normalizeClient(draft.client_snapshot || draft.client || {}),
-    client_snapshot: normalizeClient(draft.client_snapshot || draft.client || {}),
+    client: hydratedClient,
+    client_snapshot: hydratedClient,
+    historical_client_snapshot: historicalClient,
     concept: normalizeConcept(draft.concept || {}),
     amount: subtotal,
     subtotal,
@@ -211,6 +230,20 @@ function canonicalInputFromDraft(draft = {}) {
       total_taxes_retained: ivaRetention + isrRetention,
     },
     blockers: [],
+  };
+}
+
+function draftErrorContext(draft = {}, options = {}) {
+  const safeDraft = draft && typeof draft === "object" ? draft : {};
+  const client = normalizeClient(safeDraft.current_client || safeDraft.client || safeDraft.client_snapshot || {});
+  return {
+    invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
+    draft_status: text(safeDraft.status) || null,
+    payment_status: text(safeDraft.payment_status) || "NO_APLICA",
+    draft_id: text(safeDraft.draft_id || options.draftId),
+    client_id: text(client.client_id || safeDraft.client_id),
+    client_display_name: text(client.display_name || client.razon_social || client.client_id || safeDraft.client_id),
+    total: number(safeDraft.total),
   };
 }
 
@@ -289,10 +322,7 @@ async function runSandboxDraftStamp(options = {}) {
       status: validation.status,
       output: {
         error_class: validation.errors.includes("DRAFT_NOT_FOUND") ? "DRAFT_CONTEXT_MISSING" : "DRAFT_VALIDATION_ERROR",
-        invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
-        draft_status: text(draft?.status) || null,
-        payment_status: text(draft?.payment_status) || "NO_APLICA",
-        draft_id: text(draft?.draft_id || options.draftId),
+        ...draftErrorContext(draft, options),
         validation_errors: validation.errors,
         validation_error_codes: validationCodes,
         provider: "Factura.com Sandbox",
@@ -312,10 +342,7 @@ async function runSandboxDraftStamp(options = {}) {
       status: "ERROR",
       output: {
         error_class: "CANONICAL_DRAFT_NOT_READY",
-        invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
-        draft_status: text(draft.status),
-        payment_status: text(draft.payment_status) || "NO_APLICA",
-        draft_id: draft.draft_id,
+        ...draftErrorContext(draft, options),
         validation_errors: readinessErrors,
         validation_error_codes: stableValidationCodes(readinessErrors),
         provider: "Factura.com Sandbox",
@@ -334,10 +361,7 @@ async function runSandboxDraftStamp(options = {}) {
       status: "ERROR",
       output: {
         error_class: "CANONICAL_INVOICE_NOT_READY",
-        invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
-        draft_status: text(draft.status),
-        payment_status: text(draft.payment_status) || "NO_APLICA",
-        draft_id: draft.draft_id,
+        ...draftErrorContext(draft, options),
         validation_errors: invoiceResult.errors,
         validation_error_codes: stableValidationCodes(invoiceResult.errors),
         provider: "Factura.com Sandbox",
@@ -356,10 +380,7 @@ async function runSandboxDraftStamp(options = {}) {
       status: "ERROR",
       output: {
         error_class: "CANONICAL_PAC_REQUEST_NOT_READY",
-        invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
-        draft_status: text(draft.status),
-        payment_status: text(draft.payment_status) || "NO_APLICA",
-        draft_id: draft.draft_id,
+        ...draftErrorContext(draft, options),
         validation_errors: pacRequestResult.errors,
         validation_error_codes: stableValidationCodes(pacRequestResult.errors),
         provider: "Factura.com Sandbox",
@@ -378,10 +399,7 @@ async function runSandboxDraftStamp(options = {}) {
       status: "ERROR",
       output: {
         error_class: "PAC_SANDBOX_ERROR",
-        invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
-        draft_status: text(draft.status),
-        payment_status: text(draft.payment_status) || "NO_APLICA",
-        draft_id: draft.draft_id,
+        ...draftErrorContext(draft, options),
         provider: "Factura.com Sandbox",
         pac_status: pacResult.status || "PAC_ERROR",
         normalized_errors: pacResult.normalized_errors || [],

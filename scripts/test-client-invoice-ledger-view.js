@@ -280,9 +280,10 @@ check("workflow_cliente_command_hides_rfc_and_adds_ledger", () => {
   input.callback_query_id = "";
   input.text = "/cliente Privada Rivera";
   const result = executeCode(handleCode, input);
-  assert.strictEqual(result.action, "COMMAND_CLIENTE");
-  assert(result.telegram_message.includes("RFC: registrado localmente (oculto)"));
-  assert(result.telegram_message.includes("Facturas por cliente"));
+  assert.strictEqual(result.action, "CLIENT_DETAIL");
+  assert(result.telegram_message.includes("RFC: presente (oculto)"));
+  assert(JSON.stringify(result.reply_markup || {}).includes("Facturas del cliente"));
+  assert(JSON.stringify(result.reply_markup || {}).includes("Resumen cobranza"));
   assert(!hasSensitiveValue(result.telegram_message));
   return result.action;
 });

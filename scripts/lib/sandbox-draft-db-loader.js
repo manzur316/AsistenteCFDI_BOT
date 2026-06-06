@@ -34,7 +34,10 @@ function buildDraftByIdQuery(draftId) {
     "WITH selected_draft AS (",
     "SELECT",
     "d.*,",
-    "COALESCE(NULLIF(d.client_snapshot, '{}'::jsonb), to_jsonb(c), '{}'::jsonb) AS merged_client_snapshot,",
+    "COALESCE(to_jsonb(c), '{}'::jsonb) AS current_client,",
+    "COALESCE(d.client_snapshot, '{}'::jsonb) AS historical_client_snapshot,",
+    "CASE WHEN d.client_id IS NULL OR c.client_id IS NOT NULL THEN true ELSE false END AS client_found,",
+    "COALESCE(to_jsonb(c), NULLIF(d.client_snapshot, '{}'::jsonb), '{}'::jsonb) AS merged_client_snapshot,",
     "COALESCE((",
     "SELECT jsonb_agg(jsonb_build_object(",
     "'line_id', li.line_id,",
@@ -78,6 +81,9 @@ function buildDraftByIdQuery(draftId) {
     "'ready_to_copy', d.ready_to_copy,",
     "'requires_human_review', d.requires_human_review,",
     "'client_id', d.client_id,",
+    "'client_found', d.client_found,",
+    "'current_client', d.current_client,",
+    "'historical_client_snapshot', d.historical_client_snapshot,",
     "'client_snapshot', d.merged_client_snapshot,",
     "'concept', d.concept,",
     "'top_3', d.top_3,",
@@ -109,6 +115,8 @@ function parsePsqlJsonOutput(raw) {
 function normalizeDraftRow(row) {
   if (!row || typeof row !== "object") return null;
   const clientSnapshot = row.client_snapshot && typeof row.client_snapshot === "object" ? row.client_snapshot : {};
+  const currentClient = row.current_client && typeof row.current_client === "object" ? row.current_client : clientSnapshot;
+  const historicalClientSnapshot = row.historical_client_snapshot && typeof row.historical_client_snapshot === "object" ? row.historical_client_snapshot : {};
   const lineItems = Array.isArray(row.line_items) ? row.line_items : [];
   const firstLine = lineItems[0] || {};
   const concept = row.concept && typeof row.concept === "object" && Object.keys(row.concept).length
@@ -131,8 +139,11 @@ function normalizeDraftRow(row) {
     status: text(row.status),
     invoice_status: text(row.invoice_status),
     payment_status: text(row.payment_status) || "NO_APLICA",
+    client_found: row.client_found !== false,
+    current_client: currentClient,
+    historical_client_snapshot: historicalClientSnapshot,
     client_snapshot: clientSnapshot,
-    client: clientSnapshot,
+    client: currentClient,
     concept,
     line_items: lineItems,
     amount: row.amount ?? row.subtotal ?? firstLine.subtotal ?? firstLine.unit_price ?? null,

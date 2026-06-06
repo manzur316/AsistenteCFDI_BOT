@@ -995,6 +995,17 @@ scripts/test-sandbox-action-cli-json-contract.js
 scripts/test-sandbox-draft-status-mapping.js
 ```
 
+Fase 7.14D hidrata el perfil fiscal vigente del cliente desde PostgreSQL antes
+del timbrado sandbox, corrige validacion por indice visual de clientes y
+preserva contexto de borrador/cliente/total en errores reintentables:
+
+```text
+docs/PHASE_7_14D_CLIENT_FISCAL_PROFILE_DRAFT_HYDRATION_FIX.md
+scripts/test-client-fiscal-profile-ux.js
+scripts/test-sandbox-draft-client-hydration.js
+scripts/test-sandbox-draft-stamp-context-preservation.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

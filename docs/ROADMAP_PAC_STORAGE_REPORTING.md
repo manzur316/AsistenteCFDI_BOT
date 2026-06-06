@@ -1072,6 +1072,23 @@ scripts/test-sandbox-action-cli-json-contract.js
 scripts/test-sandbox-draft-status-mapping.js
 ```
 
+### Client Fiscal Profile and Draft Hydration Fix 7.14D
+
+La fase 7.14D corrige el enlace entre clientes, borradores aprobados y
+timbrado sandbox: el Action Layer hidrata el cliente vigente desde
+`cfdi_clients`, el workflow valida clientes por `client_id` real mediante
+botones tokenizados, y los errores de sandbox conservan contexto de
+borrador/cliente/total para permitir reintentos seguros.
+
+Documento y pruebas:
+
+```text
+docs/PHASE_7_14D_CLIENT_FISCAL_PROFILE_DRAFT_HYDRATION_FIX.md
+scripts/test-client-fiscal-profile-ux.js
+scripts/test-sandbox-draft-client-hydration.js
+scripts/test-sandbox-draft-stamp-context-preservation.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 ### PAC Sandbox To Production Roadmap

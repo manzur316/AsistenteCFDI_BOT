@@ -414,13 +414,11 @@ check("action_layer_success_creates_storage_manifest", async () => {
   return result.output.invoice_status;
 });
 
-check("cli_accepts_draft_json_b64_from_n8n_command", () => {
+check("cli_accepts_draft_json_b64_without_draft_id", () => {
   const encoded = toBase64UrlJson(validDraft({ draft_id: "DRAFT-76-CLI" }));
   const child = spawnSync(process.execPath, [
     "scripts/run-sandbox-action.js",
     "sandbox.draft.stamp",
-    "--draft-id",
-    "DRAFT-76-CLI",
     "--draft-json-b64",
     encoded,
     "--audit-source-kind",

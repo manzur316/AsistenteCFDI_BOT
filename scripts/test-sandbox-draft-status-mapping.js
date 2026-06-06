@@ -147,7 +147,9 @@ check("stamp_error_updates_invoice_status_sandbox_error_only", () => {
   assert(result.persistence_sql.includes("invoice_status = 'SANDBOX_ERROR'"));
   assert(result.persistence_sql.includes("payment_status = 'NO_APLICA'"));
   assert(!result.persistence_sql.includes("SET status = 'SANDBOX_ERROR'"));
-  assert(result.telegram_message.includes("No se pudo timbrar sandbox: el borrador no esta aprobado."));
+  assert(result.telegram_message.includes("No se pudo timbrar sandbox"));
+  assert(result.telegram_message.includes("Motivo:"));
+  assert(result.telegram_message.includes("el borrador no esta aprobado."));
   return result.sandbox_draft_status;
 });
 
@@ -182,9 +184,9 @@ check("fiscal_blockers_are_specific", () => {
     }),
     exitCode: 0,
   }, () => [{ json: source }]);
-  assert(result.telegram_message.includes("cliente no validado"));
-  assert(result.telegram_message.includes("RFC faltante"));
-  assert(result.telegram_message.includes("IVA/tax mode faltante"));
+  assert(result.telegram_message.includes("cliente fiscal pendiente de validacion humana"));
+  assert(result.telegram_message.includes("client_rfc_required"));
+  assert(result.telegram_message.includes("tax_method_required"));
   return "specific";
 });
 
