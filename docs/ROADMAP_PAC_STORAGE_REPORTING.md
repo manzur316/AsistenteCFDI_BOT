@@ -995,7 +995,22 @@ scripts/lib/payment-status-action.js
 scripts/test-payment-status-command-adapter.js
 ```
 
-Siguiente fase recomendada: `7.12 Client Billing Summary and Aging View`.
+### Client Billing Summary and Aging View 7.12
+
+La fase 7.12 agrega una vista Telegram de resumen de cobranza y antiguedad de
+saldos por cliente. Usa `invoice_status` y `payment_status` existentes, muestra
+`SANDBOX_CANCELADO` separado y mantiene `BORRADOR/APROBADO` fuera de cobranza
+activa.
+
+Documento, helper y prueba:
+
+```text
+docs/PHASE_7_12_CLIENT_BILLING_SUMMARY_AGING_VIEW.md
+scripts/lib/client-billing-summary-view.js
+scripts/test-client-billing-summary-view.js
+```
+
+Siguiente fase recomendada: `7.13 Monthly Billing Dashboard`.
 
 ### PAC Sandbox To Production Roadmap
 

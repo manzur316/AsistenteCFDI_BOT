@@ -197,6 +197,22 @@ const SUBMENUS = freezeDeep({
         risk: "MEDIUM",
       }),
       button({
+        id: "client_billing_summary",
+        text: "Resumen cobranza",
+        callback_data: "cfdi_nav:billing",
+        target_action: "VIEW_CLIENT_BILLING_SUMMARY",
+        roles: [ROLES.OWNER, ROLES.ASSISTANT_OPERATOR],
+        risk: "MEDIUM",
+      }),
+      button({
+        id: "client_billing_aging",
+        text: "Resumen vencidos",
+        callback_data: "cfdi_nav:aging",
+        target_action: "VIEW_CLIENT_BILLING_AGING",
+        roles: [ROLES.OWNER, ROLES.ASSISTANT_OPERATOR],
+        risk: "MEDIUM",
+      }),
+      button({
         id: "client_payment_pending",
         text: "Pendientes de pago",
         callback_data: "cfdi_nav:pay_pending",
