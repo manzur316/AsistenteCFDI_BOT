@@ -108,17 +108,8 @@ con `event_type = TELEGRAM_LATENCY_EVENT` y `payload`.
 
 Ejemplo de export local desde PostgreSQL:
 
-```sql
-COPY (
-  SELECT jsonb_build_object(
-    'event_type', event_type,
-    'payload', payload
-  )
-  FROM bot_events
-  WHERE event_type = 'TELEGRAM_LATENCY_EVENT'
-  ORDER BY created_at DESC
-  LIMIT 500
-) TO STDOUT;
+```bash
+node scripts/export-telegram-latency-events.js
 ```
 
 Guarda el resultado bajo `runtime/telegram-latency/` para que no se versione.

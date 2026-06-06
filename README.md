@@ -914,6 +914,16 @@ scripts/analyze-telegram-bot-latency.js
 scripts/test-telegram-bot-latency-observability.js
 ```
 
+Fase 7.10D agrega el export seguro desde PostgreSQL hacia JSONL para analizar
+eventos reales de latencia y diagnosticar callbacks donde el ACK es rapido pero
+`total_ms` queda alto:
+
+```text
+docs/PHASE_7_10D_TELEGRAM_LATENCY_DB_EXPORT_DIAGNOSIS.md
+scripts/export-telegram-latency-events.js
+scripts/test-telegram-latency-db-export.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

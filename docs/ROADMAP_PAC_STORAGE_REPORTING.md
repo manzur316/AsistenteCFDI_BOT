@@ -951,6 +951,20 @@ scripts/analyze-telegram-bot-latency.js
 scripts/test-telegram-bot-latency-observability.js
 ```
 
+### Telegram Latency DB Export and Diagnosis 7.10D
+
+La fase 7.10D corrige el pipeline de analisis: exporta eventos reales
+`TELEGRAM_LATENCY_EVENT` desde PostgreSQL hacia JSONL local bajo `runtime/` y
+permite diagnosticar callbacks con ACK rapido pero `total_ms` alto.
+
+Documento, export y prueba:
+
+```text
+docs/PHASE_7_10D_TELEGRAM_LATENCY_DB_EXPORT_DIAGNOSIS.md
+scripts/export-telegram-latency-events.js
+scripts/test-telegram-latency-db-export.js
+```
+
 Siguiente fase recomendada: `7.11 Payment Status Command Adapter`.
 
 ### PAC Sandbox To Production Roadmap

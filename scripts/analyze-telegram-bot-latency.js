@@ -24,6 +24,17 @@ const REQUIRED_FIELDS = [
   "workflow_version",
 ];
 
+const STAGE_KEYS = [
+  "ack_ms",
+  "db_insert_ms",
+  "load_context_ms",
+  "scoring_ms",
+  "routing_ms",
+  "action_ms",
+  "send_message_ms",
+  "total_ms",
+];
+
 const FORBIDDEN_PATTERNS = [
   { name: "telegram_token", pattern: /\b\d{6,}:[A-Za-z0-9_-]{20,}\b/ },
   { name: "provider_secret", pattern: /FACTURACOM_|F-Api-Key|F-Secret-Key|F-PLUGIN/i },
@@ -140,34 +151,50 @@ function validateRecords(records) {
 }
 
 function slowStageSummary(records) {
-  const stageKeys = [
-    "ack_ms",
-    "db_insert_ms",
-    "load_context_ms",
-    "scoring_ms",
-    "routing_ms",
-    "action_ms",
-    "send_message_ms",
-    "total_ms",
-  ];
-  return stageKeys
+  return STAGE_KEYS
     .map((key) => ({
       stage: key,
+      count: records.map((record) => numberOrNull(record[key])).filter((value) => value !== null).length,
+      missing_count: records.filter((record) => !(key in record) || numberOrNull(record[key]) === null).length,
       average_ms: average(records.map((record) => record[key])),
+      p50_ms: percentile(records.map((record) => record[key]), 50),
       p95_ms: percentile(records.map((record) => record[key]), 95),
+      p99_ms: percentile(records.map((record) => record[key]), 99),
       max_ms: Math.max(0, ...records.map((record) => numberOrNull(record[key])).filter((value) => value !== null)),
     }))
     .filter((item) => item.average_ms !== null)
     .sort((a, b) => (b.p95_ms || 0) - (a.p95_ms || 0));
 }
 
+function missingStageMetrics(records) {
+  if (!records.length) return [];
+  return STAGE_KEYS
+    .map((stage) => ({
+      code: "MISSING_STAGE_METRIC",
+      stage,
+      missing_count: records.filter((record) => !(stage in record) || numberOrNull(record[stage]) === null).length,
+      total_events: records.length,
+    }))
+    .filter((item) => item.missing_count > 0);
+}
+
 function buildRecommendations(summary) {
   const recommendations = [];
+  if (summary.total_events === 0) {
+    recommendations.push("No hay eventos analizados. Ejecuta scripts/export-telegram-latency-events.js con acceso local a PostgreSQL y vuelve a correr el analyzer.");
+    return recommendations;
+  }
   if (summary.callback_ack_blockers.length) {
     recommendations.push("ACK de callback supera 5000 ms: separar ACK de procesamiento pesado o usar cola local.");
   }
+  if (summary.ack_fast_total_slow_callbacks.length) {
+    recommendations.push("ACK parece rapido pero total_ms es alto: el cuello esta despues del ACK; revisar persistencia, Action Layer, sendMessage o cierre de webhook.");
+  }
   if (summary.slow_callbacks.length) {
     recommendations.push("Hay callbacks lentos: revisar nodo previo a answerCallbackQuery, Postgres Load Context y Code Node principal.");
+  }
+  if (summary.missing_stage_metrics.length) {
+    recommendations.push("Hay MISSING_STAGE_METRIC: algunos eventos no traen todas las etapas; comparar version del workflow y volver a exportar eventos recientes.");
   }
   if ((summary.metrics.total_ms.p95 || 0) > THRESHOLDS.total_warning_ms) {
     recommendations.push("p95 total_ms supera 5000 ms: instrumentar o separar acciones largas en Action Layer async.");
@@ -217,9 +244,14 @@ function summarizeLatency(records, options = {}) {
     by_source_kind: countBy(normalized, "source_kind"),
     top_callback_data_by_latency: topByAverage(normalized.filter((record) => record.source_kind === "CALLBACK_QUERY"), "callback_data", "total_ms"),
     slow_stages: slowStageSummary(normalized),
+    missing_stage_metrics: missingStageMetrics(normalized),
     slow_callbacks: normalized
       .filter((record) => record.source_kind === "CALLBACK_QUERY" && (numberOrNull(record.total_ms) || 0) > THRESHOLDS.total_warning_ms)
       .map((record) => ({ callback_data: record.callback_data, action: record.action, total_ms: record.total_ms, ack_ms: record.ack_ms }))
+      .slice(0, 25),
+    ack_fast_total_slow_callbacks: normalized
+      .filter((record) => record.source_kind === "CALLBACK_QUERY" && (numberOrNull(record.total_ms) || 0) > THRESHOLDS.total_warning_ms && (numberOrNull(record.ack_ms) || 0) <= THRESHOLDS.ack_warning_ms)
+      .map((record) => ({ callback_data: record.callback_data, action: record.action, total_ms: record.total_ms, ack_ms: record.ack_ms, status: record.status }))
       .slice(0, 25),
     callback_ack_blockers: normalized
       .filter((record) => record.source_kind === "CALLBACK_QUERY" && (numberOrNull(record.ack_ms) || 0) > THRESHOLDS.ack_blocker_ms)
@@ -254,6 +286,7 @@ function renderMarkdown(summary) {
     `- Duplicate blocked: ${summary.duplicate_blocked_count}`,
     `- Lock blocked: ${summary.lock_blocked_count}`,
     `- Validation errors: ${summary.validation_errors.length}`,
+    `- Missing stage metrics: ${summary.missing_stage_metrics.length}`,
     "",
     "## Recommendations",
     "",
@@ -263,6 +296,24 @@ function renderMarkdown(summary) {
     lines.push("", "## Slow Callbacks", "");
     for (const item of summary.slow_callbacks) {
       lines.push(`- ${item.callback_data} | ${item.action} | total_ms=${item.total_ms} | ack_ms=${item.ack_ms}`);
+    }
+  }
+  if (summary.ack_fast_total_slow_callbacks.length) {
+    lines.push("", "## ACK Fast But Total Slow", "");
+    for (const item of summary.ack_fast_total_slow_callbacks) {
+      lines.push(`- ${item.callback_data} | ${item.action} | total_ms=${item.total_ms} | ack_ms=${item.ack_ms}`);
+    }
+  }
+  if (summary.slow_stages.length) {
+    lines.push("", "## Slow Stages", "");
+    for (const item of summary.slow_stages.slice(0, 10)) {
+      lines.push(`- ${item.stage}: p95=${item.p95_ms} max=${item.max_ms} missing=${item.missing_count}`);
+    }
+  }
+  if (summary.missing_stage_metrics.length) {
+    lines.push("", "## Missing Stage Metrics", "");
+    for (const item of summary.missing_stage_metrics) {
+      lines.push(`- ${item.code}: ${item.stage} missing=${item.missing_count}/${item.total_events}`);
     }
   }
   return `${lines.join("\n")}\n`;
@@ -306,6 +357,8 @@ function printSummary(result) {
   console.log(`p50/p95/p99 total_ms: ${summary.metrics.total_ms.p50 ?? "N/A"} / ${summary.metrics.total_ms.p95 ?? "N/A"} / ${summary.metrics.total_ms.p99 ?? "N/A"}`);
   console.log(`Average ack_ms: ${summary.metrics.ack_ms.average ?? "N/A"}`);
   console.log(`Slow callbacks: ${summary.slow_callbacks.length}`);
+  console.log(`ACK fast but total slow: ${summary.ack_fast_total_slow_callbacks.length}`);
+  console.log(`Missing stage metrics: ${summary.missing_stage_metrics.length}`);
   console.log(`Duplicate blocked: ${summary.duplicate_blocked_count}`);
   console.log(`Lock blocked: ${summary.lock_blocked_count}`);
   console.log(`Validation errors: ${summary.validation_errors.join(" | ") || "none"}`);
@@ -331,8 +384,11 @@ if (require.main === module) {
 
 module.exports = {
   THRESHOLDS,
+  STAGE_KEYS,
   FORBIDDEN_PATTERNS,
   analyzeLatencyFile,
   summarizeLatency,
+  normalizeRecord,
+  validateRecords,
   parseArgs,
 };
