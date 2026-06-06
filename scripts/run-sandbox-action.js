@@ -62,14 +62,25 @@ function attachCapturedDiagnostics(result, captured) {
     ok: false,
     status: "ERROR",
     action: "UNKNOWN",
+    error_class: "ACTION_RESULT_NOT_OBJECT",
     errors: ["ACTION_RESULT_NOT_OBJECT"],
+    warnings: [],
+    sensitive_findings: [],
+    artifacts: [],
   };
   const warnings = Array.isArray(output.warnings) ? [...output.warnings] : [];
   if (captured.capturedStdout) warnings.push(`CAPTURED_STDOUT:${captured.capturedStdout}`);
   if (captured.capturedStderr) warnings.push(`CAPTURED_STDERR:${captured.capturedStderr}`);
   return {
     ...output,
+    ok: output.ok === true,
+    status: output.status || "ERROR",
+    action: output.action || "UNKNOWN",
+    error_class: output.error_class || output.error_classification || null,
+    artifacts: Array.isArray(output.artifacts) ? output.artifacts : [],
     warnings,
+    errors: Array.isArray(output.errors) ? output.errors : [],
+    sensitive_findings: Array.isArray(output.sensitive_findings) ? output.sensitive_findings : [],
     diagnostics: {
       ...(output.diagnostics || {}),
       captured_stdout_present: Boolean(captured.capturedStdout),
@@ -137,7 +148,11 @@ if (require.main === module) {
       ok: false,
       status: "ERROR",
       action: process.argv[2] || "UNKNOWN",
+      error_class: "UNHANDLED_CLI_ERROR",
       errors: [error.message || String(error)],
+      warnings: [],
+      sensitive_findings: [],
+      artifacts: [],
     }, null, 2));
     process.exit(1);
   });

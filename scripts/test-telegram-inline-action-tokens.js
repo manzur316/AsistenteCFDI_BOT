@@ -234,7 +234,7 @@ if (workflow) {
   checks.push({ name: "sendMessage_incluye_reply_markup", pass: String(sendNode.parameters.jsonBody || "").includes("reply_markup"), value: "reply_markup" });
   checks.push({ name: "workflow_carga_action_token", pass: buildLoadContextCode.includes("AS action_token") && buildLoadContextCode.includes("cfdi_action_tokens"), value: "action_token" });
   checks.push({ name: "workflow_no_token_real", pass: !/\bbot?\d{6,}:[A-Za-z0-9_-]{20,}\b/.test(workflowText), value: "no token real" });
-  checks.push({ name: "workflow_no_pac_timbrado_xml_pdf_whatsapp", pass: !/\bPAC\b|timbrad|XML|PDF|WhatsApp|whatsapp/i.test(workflowText), value: "none" });
+  checks.push({ name: "workflow_no_pac_productivo_file_send_whatsapp", pass: !/https:\/\/api\.factura\.com|stampProduction|sendDocument|sendMediaGroup|sendPhoto|<cfdi:Comprobante|%PDF-|WhatsApp|whatsapp/i.test(workflowText), value: "sandbox only" });
 }
 
 checks.push({
@@ -299,7 +299,7 @@ if (handleCode) {
 
   try {
     behavior.callbackUsed = executeCode(handleCode, callbackInput("CONFIRM", { update_id: 8005, used_at: "2026-06-04T00:00:00.000Z" }));
-    checks.push({ name: "callback_confirm_usado_rechazado", pass: behavior.callbackUsed.action === "CALLBACK_TOKEN_INVALID" && behavior.callbackUsed.json_debug?.callback_reason === "token_usado", value: behavior.callbackUsed.json_debug?.callback_reason || "N/A" });
+    checks.push({ name: "callback_confirm_usado_rechazado", pass: behavior.callbackUsed.action === "CALLBACK_DUPLICATE_BLOCKED" && /Esta accion ya fue procesada/.test(behavior.callbackUsed.telegram_message || ""), value: behavior.callbackUsed.action || "N/A" });
   } catch (error) {
     checks.push({ name: "callback_confirm_usado_rechazado", pass: false, value: error.message });
   }

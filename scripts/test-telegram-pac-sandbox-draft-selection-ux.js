@@ -269,9 +269,10 @@ check("callback_en_proceso_responde_minimo", () => {
   }));
   assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
   assert.strictEqual(result.callback_ack_text, "Accion ya en proceso.");
-  assert(result.telegram_message.trim().startsWith("Accion ya en proceso."));
-  assert(!result.reply_markup);
-  assert(result.telegram_message.length < 120);
+  assert(result.telegram_message.includes("Esta accion ya esta en proceso."));
+  assert(result.telegram_message.includes("No se ejecuto de nuevo."));
+  assert(result.reply_markup);
+  assert(Array.isArray(result.reply_markup.inline_keyboard));
   return result.telegram_message.replace(/\n/g, " ");
 });
 
@@ -284,9 +285,10 @@ check("callback_ya_procesado_responde_minimo", () => {
   }));
   assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
   assert.strictEqual(result.callback_ack_text, "Accion ya ejecutada.");
-  assert(result.telegram_message.trim().startsWith("Accion ya ejecutada."));
-  assert(!result.reply_markup);
-  assert(result.telegram_message.length < 120);
+  assert(result.telegram_message.includes("Esta accion ya fue procesada."));
+  assert(result.telegram_message.includes("No se ejecuto de nuevo."));
+  assert(result.reply_markup);
+  assert(Array.isArray(result.reply_markup.inline_keyboard));
   return result.telegram_message.replace(/\n/g, " ");
 });
 

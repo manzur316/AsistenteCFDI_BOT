@@ -264,6 +264,7 @@ function stableStep(action, status, output = {}, warnings = [], errors = []) {
   return sanitizeValue({
     action,
     status,
+    error_class: output?.error_class || output?.errorClass || null,
     output,
     warnings,
     errors,
@@ -539,6 +540,7 @@ async function runSandboxAction(action, options = {}) {
     artifacts: step.artifacts || collectArtifacts(step.output),
     warnings: step.warnings || [],
     errors: step.errors || [],
+    error_class: step.error_class || step.output?.error_class || null,
     output: step.output || {},
     sensitive_findings: [],
   };

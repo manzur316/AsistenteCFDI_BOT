@@ -1040,6 +1040,21 @@ scripts/lib/accountant-package-product-view.js
 scripts/test-accountant-package-product-integration.js
 ```
 
+### Telegram Token Semantics and Draft Stamp Contract 7.14B
+
+La fase 7.14B corrige el hotfix previo al signoff E2E: los tokens/callbacks de
+menu y vista son reutilizables, los botones sensibles siguen one-time o
+idempotentes, y `sandbox.draft.stamp` devuelve JSON estable en stdout para n8n
+tanto en exito como en error.
+
+Documento y pruebas:
+
+```text
+docs/PHASE_7_14B_TOKEN_SEMANTICS_AND_DRAFT_STAMP_CONTRACT.md
+scripts/test-telegram-token-semantics.js
+scripts/test-sandbox-draft-stamp-stdout-contract.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 ### PAC Sandbox To Production Roadmap

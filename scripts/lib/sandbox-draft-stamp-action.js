@@ -144,6 +144,30 @@ function validateDraftForSandboxStamp(draft, env = {}) {
   return { ok: errors.length === 0, status: errors.length ? status : "OK", errors, warnings, client, concept };
 }
 
+function stableValidationCode(code) {
+  const normalized = String(code || "").trim().toUpperCase();
+  const map = {
+    DRAFT_NOT_FOUND: "DRAFT_CONTEXT_MISSING",
+    DRAFT_ID_REQUIRED: "DRAFT_CONTEXT_MISSING",
+    CLIENT_NOT_VALIDATED: "CLIENT_NOT_VALIDATED",
+    CLIENT_RFC_REQUIRED: "RFC_MISSING",
+    CLIENT_REGIMEN_REQUIRED: "REGIMEN_MISSING",
+    CLIENT_FISCAL_ZIP_REQUIRED: "FISCAL_ZIP_MISSING",
+    CONCEPT_REQUIRED: "CONCEPT_MISSING",
+    CLAVE_PROD_SERV_REQUIRED: "CONCEPT_MISSING",
+    CLAVE_UNIDAD_REQUIRED: "CONCEPT_MISSING",
+    AMOUNT_REQUIRED: "AMOUNT_MISSING",
+    TOTAL_REQUIRED: "AMOUNT_MISSING",
+    TAX_METHOD_REQUIRED: "TAX_MODE_MISSING",
+    IVA_AMOUNT_REQUIRED: "TAX_MODE_MISSING",
+  };
+  return map[normalized] || normalized || "DRAFT_VALIDATION_ERROR";
+}
+
+function stableValidationCodes(errors = []) {
+  return [...new Set(asArray(errors).map(stableValidationCode).filter(Boolean))];
+}
+
 function canonicalInputFromDraft(draft = {}) {
   const subtotal = number(draft.subtotal ?? draft.amount) || 0;
   const ivaAmount = number(draft.iva_amount ?? draft.calc?.iva_amount ?? draft.tax_summary?.iva_transferred) ?? 0;
@@ -229,12 +253,15 @@ async function runSandboxDraftStamp(options = {}) {
 
   const validation = validateDraftForSandboxStamp(draft, options.env || {});
   if (!validation.ok) {
+    const validationCodes = stableValidationCodes(validation.errors);
     return {
       status: validation.status,
       output: {
+        error_class: validation.errors.includes("DRAFT_NOT_FOUND") ? "DRAFT_CONTEXT_MISSING" : "DRAFT_VALIDATION_ERROR",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
         draft_id: text(draft?.draft_id || options.draftId),
         validation_errors: validation.errors,
+        validation_error_codes: validationCodes,
         provider: "Factura.com Sandbox",
         sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
       },
@@ -251,9 +278,11 @@ async function runSandboxDraftStamp(options = {}) {
     return {
       status: "ERROR",
       output: {
+        error_class: "CANONICAL_DRAFT_NOT_READY",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
         draft_id: draft.draft_id,
         validation_errors: readinessErrors,
+        validation_error_codes: stableValidationCodes(readinessErrors),
         provider: "Factura.com Sandbox",
       },
       warnings: canonicalDraft.fiscal_warnings || [],
@@ -269,9 +298,11 @@ async function runSandboxDraftStamp(options = {}) {
     return {
       status: "ERROR",
       output: {
+        error_class: "CANONICAL_INVOICE_NOT_READY",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
         draft_id: draft.draft_id,
         validation_errors: invoiceResult.errors,
+        validation_error_codes: stableValidationCodes(invoiceResult.errors),
         provider: "Factura.com Sandbox",
       },
       warnings: invoiceResult.warnings || [],
@@ -287,9 +318,11 @@ async function runSandboxDraftStamp(options = {}) {
     return {
       status: "ERROR",
       output: {
+        error_class: "CANONICAL_PAC_REQUEST_NOT_READY",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
         draft_id: draft.draft_id,
         validation_errors: pacRequestResult.errors,
+        validation_error_codes: stableValidationCodes(pacRequestResult.errors),
         provider: "Factura.com Sandbox",
       },
       errors: ["CANONICAL_PAC_REQUEST_NOT_READY", ...pacRequestResult.errors],
@@ -305,6 +338,7 @@ async function runSandboxDraftStamp(options = {}) {
     return {
       status: "ERROR",
       output: {
+        error_class: "PAC_SANDBOX_ERROR",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
         draft_id: draft.draft_id,
         provider: "Factura.com Sandbox",

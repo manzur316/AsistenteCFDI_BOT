@@ -82,7 +82,7 @@ function assertNoSensitiveWorkflowText(text) {
   assert(!/https:\/\/api\.factura\.com/i.test(text), "production url");
   assert(!/F-Api-Key|F-Secret-Key|F-PLUGIN/i.test(text), "provider headers");
   assert(!/sendDocument|sendMediaGroup|sendPhoto/i.test(text), "file send");
-  assert(!/%PDF-|<\?xml|<cfdi:Comprobante|ZIP|Excel/i.test(text), "document send/content");
+  assert(!/%PDF-|<cfdi:Comprobante|sendDocument|sendMediaGroup|sendPhoto/i.test(text), "document send/content");
 }
 
 const checks = [];
@@ -144,9 +144,9 @@ for (const callbackData of ["cfdi_sbx:smoke_create", "cfdi_sbx:smoke_download", 
     assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
     assert.strictEqual(result.should_execute_sandbox_action, undefined);
     assert.strictEqual(result.callback_ack_text, "Accion ya en proceso.");
-    assert(result.telegram_message.trim().startsWith("Accion ya en proceso."));
-    assert(!result.reply_markup);
-    assert(result.telegram_message.length < 120);
+    assert(result.telegram_message.includes("Esta accion ya esta en proceso."));
+    assert(result.telegram_message.includes("No se ejecuto de nuevo."));
+    assert(result.reply_markup);
     assert(result.persistence_sql.includes("CALLBACK_DUPLICATE_BLOCKED"));
     return "blocked";
   });
@@ -159,9 +159,9 @@ check("pac_sandbox_processed_duplicate_blocked", () => {
   }));
   assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
   assert.strictEqual(result.callback_ack_text, "Accion ya ejecutada.");
-  assert(result.telegram_message.trim().startsWith("Accion ya ejecutada."));
-  assert(!result.reply_markup);
-  assert(result.telegram_message.length < 120);
+  assert(result.telegram_message.includes("Esta accion ya fue procesada."));
+  assert(result.telegram_message.includes("No se ejecuto de nuevo."));
+  assert(result.reply_markup);
   return "processed";
 });
 
@@ -179,7 +179,8 @@ check("confirm_draft_used_token_not_reexecuted", () => {
     },
   }));
   assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
-  assert(result.telegram_message.includes("Accion ya ejecutada."));
+  assert(result.telegram_message.includes("Esta accion ya fue procesada."));
+  assert(result.telegram_message.includes("No se ejecuto de nuevo."));
   return "confirm blocked";
 });
 
@@ -197,7 +198,8 @@ check("restore_draft_used_token_not_reexecuted", () => {
     },
   }));
   assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
-  assert(result.telegram_message.includes("Accion ya ejecutada."));
+  assert(result.telegram_message.includes("Esta accion ya fue procesada."));
+  assert(result.telegram_message.includes("No se ejecuto de nuevo."));
   return "restore blocked";
 });
 

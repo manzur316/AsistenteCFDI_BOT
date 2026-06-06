@@ -972,6 +972,17 @@ scripts/lib/accountant-package-product-view.js
 scripts/test-accountant-package-product-integration.js
 ```
 
+Fase 7.14B corrige la semantica de tokens/callbacks de Telegram para que
+menu y vistas sean reutilizables, mientras las acciones sensibles siguen siendo
+one-time/idempotentes. Tambien estabiliza el contrato stdout de
+`sandbox.draft.stamp` para n8n:
+
+```text
+docs/PHASE_7_14B_TOKEN_SEMANTICS_AND_DRAFT_STAMP_CONTRACT.md
+scripts/test-telegram-token-semantics.js
+scripts/test-sandbox-draft-stamp-stdout-contract.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
