@@ -131,7 +131,7 @@ check("run_sandbox_action_stamp_error_stdout_json_estable", () => {
       FACTURACOM_SANDBOX_LIVE: "1",
     },
   });
-  assert.notStrictEqual(child.status, 0);
+  assert.strictEqual(child.status, 0);
   assert.strictEqual(child.stderr.trim(), "");
   const parsed = JSON.parse(child.stdout);
   assert.strictEqual(parsed.action, "sandbox.draft.stamp");

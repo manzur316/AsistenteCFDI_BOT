@@ -139,7 +139,7 @@ async function main() {
   const captured = await runWithCapturedOutput(() => runSandboxAction(action, { ...options, auditContext }));
   const result = attachCapturedDiagnostics(captured.result, captured);
   console.log(JSON.stringify(result, null, 2));
-  if (result.status === "ERROR") process.exit(1);
+  process.exit(0);
 }
 
 if (require.main === module) {

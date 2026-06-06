@@ -1055,6 +1055,23 @@ scripts/test-telegram-token-semantics.js
 scripts/test-sandbox-draft-stamp-stdout-contract.js
 ```
 
+### Draft Loader, Status Mapping and Execute Command Contract 7.14C
+
+La fase 7.14C corrige el flujo real `sandbox.draft.stamp --draft-id`: el Action
+Layer puede cargar el borrador desde PostgreSQL local cuando no recibe snapshot
+embebido, el CLI devuelve JSON estable con exit code 0 para errores
+controlados, y el workflow actualiza `invoice_status/payment_status` sin
+contaminar el `status` legacy del borrador.
+
+Documento y pruebas:
+
+```text
+docs/PHASE_7_14C_DRAFT_LOADER_STATUS_MAPPING_EXECUTE_COMMAND_CONTRACT.md
+scripts/test-sandbox-draft-stamp-db-loader.js
+scripts/test-sandbox-action-cli-json-contract.js
+scripts/test-sandbox-draft-status-mapping.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 ### PAC Sandbox To Production Roadmap

@@ -8,6 +8,7 @@ const {
   promoteCanonicalDraftToInvoiceDocument,
 } = require("./canonical-invoice-builder");
 const { FacturaComSandboxAdapter } = require("./factura-com-sandbox-adapter");
+const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
 
 const SANDBOX_DRAFT_STAMP_STATUS = Object.freeze({
   STAMPING: "SANDBOX_TIMBRANDO",
@@ -74,9 +75,16 @@ function normalizeClient(client = {}) {
   };
 }
 
-function readDraftFromOptions(options = {}) {
+async function readDraftFromOptions(options = {}) {
   if (options.draft && typeof options.draft === "object") return options.draft;
   if (options.draftJsonBase64) return base64UrlDecodeJson(options.draftJsonBase64);
+  if (text(options.draftId)) {
+    if (typeof options.draftLoader === "function") return options.draftLoader(text(options.draftId), options);
+    return loadDraftFromPostgres(text(options.draftId), {
+      ...(options.dbConfig || {}),
+      env: options.env || process.env,
+    });
+  }
   return null;
 }
 
@@ -241,11 +249,34 @@ function writeSandboxStampManifest(input = {}) {
 async function runSandboxDraftStamp(options = {}) {
   let draft = null;
   try {
-    draft = readDraftFromOptions(options);
+    draft = await readDraftFromOptions(options);
   } catch (error) {
+    if (error && error.code === "DRAFT_DB_LOAD_FAILED") {
+      return {
+        status: "NEEDS_RUNTIME",
+        output: {
+          error_class: "DRAFT_DB_LOAD_FAILED",
+          invoice_status: null,
+          draft_status: null,
+          payment_status: null,
+          draft_id: text(options.draftId),
+          provider: "Factura.com Sandbox",
+          validation_errors: ["DRAFT_DB_LOAD_FAILED"],
+          validation_error_codes: ["DRAFT_DB_LOAD_FAILED"],
+          sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
+        },
+        warnings: ["No se pudo cargar el borrador desde PostgreSQL local."],
+        errors: ["DRAFT_DB_LOAD_FAILED"],
+      };
+    }
     return {
       status: "ERROR",
-      output: {},
+      output: {
+        error_class: "DRAFT_JSON_INVALID",
+        draft_id: text(options.draftId),
+        validation_errors: ["DRAFT_JSON_INVALID"],
+        validation_error_codes: ["DRAFT_JSON_INVALID"],
+      },
       warnings: [],
       errors: [`DRAFT_JSON_INVALID: ${error.message}`],
     };
@@ -259,6 +290,8 @@ async function runSandboxDraftStamp(options = {}) {
       output: {
         error_class: validation.errors.includes("DRAFT_NOT_FOUND") ? "DRAFT_CONTEXT_MISSING" : "DRAFT_VALIDATION_ERROR",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
+        draft_status: text(draft?.status) || null,
+        payment_status: text(draft?.payment_status) || "NO_APLICA",
         draft_id: text(draft?.draft_id || options.draftId),
         validation_errors: validation.errors,
         validation_error_codes: validationCodes,
@@ -280,6 +313,8 @@ async function runSandboxDraftStamp(options = {}) {
       output: {
         error_class: "CANONICAL_DRAFT_NOT_READY",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
+        draft_status: text(draft.status),
+        payment_status: text(draft.payment_status) || "NO_APLICA",
         draft_id: draft.draft_id,
         validation_errors: readinessErrors,
         validation_error_codes: stableValidationCodes(readinessErrors),
@@ -300,6 +335,8 @@ async function runSandboxDraftStamp(options = {}) {
       output: {
         error_class: "CANONICAL_INVOICE_NOT_READY",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
+        draft_status: text(draft.status),
+        payment_status: text(draft.payment_status) || "NO_APLICA",
         draft_id: draft.draft_id,
         validation_errors: invoiceResult.errors,
         validation_error_codes: stableValidationCodes(invoiceResult.errors),
@@ -320,6 +357,8 @@ async function runSandboxDraftStamp(options = {}) {
       output: {
         error_class: "CANONICAL_PAC_REQUEST_NOT_READY",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
+        draft_status: text(draft.status),
+        payment_status: text(draft.payment_status) || "NO_APLICA",
         draft_id: draft.draft_id,
         validation_errors: pacRequestResult.errors,
         validation_error_codes: stableValidationCodes(pacRequestResult.errors),
@@ -340,6 +379,8 @@ async function runSandboxDraftStamp(options = {}) {
       output: {
         error_class: "PAC_SANDBOX_ERROR",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.ERROR,
+        draft_status: text(draft.status),
+        payment_status: text(draft.payment_status) || "NO_APLICA",
         draft_id: draft.draft_id,
         provider: "Factura.com Sandbox",
         pac_status: pacResult.status || "PAC_ERROR",
@@ -364,6 +405,8 @@ async function runSandboxDraftStamp(options = {}) {
       draft_id: draft.draft_id,
       provider: "Factura.com Sandbox",
       invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
+      draft_status: text(draft.status),
+      payment_status: text(draft.payment_status) === "NO_APLICA" || !text(draft.payment_status) ? "PENDIENTE" : text(draft.payment_status),
       client_display_name: validation.client.display_name || validation.client.client_id,
       client_id: validation.client.client_id,
       total: invoiceResult.invoice_document.total,
@@ -404,5 +447,6 @@ module.exports = {
   hasSandboxStamp,
   hasSandboxStampInProgress,
   runSandboxDraftStamp,
+  readDraftFromOptions,
   validateDraftForSandboxStamp,
 };

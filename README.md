@@ -983,6 +983,18 @@ scripts/test-telegram-token-semantics.js
 scripts/test-sandbox-draft-stamp-stdout-contract.js
 ```
 
+Fase 7.14C corrige el flujo real `sandbox.draft.stamp --draft-id`: carga el
+borrador desde PostgreSQL local cuando no hay snapshot embebido, mantiene JSON
+estable con exit code 0 para errores controlados y separa correctamente
+`status`, `invoice_status` y `payment_status`:
+
+```text
+docs/PHASE_7_14C_DRAFT_LOADER_STATUS_MAPPING_EXECUTE_COMMAND_CONTRACT.md
+scripts/test-sandbox-draft-stamp-db-loader.js
+scripts/test-sandbox-action-cli-json-contract.js
+scripts/test-sandbox-draft-status-mapping.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

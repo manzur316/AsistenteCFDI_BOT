@@ -122,7 +122,7 @@ check("cli_missing_draft_stdout_is_json_stable", () => {
     encoding: "utf8",
     env: { ...process.env, FACTURACOM_SANDBOX_LIVE: "1" },
   });
-  assert.notStrictEqual(child.status, 0);
+  assert.strictEqual(child.status, 0);
   assert.strictEqual(child.stderr.trim(), "");
   const parsed = JSON.parse(child.stdout);
   assertStableResult(parsed);
@@ -154,7 +154,7 @@ check("cli_validation_error_stdout_is_json_stable", () => {
     encoding: "utf8",
     env: { ...process.env, FACTURACOM_SANDBOX_LIVE: "1" },
   });
-  assert.notStrictEqual(child.status, 0);
+  assert.strictEqual(child.status, 0);
   const parsed = JSON.parse(child.stdout);
   assertStableResult(parsed);
   assert.strictEqual(parsed.error_class, "DRAFT_VALIDATION_ERROR");
@@ -208,7 +208,8 @@ check("n8n_summary_parses_last_json_object_from_noisy_stdout", () => {
   assert.strictEqual(result.sandbox_action_status, "ERROR");
   assert.strictEqual(result.sandbox_action_summary.error_class, "DRAFT_CONTEXT_MISSING");
   assert.strictEqual(result.sandbox_action_summary.diagnostics.parse_mode, "last_json_object");
-  assert(result.telegram_message.includes("Timbrado sandbox no realizado"));
+  assert(result.telegram_message.includes("no se encontro el borrador"));
+  assert(!result.telegram_message.includes("stdout no parseable"));
   assertNoSensitive(result);
   return result.sandbox_action_summary.diagnostics.parse_mode;
 });
