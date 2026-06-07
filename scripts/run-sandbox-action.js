@@ -120,6 +120,8 @@ function parseArgs(argv) {
     } else if (key === "--idempotency-key") {
       options.idempotencyKey = rest[index + 1] || "";
       index += 1;
+    } else if (key === "--require-live-sandbox") {
+      options.requireLiveSandbox = true;
     }
   }
   return { action, auditContext, options };

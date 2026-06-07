@@ -509,6 +509,13 @@ class FacturaComSandboxAdapter {
   }
 
   stampSandbox(payloadOrRequest = {}, context = {}) {
+    if (context.requireLiveSandbox === true && sandboxMode(this.options, context) !== SANDBOX_MODES.LIVE) {
+      return normalizeFacturaComErrorResponse({
+        code: "FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED",
+        message: "Sandbox Operativo Live requiere FACTURACOM_SANDBOX_MODE=live.",
+        status: "NEEDS_CONFIG",
+      }, { operation: "stampSandbox", status: "NEEDS_CONFIG" });
+    }
     if (payloadOrRequest?.payload?.canonical_invoice_document && sandboxMode(this.options, context) === SANDBOX_MODES.LIVE) {
       return this.liveStampSandbox(payloadOrRequest, context);
     }

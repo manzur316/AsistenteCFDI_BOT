@@ -116,15 +116,34 @@ function hasSandboxStampInProgress(draft = {}) {
   return status === SANDBOX_DRAFT_STAMP_STATUS.STAMPING || sandboxStatus === SANDBOX_DRAFT_STAMP_STATUS.STAMPING;
 }
 
-function validateDraftForSandboxStamp(draft, env = {}) {
+function requireLiveSandboxErrors(env = {}) {
+  const errors = [];
+  if (String(env.FACTURACOM_SANDBOX_MODE || "").trim().toLowerCase() !== "live") {
+    errors.push("FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED");
+  }
+  if (String(env.FACTURACOM_SANDBOX_LIVE || "") !== "1") {
+    errors.push("FACTURACOM_SANDBOX_LIVE_REQUIRED");
+  }
+  if (String(env.FACTURACOM_BASE_URL || env.FACTURACOM_SANDBOX_BASE_URL || "").trim() !== "https://sandbox.factura.com/api") {
+    errors.push("FACTURACOM_SANDBOX_BASE_URL_REQUIRED");
+  }
+  if (!text(env.FACTURACOM_API_KEY || env.FACTURACOM_SANDBOX_API_KEY)) errors.push("FACTURACOM_SANDBOX_API_KEY_REQUIRED");
+  if (!text(env.FACTURACOM_SECRET_KEY || env.FACTURACOM_SANDBOX_SECRET_KEY)) errors.push("FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED");
+  if (!text(env.FACTURACOM_PLUGIN || env.FACTURACOM_SANDBOX_PLUGIN)) errors.push("FACTURACOM_SANDBOX_PLUGIN_REQUIRED");
+  if (!text(env.FACTURACOM_SANDBOX_RECEIVER_UID)) errors.push("FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED");
+  if (!text(env.FACTURACOM_SANDBOX_SERIE)) errors.push("FACTURACOM_SANDBOX_SERIE_REQUIRED");
+  return errors;
+}
+
+function validateDraftForSandboxStamp(draft, env = {}, options = {}) {
   const errors = [];
   const warnings = [];
   if (!draft || typeof draft !== "object") {
     return { ok: false, status: "ERROR", errors: ["DRAFT_NOT_FOUND"], warnings };
   }
 
-  if (env.FACTURACOM_SANDBOX_LIVE !== "1") {
-    errors.push("FACTURACOM_SANDBOX_LIVE_REQUIRED");
+  if (options.requireLiveSandbox === true) {
+    errors.push(...requireLiveSandboxErrors(env));
   }
 
   const productionUrl = [
@@ -163,7 +182,8 @@ function validateDraftForSandboxStamp(draft, env = {}) {
   const blockers = asArray(draft.blockers).filter(Boolean);
   if (blockers.length) errors.push("draft_has_blockers");
 
-  const status = errors.includes("FACTURACOM_SANDBOX_LIVE_REQUIRED") ? "NEEDS_CONFIG" : "ERROR";
+  const needsConfig = errors.some((item) => String(item).startsWith("FACTURACOM_SANDBOX_") || item === "PRODUCTION_BLOCKED");
+  const status = needsConfig ? "NEEDS_CONFIG" : "ERROR";
   return { ok: errors.length === 0, status: errors.length ? status : "OK", errors, warnings, client, concept };
 }
 
@@ -185,6 +205,15 @@ function stableValidationCode(code) {
     TOTAL_REQUIRED: "AMOUNT_MISSING",
     TAX_METHOD_REQUIRED: "TAX_MODE_MISSING",
     IVA_AMOUNT_REQUIRED: "TAX_MODE_MISSING",
+    FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED: "FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED",
+    FACTURACOM_SANDBOX_LIVE_REQUIRED: "FACTURACOM_SANDBOX_LIVE_REQUIRED",
+    FACTURACOM_SANDBOX_BASE_URL_REQUIRED: "FACTURACOM_SANDBOX_BASE_URL_REQUIRED",
+    FACTURACOM_SANDBOX_API_KEY_REQUIRED: "FACTURACOM_SANDBOX_API_KEY_REQUIRED",
+    FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED: "FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED",
+    FACTURACOM_SANDBOX_PLUGIN_REQUIRED: "FACTURACOM_SANDBOX_PLUGIN_REQUIRED",
+    FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED: "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED",
+    FACTURACOM_SANDBOX_SERIE_REQUIRED: "FACTURACOM_SANDBOX_SERIE_REQUIRED",
+    PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
   };
   return map[normalized] || normalized || "DRAFT_VALIDATION_ERROR";
 }
@@ -240,7 +269,8 @@ function sanitizeSandboxArtifact(value) {
     if (item === null || item === undefined) return item;
     if (typeof item === "string") {
       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item)) return "[REDACTED_UUID_PRESENT]";
-      if (/^CFDI[A-Z0-9_-]{4,}$/i.test(item) || /^UID[A-Z0-9_-]{4,}$/i.test(item)) return "[REDACTED_UID_PRESENT]";
+      if (/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/i.test(item)) return "[REDACTED_RFC_PRESENT]";
+      if (/^CFDI[A-Z0-9_-]{4,}$/i.test(item) || /^UID[A-Z0-9_-]{4,}$/i.test(item) || /UID[A-Z0-9_-]{4,}/i.test(item)) return "[REDACTED_UID_PRESENT]";
       return item;
     }
     if (typeof item === "number" || typeof item === "boolean") return item;
@@ -248,7 +278,9 @@ function sanitizeSandboxArtifact(value) {
     if (typeof item === "object") {
       const output = {};
       for (const [key, child] of Object.entries(item)) {
-        if (/^(uuid|foliofiscal|folio_fiscal|uid|cfdi_uid|pac_invoice_id|invoice_id)$/i.test(key)) {
+        if (/^(rfc|tax_id)$/i.test(key)) {
+          output[key] = child ? "[REDACTED_RFC_PRESENT]" : child;
+        } else if (/^(uuid|foliofiscal|folio_fiscal|uid|cfdi_uid|pac_invoice_id|invoice_id)$/i.test(key) || /uid$/i.test(key)) {
           output[key] = child ? "[REDACTED_ID_PRESENT]" : child;
         } else if (/path|ruta/i.test(key)) {
           output[key] = child ? "[REDACTED_PATH]" : child;
@@ -390,7 +422,9 @@ async function runSandboxDraftStamp(options = {}) {
     };
   }
 
-  const validation = validateDraftForSandboxStamp(draft, options.env || {});
+  const validation = validateDraftForSandboxStamp(draft, options.env || {}, {
+    requireLiveSandbox: options.requireLiveSandbox === true,
+  });
   if (!validation.ok) {
     const validationCodes = stableValidationCodes(validation.errors);
     return {
@@ -398,8 +432,10 @@ async function runSandboxDraftStamp(options = {}) {
       output: {
         error_class: validation.errors.includes("DRAFT_NOT_FOUND")
           ? "DRAFT_CONTEXT_MISSING"
-          : validation.errors.includes("FACTURACOM_SANDBOX_LIVE_REQUIRED")
-            ? "FACTURACOM_SANDBOX_LIVE_REQUIRED"
+          : validation.errors.includes("FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED")
+            ? "FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED"
+            : validation.errors.includes("FACTURACOM_SANDBOX_LIVE_REQUIRED")
+              ? "FACTURACOM_SANDBOX_LIVE_REQUIRED"
             : "DRAFT_VALIDATION_ERROR",
         ...draftErrorContext(draft, options),
         validation_errors: validation.errors,
@@ -476,6 +512,7 @@ async function runSandboxDraftStamp(options = {}) {
   const pacResult = await adapter.stampSandbox(pacRequest, {
     ...(options.adapterContext || {}),
     env: adapterEnv,
+    requireLiveSandbox: options.requireLiveSandbox === true,
   });
   if (pacResult.ok !== true) {
     const normalizedErrors = pacResult.normalized_errors || [];

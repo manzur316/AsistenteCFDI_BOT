@@ -1529,4 +1529,19 @@ La semantica queda separada:
 Produccion, PAC real productivo, envio de XML/PDF por Telegram y reporte fiscal
 mensual siguen fuera de alcance.
 
+## Fase 7.16B - Factura.com Sandbox Operativo Live
+
+La fase 7.16B queda definida en
+`docs/PHASE_7_16B_FACTURACOM_SANDBOX_OPERATIVO_LIVE.md`.
+
+Alcance:
+
+- `STAMP_DRAFT_SANDBOX` desde Telegram producto requiere
+  `--require-live-sandbox`;
+- mock sandbox queda reservado para tests, fixtures y diagnostico tecnico;
+- Sandbox Operativo Live usa Factura.com Sandbox como proveedor real de prueba;
+- falta de configuracion live devuelve `NEEDS_CONFIG`;
+- produccion, PAC real productivo y envio de XML/PDF por Telegram siguen
+  bloqueados.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.

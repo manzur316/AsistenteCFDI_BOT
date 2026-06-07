@@ -100,6 +100,7 @@ check("sandbox_draft_stamp_live_mode_returns_safe_presence_flags", async () => {
     draft: approvedDraft(),
     env,
     storageRoot: tempRoot,
+    requireLiveSandbox: true,
     adapterContext: {
       requestFn: async (request) => {
         networkCalls += 1;
@@ -146,6 +147,7 @@ check("sandbox_draft_stamp_live_missing_config_returns_needs_config", async () =
     draft: approvedDraft({ draft_id: "DRAFT-LIVE-MISSING-CONFIG" }),
     env: liveEnv({ FACTURACOM_SANDBOX_LIVE: "0" }),
     storageRoot: tempRoot,
+    requireLiveSandbox: true,
   });
   assert.strictEqual(result.status, "NEEDS_CONFIG");
   assert.strictEqual(result.output.error_class, "FACTURACOM_SANDBOX_LIVE_REQUIRED");

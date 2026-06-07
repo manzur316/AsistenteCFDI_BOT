@@ -1044,6 +1044,12 @@ local guardado. Telegram muestra solo resumen seguro y no envia documentos.
 
 Documento: `docs/PHASE_7_16_SANDBOX_XML_PDF_DOWNLOAD_CLIENT_STORAGE.md`.
 
+7.16B endurece el timbrado producto desde Telegram: `STAMP_DRAFT_SANDBOX`
+requiere Factura.com Sandbox Live con `--require-live-sandbox`. El mock queda
+solo para tests/fixtures y ya no se usa como fallback operativo desde Telegram.
+
+Documento: `docs/PHASE_7_16B_FACTURACOM_SANDBOX_OPERATIVO_LIVE.md`.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

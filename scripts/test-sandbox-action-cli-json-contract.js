@@ -68,10 +68,11 @@ function validationDraft() {
 }
 
 check("parse_args_accepts_draft_id", () => {
-  const parsed = parseArgs(["sandbox.draft.stamp", "--draft-id", "DRAFT-1", "--idempotency-key", "IDEMP-1"]);
+  const parsed = parseArgs(["sandbox.draft.stamp", "--draft-id", "DRAFT-1", "--idempotency-key", "IDEMP-1", "--require-live-sandbox"]);
   assert.strictEqual(parsed.action, "sandbox.draft.stamp");
   assert.strictEqual(parsed.options.draftId, "DRAFT-1");
   assert.strictEqual(parsed.options.idempotencyKey, "IDEMP-1");
+  assert.strictEqual(parsed.options.requireLiveSandbox, true);
   return parsed.options.draftId;
 });
 
@@ -109,7 +110,7 @@ check("controlled_needs_config_exits_zero_with_json", () => {
     total: 116,
     tax_mode: "ADD_IVA",
   };
-  const { child, parsed } = runCli(["sandbox.draft.stamp", "--draft-json-b64", toBase64UrlJson(goodEnough)], { FACTURACOM_SANDBOX_LIVE: "0" });
+  const { child, parsed } = runCli(["sandbox.draft.stamp", "--draft-json-b64", toBase64UrlJson(goodEnough), "--require-live-sandbox"], { FACTURACOM_SANDBOX_LIVE: "0" });
   assert.strictEqual(child.status, 0);
   assertStableJson(parsed);
   assert.strictEqual(parsed.status, "NEEDS_CONFIG");
