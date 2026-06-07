@@ -82,6 +82,29 @@ function assertSafeTelegramText(text) {
   assert(!/XAXX010101000|[A-Z&Ñ]{3,4}\\d{6}[A-Z0-9]{3}/i.test(text), "RFC leaked");
 }
 
+function countMatches(text, pattern) {
+  return (String(text || "").match(pattern) || []).length;
+}
+
+function assertUnavailableDownloadText(text) {
+  assert(/Descarga sandbox no disponible/.test(text), "human unavailable heading missing");
+  assert(/mock sandbox/.test(text), "mock sandbox explanation missing");
+  assert(/necesitas timbrado sandbox live/i.test(text), "live sandbox guidance missing");
+  assert(/XML descargado: no/.test(text), "xml no label missing");
+  assert(/PDF descargado: no/.test(text), "pdf no label missing");
+  assert(/Storage local: no actualizado/.test(text), "storage not updated label missing");
+  assert(!/Warnings: none/.test(text), "empty warnings leaked");
+  assert(!/Sensitive findings: 0/.test(text), "empty sensitive findings leaked");
+  assert(!/FACTURACOM_SANDBOX_XML_LIVE_MODE_REQUIRED|FACTURACOM_SANDBOX_PDF_LIVE_MODE_REQUIRED/.test(text), "raw live-mode errors leaked");
+  assert.strictEqual(countMatches(text, /No se envian documentos por Telegram/g), 1, "Telegram document warning duplicated");
+  assert.strictEqual(countMatches(text, /Borrador sujeto a revision humana\. No sustituye contador\./g), 1, "human review warning duplicated");
+  assert(!/[A-Za-z]:[\/]/.test(text), "absolute path leaked");
+  assert(!/00000000-0000-4000-8000-000000000716|CFDIUID716/i.test(text), "UUID/UID leaked");
+  assert(!/runtime[\\/]/i.test(text), "runtime path leaked");
+  assert(!/<\?xml|<cfdi:Comprobante|%PDF|sendDocument|sendMediaGroup|\.xml|\.pdf|\.zip|\.xlsx|\.csv|\.json/i.test(text), "document content/file reference leaked");
+  assert(!/XAXX010101000|[A-Z&??]{3,4}\d{6}[A-Z0-9]{3}/i.test(text), "RFC leaked");
+}
+
 check("download_summary_is_safe_and_human_readable", () => {
   const result = runSummary(actionStdout(), {
     chat_id: "123",
@@ -144,6 +167,50 @@ check("stamp_summary_says_pending_download_not_downloaded", () => {
   assert(!/runtime\\/i.test(result.telegram_message), "runtime path leaked");
   assert(!/<\?xml|<cfdi:Comprobante|%PDF|sendDocument|sendMediaGroup/i.test(result.telegram_message), "document content or file send leaked");
   return "pending";
+});
+
+check("mock_live_mode_required_download_message_is_human_and_not_repetitive", () => {
+  const result = runSummary(JSON.stringify({
+    ok: false,
+    status: "NEEDS_CONFIG",
+    action: "sandbox.draft.download-artifacts",
+    artifacts: [],
+    warnings: [],
+    errors: [
+      "FACTURACOM_SANDBOX_XML_LIVE_MODE_REQUIRED",
+      "FACTURACOM_SANDBOX_PDF_LIVE_MODE_REQUIRED",
+    ],
+    sensitive_findings: [],
+    output: {
+      draft_id: "DRAFT-20260607-716",
+      client_display_name: "Real Bilbao",
+      invoice_status: "SANDBOX_TIMBRADO",
+      payment_status: "PENDIENTE",
+      provider: "Factura.com Sandbox",
+      artifact_status: "NEEDS_CONFIG",
+      xml_downloaded: false,
+      pdf_downloaded: false,
+      storage_updated: false,
+      uuid: "00000000-0000-4000-8000-000000000716",
+      cfdi_uid: "CFDIUID716",
+    },
+  }), {
+    chat_id: "123",
+    update_id: 71603,
+    max_seen_update_id: 71603,
+    workflowVersion: "CFDI_LOCAL_INGEST_V1",
+    sandbox_draft_id: "DRAFT-20260607-716",
+    sandbox_draft_context: {
+      draft_id: "DRAFT-20260607-716",
+      client_display_name: "Real Bilbao",
+      invoice_status: "SANDBOX_TIMBRADO",
+      payment_status: "PENDIENTE",
+    },
+  });
+  assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_RESULT");
+  assert.strictEqual(result.sandbox_action_status, "NEEDS_CONFIG");
+  assertUnavailableDownloadText(result.telegram_message);
+  return "human";
 });
 
 Promise.all(checks).then((results) => {

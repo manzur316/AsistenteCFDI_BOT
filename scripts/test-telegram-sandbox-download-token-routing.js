@@ -186,7 +186,9 @@ check("mock_download_needs_runtime_is_reported_safely_not_invalid", () => {
   });
   assertNotInvalidButton(result);
   assert.strictEqual(result.sandbox_action_status, "NEEDS_RUNTIME");
-  assert(/No se pudo descargar XML\/PDF sandbox/.test(result.telegram_message));
+  assert(/Descarga sandbox no disponible/.test(result.telegram_message));
+  assert(/mock sandbox/.test(result.telegram_message));
+  assert(/timbrado sandbox live/i.test(result.telegram_message));
   assert(/XML descargado: no/.test(result.telegram_message));
   assert(/PDF descargado: no/.test(result.telegram_message));
   assert(/No se envian documentos por Telegram/.test(result.telegram_message));
