@@ -120,6 +120,7 @@ check("token_categories_are_exported", () => {
   assert.strictEqual(actionTokenCategory(ACTIONS.MENU), ACTION_CATEGORIES.NAVIGATION);
   assert.strictEqual(actionTokenCategory(ACTIONS.VIEW_DRAFT), ACTION_CATEGORIES.VIEW);
   assert.strictEqual(actionTokenCategory(ACTIONS.STAMP_DRAFT_SANDBOX), ACTION_CATEGORIES.PAC_SANDBOX);
+  assert.strictEqual(actionTokenCategory(ACTIONS.DOWNLOAD_SANDBOX_ARTIFACTS), ACTION_CATEGORIES.PAC_SANDBOX);
   assert.strictEqual(actionTokenCategory("MARK_PAYMENT_PAID"), ACTION_CATEGORIES.PAYMENT_STATUS);
   return "categories";
 });
@@ -135,7 +136,7 @@ check("navigation_and_view_tokens_reusable_even_if_used", () => {
 });
 
 check("sensitive_tokens_remain_one_time", () => {
-  for (const action of [ACTIONS.CONFIRM, ACTIONS.APPROVE_DRAFT, ACTIONS.DISCARD_DRAFT, ACTIONS.RESTORE_DRAFT, ACTIONS.STAMP_DRAFT_SANDBOX]) {
+  for (const action of [ACTIONS.CONFIRM, ACTIONS.APPROVE_DRAFT, ACTIONS.DISCARD_DRAFT, ACTIONS.RESTORE_DRAFT, ACTIONS.STAMP_DRAFT_SANDBOX, ACTIONS.DOWNLOAD_SANDBOX_ARTIFACTS]) {
     assert.strictEqual(isOneTimeAction(action), true, action);
     const validation = validateActionTokenRecord(tokenRecord("USED714B00001", action, { used_at: "2026-06-06T00:00:00.000Z" }), { chatId: "CHAT-7-14B" });
     assert.strictEqual(validation.ok, false, action);
