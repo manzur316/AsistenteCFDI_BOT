@@ -251,7 +251,7 @@ check("stamp_button_hidden_after_sandbox_stamp", () => {
   return "hidden";
 });
 
-check("stamp_callback_invokes_action_layer_and_marks_in_progress", () => {
+check("stamp_callback_invokes_action_layer_without_prelocking_draft", () => {
   const draft = validDraft();
   const token = "STAMP76TOKEN1";
   const result = executeCode(handleCode, callbackInput(token, "STAMP_DRAFT_SANDBOX", draft, { update_id: 7613 }));
@@ -260,8 +260,8 @@ check("stamp_callback_invokes_action_layer_and_marks_in_progress", () => {
   assert.strictEqual(result.requested_sandbox_action, "sandbox.draft.stamp");
   assert(result.sandbox_execute_command.startsWith("node scripts/run-sandbox-action.js sandbox.draft.stamp"));
   assert(result.sandbox_execute_command.includes("--draft-id DRAFT-76-OK"));
-  assert(result.sandbox_execute_command.includes("--draft-json-b64 "));
-  assert(result.callback_processing_sql.includes("SANDBOX_TIMBRANDO"));
+  assert(!result.sandbox_execute_command.includes("--draft-json-b64 "));
+  assert(!result.callback_processing_sql.includes("SANDBOX_TIMBRANDO"));
   assert(result.callback_processing_sql.includes("DRAFT_SANDBOX_STAMP_IN_PROGRESS"));
   assert(result.callback_processing_sql.includes("passthrough_b64"));
   assert(!/[;&|`$<>]/.test(result.sandbox_execute_command), result.sandbox_execute_command);

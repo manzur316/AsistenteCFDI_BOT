@@ -1089,6 +1089,21 @@ scripts/test-sandbox-draft-client-hydration.js
 scripts/test-sandbox-draft-stamp-context-preservation.js
 ```
 
+### Sandbox Stamp In-Progress Self-Blocking Fix 7.14E
+
+La fase 7.14E corrige el orden de estado del timbrado sandbox iniciado desde
+Telegram/n8n: el workflow deja de usar `invoice_status=SANDBOX_TIMBRANDO` como
+lock previo al Action Layer, conserva la idempotencia en `bot_events` y ejecuta
+`sandbox.draft.stamp` con `--draft-id` fresco, sin `--draft-json-b64` stale.
+
+Documento y pruebas:
+
+```text
+docs/PHASE_7_14E_SANDBOX_STAMP_IN_PROGRESS_SELF_BLOCKING_FIX.md
+scripts/test-sandbox-stamp-in-progress-self-blocking.js
+scripts/test-telegram-sandbox-stamp-workflow-state-order.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 ### PAC Sandbox To Production Roadmap

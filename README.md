@@ -1006,6 +1006,17 @@ scripts/test-sandbox-draft-client-hydration.js
 scripts/test-sandbox-draft-stamp-context-preservation.js
 ```
 
+Fase 7.14E evita el auto-bloqueo `DRAFT_SANDBOX_IN_PROGRESS` del timbrado
+sandbox desde Telegram/n8n: el workflow ya no pre-marca
+`invoice_status=SANDBOX_TIMBRANDO` ni envia snapshots stale por
+`--draft-json-b64`; el Action Layer carga fresco por `--draft-id`:
+
+```text
+docs/PHASE_7_14E_SANDBOX_STAMP_IN_PROGRESS_SELF_BLOCKING_FIX.md
+scripts/test-sandbox-stamp-in-progress-self-blocking.js
+scripts/test-telegram-sandbox-stamp-workflow-state-order.js
+```
+
 Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

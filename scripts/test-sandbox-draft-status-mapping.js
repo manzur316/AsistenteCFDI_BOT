@@ -128,14 +128,16 @@ const workflow = JSON.parse(workflowText);
 const handleCode = getNode(workflow, "Handle Commands And Scoring").parameters.jsCode;
 const summaryCode = getNode(workflow, "Build PAC Sandbox Action Summary").parameters.jsCode;
 
-check("stamp_lock_updates_invoice_status_not_legacy_status", () => {
+check("stamp_request_does_not_prelock_invoice_status", () => {
   const source = callbackSource(handleCode);
   assert.strictEqual(source.action, "DRAFT_SANDBOX_STAMP_REQUESTED");
-  assert(source.callback_processing_sql.includes("invoice_status = 'SANDBOX_TIMBRANDO'"));
-  assert(source.callback_processing_sql.includes("payment_status = 'NO_APLICA'"));
+  assert(!source.callback_processing_sql.includes("invoice_status = 'SANDBOX_TIMBRANDO'"));
+  assert(!source.callback_processing_sql.includes("payment_status = 'NO_APLICA'"));
   assert(!source.callback_processing_sql.includes("SET status = 'SANDBOX_TIMBRANDO'"));
   assert(source.sandbox_execute_command.includes("--draft-id DRAFT-MAP-OK"));
-  return "invoice_status lock";
+  assert(!source.sandbox_execute_command.includes("--draft-json-b64"));
+  assert(source.callback_processing_sql.includes("DRAFT_SANDBOX_STAMP_IN_PROGRESS"));
+  return "idempotency event only";
 });
 
 check("stamp_error_updates_invoice_status_sandbox_error_only", () => {
