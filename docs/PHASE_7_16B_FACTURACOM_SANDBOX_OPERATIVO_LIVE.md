@@ -59,6 +59,50 @@ Variables privadas requeridas en configuracion local no versionada:
 
 Las credenciales y UIDs se mantienen solo en configuracion local no versionada.
 
+## Resolucion canonica de configuracion
+
+La fase incorpora un resolver interno:
+
+```text
+scripts/lib/facturacom-sandbox-config-resolver.js
+```
+
+Arquitectura:
+
+```text
+Telegram
+-> n8n
+-> Execute Command allowlisted
+-> Action Layer
+-> Canonical Provider Config Resolver
+-> FacturaComSandboxAdapter
+-> Factura.com Sandbox Live
+```
+
+El workflow n8n no contiene credenciales PAC. El Action Layer resuelve la
+configuracion desde:
+
+1. `process.env`;
+2. `.env.pac.sandbox.local` si existe y esta ignorado por Git;
+3. una mezcla de ambos cuando algunas variables vienen del proceso y otras del
+   archivo local.
+
+Esto corrige el caso donde n8n/Execute Command no hereda todas las variables
+del shell, aunque el archivo local exista.
+
+El diagnostico seguro incluye presencia/faltante y fuente de configuracion,
+pero nunca imprime valores reales de API key, secret, plugin, receiver UID,
+RFC, rutas absolutas ni contenido del archivo `.env`.
+
+Accion local de diagnostico:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.facturacom.config.diagnose
+```
+
+Para tests o rutas locales temporales se puede apuntar a otro archivo con la
+variable no sensible `FACTURACOM_SANDBOX_ENV_FILE`.
+
 ### Produccion fiscal real
 
 Sigue bloqueada. Esta fase no habilita:
@@ -87,10 +131,18 @@ Cuando `--require-live-sandbox` esta activo:
 - no se debe asignar `payment_status=PENDIENTE`;
 - no se debe crear manifest de exito.
 
-Error normalizado principal:
+Errores normalizados principales:
 
 ```text
-FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED
+FACTURACOM_SANDBOX_MODE_REQUIRED
+FACTURACOM_SANDBOX_LIVE_REQUIRED
+FACTURACOM_SANDBOX_BASE_URL_REQUIRED
+FACTURACOM_SANDBOX_API_KEY_REQUIRED
+FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED
+FACTURACOM_SANDBOX_PLUGIN_REQUIRED
+FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED
+FACTURACOM_SANDBOX_SERIE_REQUIRED
+FACTURACOM_SANDBOX_PRODUCTION_URL_BLOCKED
 ```
 
 ## Telegram
@@ -103,7 +155,19 @@ Si falta configuracion live, Telegram debe responder en lenguaje humano:
 Factura.com Sandbox Live no configurado
 
 El modo mock no se usa para timbrado operativo desde Telegram.
-Para operar como proveedor real de prueba necesitas configurar Sandbox Operativo Live.
+Sandbox Operativo Live debe resolver configuracion local segura desde el Action Layer.
+
+Configuracion detectada:
+- Modo live: si/no
+- Live habilitado: si/no
+- URL sandbox: si/no
+- API key: presente/faltante
+- Secret key: presente/faltante
+- Plugin: presente/faltante
+- Receiver UID: presente/faltante
+- Serie: presente/faltante
+
+Fuente config: process.env / .env.pac.sandbox.local / mixed / missing
 ```
 
 Si el timbrado live funciona, el resumen seguro debe indicar:
@@ -121,6 +185,23 @@ Resultado PAC: live sandbox
 - No se exponen RFC, UUID, UID, rutas absolutas ni secrets en Telegram.
 - No se adjuntan XML/PDF/ZIP/Excel por Telegram.
 - `data/concepts.normalized.json` y fuentes SAT no cambian.
+- `FACTURACOM_SANDBOX_RECEIVER_UID` es global y temporal para prueba operativa
+  con un cliente fijo.
+
+## Deuda siguiente
+
+No se implementa sincronizacion completa cliente local -> Factura.com Sandbox.
+La siguiente mejora de datos debe modelar una tabla similar a:
+
+```text
+cfdi_client_provider_links
+- client_id
+- provider
+- environment
+- provider_client_uid
+- sync_status
+- synced_at
+```
 
 ## Criterio de salida
 

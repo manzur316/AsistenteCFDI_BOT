@@ -9,6 +9,10 @@ const {
 } = require("./canonical-invoice-builder");
 const { FacturaComSandboxAdapter } = require("./factura-com-sandbox-adapter");
 const { sanitizeValue } = require("./factura-com-live-client");
+const {
+  resolveFacturaComSandboxConfig,
+  safeFacturaComSandboxConfig,
+} = require("./facturacom-sandbox-config-resolver");
 const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
 
 const SANDBOX_DRAFT_STAMP_STATUS = Object.freeze({
@@ -116,23 +120,13 @@ function hasSandboxStampInProgress(draft = {}) {
   return status === SANDBOX_DRAFT_STAMP_STATUS.STAMPING || sandboxStatus === SANDBOX_DRAFT_STAMP_STATUS.STAMPING;
 }
 
-function requireLiveSandboxErrors(env = {}) {
-  const errors = [];
-  if (String(env.FACTURACOM_SANDBOX_MODE || "").trim().toLowerCase() !== "live") {
-    errors.push("FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED");
-  }
-  if (String(env.FACTURACOM_SANDBOX_LIVE || "") !== "1") {
-    errors.push("FACTURACOM_SANDBOX_LIVE_REQUIRED");
-  }
-  if (String(env.FACTURACOM_BASE_URL || env.FACTURACOM_SANDBOX_BASE_URL || "").trim() !== "https://sandbox.factura.com/api") {
-    errors.push("FACTURACOM_SANDBOX_BASE_URL_REQUIRED");
-  }
-  if (!text(env.FACTURACOM_API_KEY || env.FACTURACOM_SANDBOX_API_KEY)) errors.push("FACTURACOM_SANDBOX_API_KEY_REQUIRED");
-  if (!text(env.FACTURACOM_SECRET_KEY || env.FACTURACOM_SANDBOX_SECRET_KEY)) errors.push("FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED");
-  if (!text(env.FACTURACOM_PLUGIN || env.FACTURACOM_SANDBOX_PLUGIN)) errors.push("FACTURACOM_SANDBOX_PLUGIN_REQUIRED");
-  if (!text(env.FACTURACOM_SANDBOX_RECEIVER_UID)) errors.push("FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED");
-  if (!text(env.FACTURACOM_SANDBOX_SERIE)) errors.push("FACTURACOM_SANDBOX_SERIE_REQUIRED");
-  return errors;
+function requireLiveSandboxErrors(env = {}, options = {}) {
+  const config = options.pacProviderConfig || resolveFacturaComSandboxConfig({
+    env,
+    localEnvPath: options.localEnvPath,
+    loadLocalEnv: options.loadLocalEnv,
+  });
+  return Array.isArray(config.errors) ? config.errors : [];
 }
 
 function validateDraftForSandboxStamp(draft, env = {}, options = {}) {
@@ -143,7 +137,7 @@ function validateDraftForSandboxStamp(draft, env = {}, options = {}) {
   }
 
   if (options.requireLiveSandbox === true) {
-    errors.push(...requireLiveSandboxErrors(env));
+    errors.push(...requireLiveSandboxErrors(env, options));
   }
 
   const productionUrl = [
@@ -206,6 +200,7 @@ function stableValidationCode(code) {
     TAX_METHOD_REQUIRED: "TAX_MODE_MISSING",
     IVA_AMOUNT_REQUIRED: "TAX_MODE_MISSING",
     FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED: "FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED",
+    FACTURACOM_SANDBOX_MODE_REQUIRED: "FACTURACOM_SANDBOX_MODE_REQUIRED",
     FACTURACOM_SANDBOX_LIVE_REQUIRED: "FACTURACOM_SANDBOX_LIVE_REQUIRED",
     FACTURACOM_SANDBOX_BASE_URL_REQUIRED: "FACTURACOM_SANDBOX_BASE_URL_REQUIRED",
     FACTURACOM_SANDBOX_API_KEY_REQUIRED: "FACTURACOM_SANDBOX_API_KEY_REQUIRED",
@@ -213,6 +208,7 @@ function stableValidationCode(code) {
     FACTURACOM_SANDBOX_PLUGIN_REQUIRED: "FACTURACOM_SANDBOX_PLUGIN_REQUIRED",
     FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED: "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED",
     FACTURACOM_SANDBOX_SERIE_REQUIRED: "FACTURACOM_SANDBOX_SERIE_REQUIRED",
+    FACTURACOM_SANDBOX_PRODUCTION_URL_BLOCKED: "FACTURACOM_SANDBOX_PRODUCTION_URL_BLOCKED",
     PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
   };
   return map[normalized] || normalized || "DRAFT_VALIDATION_ERROR";
@@ -422,8 +418,21 @@ async function runSandboxDraftStamp(options = {}) {
     };
   }
 
-  const validation = validateDraftForSandboxStamp(draft, options.env || {}, {
+  const requestedEnv = options.env || process.env;
+  const pacProviderConfig = options.requireLiveSandbox === true
+    ? resolveFacturaComSandboxConfig({
+      env: requestedEnv,
+      localEnvPath: options.localEnvPath,
+      loadLocalEnv: options.loadLocalEnv,
+    })
+    : null;
+  const effectiveEnv = pacProviderConfig?.ok === true
+    ? { ...requestedEnv, ...pacProviderConfig.resolved_env }
+    : requestedEnv;
+
+  const validation = validateDraftForSandboxStamp(draft, effectiveEnv, {
     requireLiveSandbox: options.requireLiveSandbox === true,
+    pacProviderConfig,
   });
   if (!validation.ok) {
     const validationCodes = stableValidationCodes(validation.errors);
@@ -432,8 +441,8 @@ async function runSandboxDraftStamp(options = {}) {
       output: {
         error_class: validation.errors.includes("DRAFT_NOT_FOUND")
           ? "DRAFT_CONTEXT_MISSING"
-          : validation.errors.includes("FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED")
-            ? "FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED"
+          : validation.errors.includes("FACTURACOM_SANDBOX_MODE_REQUIRED")
+            ? "FACTURACOM_SANDBOX_MODE_REQUIRED"
             : validation.errors.includes("FACTURACOM_SANDBOX_LIVE_REQUIRED")
               ? "FACTURACOM_SANDBOX_LIVE_REQUIRED"
             : "DRAFT_VALIDATION_ERROR",
@@ -441,6 +450,7 @@ async function runSandboxDraftStamp(options = {}) {
         validation_errors: validation.errors,
         validation_error_codes: validationCodes,
         provider: "Factura.com Sandbox",
+        pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
         sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
       },
       warnings: validation.warnings,
@@ -507,7 +517,7 @@ async function runSandboxDraftStamp(options = {}) {
 
   const pacRequest = pacRequestResult.pac_request;
   pacRequest.payload.canonical_draft = canonicalDraft;
-  const adapterEnv = options.env || process.env;
+  const adapterEnv = effectiveEnv;
   const adapter = options.adapter || new FacturaComSandboxAdapter({ env: adapterEnv });
   const pacResult = await adapter.stampSandbox(pacRequest, {
     ...(options.adapterContext || {}),
@@ -526,6 +536,7 @@ async function runSandboxDraftStamp(options = {}) {
         error_class: firstErrorCode,
         ...draftErrorContext(draft, options),
         provider: "Factura.com Sandbox",
+        pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
         pac_status: pacResult.status || "PAC_ERROR",
         normalized_errors: normalizedErrors,
       },
@@ -548,6 +559,7 @@ async function runSandboxDraftStamp(options = {}) {
     output: {
       draft_id: draft.draft_id,
       provider: "Factura.com Sandbox",
+      pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
       invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
       draft_status: text(draft.status),
       payment_status: text(draft.payment_status) === "NO_APLICA" || !text(draft.payment_status) ? "PENDIENTE" : text(draft.payment_status),

@@ -52,9 +52,11 @@ if ($env:NODES_EXCLUDE -and $env:NODES_EXCLUDE -match "n8n-nodes-base\.executeCo
   throw "NODES_EXCLUDE blocks n8n-nodes-base.executeCommand. Remove it for local sandbox tests."
 }
 
+Write-Host "Config resolver check: node scripts/run-sandbox-action.js sandbox.facturacom.config.diagnose"
 Write-Host "Preflight Action Layer check: node scripts/run-sandbox-action.js sandbox.preflight"
 Push-Location $repoRoot
 try {
+  node scripts/run-sandbox-action.js sandbox.facturacom.config.diagnose
   node scripts/run-sandbox-action.js sandbox.preflight
   Write-Host "Starting n8n on http://127.0.0.1:$env:N8N_PORT"
   n8n start

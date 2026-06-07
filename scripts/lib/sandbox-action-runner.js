@@ -12,6 +12,10 @@ const { analyzeAudit } = require("../analyze-sandbox-action-audit");
 const { runSandboxDraftCancel } = require("./sandbox-draft-cancel-action");
 const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-artifacts-action");
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
+const {
+  resolveFacturaComSandboxConfig,
+  safeFacturaComSandboxConfig,
+} = require("./facturacom-sandbox-config-resolver");
 const { DEFAULT_STORAGE_ROOT, scanSensitiveFiles } = require("./sandbox-storage-engine");
 const { DEFAULT_PACKAGE_ROOT } = require("./sandbox-accountant-package");
 
@@ -26,6 +30,7 @@ const ACTION_STATUSES = ["OK", "ERROR", "SKIPPED", "NEEDS_RUNTIME", "NEEDS_CONFI
 
 const ACTIONS = [
   "sandbox.preflight",
+  "sandbox.facturacom.config.diagnose",
   "sandbox.smoke.create",
   "sandbox.smoke.download",
   "sandbox.smoke.cancel",
@@ -87,7 +92,9 @@ function sanitizeValue(value) {
   if (typeof value === "object") {
     const out = {};
     for (const [key, item] of Object.entries(value)) {
-      if (/api[-_ ]?key|secret|plugin|token|authorization|password|f-api-key|f-secret-key|f-plugin/i.test(key)) {
+      if (/_present$/i.test(key) && typeof item === "boolean") {
+        out[key] = item;
+      } else if (/api[-_ ]?key|secret|plugin|token|authorization|password|f-api-key|f-secret-key|f-plugin/i.test(key)) {
         out[key] = "[REDACTED]";
       } else {
         out[key] = sanitizeValue(item);
@@ -99,7 +106,7 @@ function sanitizeValue(value) {
 }
 
 function findSensitiveFindings(value) {
-  const text = JSON.stringify(value);
+  const text = JSON.stringify(value).replace(/\.env\.pac\.sandbox\.local/g, "[LOCAL_ENV_LABEL]");
   const findings = [];
   if (/(FACTURACOM_API_KEY|FACTURACOM_SECRET_KEY|FACTURACOM_PLUGIN|F-Api-Key|F-Secret-Key|F-PLUGIN)["':=\s]+(?!\[REDACTED\]|REEMPLAZAR|PLACEHOLDER|TEST_)[A-Za-z0-9+/=_-]{8,}/i.test(text)) {
     findings.push("secret_like_value");
@@ -334,6 +341,22 @@ async function runPreflight(env, paths) {
   return stableStep("sandbox.preflight", status, result, result.skipped ? [result.message] : [], result.ok === false ? [result.status || "AUTH_ERROR"] : []);
 }
 
+function runFacturaComConfigDiagnose(env, options = {}) {
+  const config = resolveFacturaComSandboxConfig({
+    env,
+    localEnvPath: options.localEnvPath,
+    loadLocalEnv: options.loadLocalEnv,
+  });
+  const safeConfig = safeFacturaComSandboxConfig(config);
+  return stableStep(
+    "sandbox.facturacom.config.diagnose",
+    safeConfig.status,
+    safeConfig,
+    safeConfig.status === "OK" ? [] : ["Factura.com Sandbox Live requiere configuracion local."],
+    safeConfig.status === "OK" ? [] : safeConfig.missing,
+  );
+}
+
 async function runSmokeAction(action, mode, env, paths) {
   if (productionRequested(env)) {
     return stableStep(action, "ERROR", {}, [], ["PRODUCTION_BLOCKED"]);
@@ -514,6 +537,7 @@ async function executeAction(action, env = process.env, options = {}) {
     return stableStep(action || "UNKNOWN", "ERROR", {}, [], ["UNKNOWN_ACTION"]);
   }
   if (action === "sandbox.preflight") return runPreflight(env, paths);
+  if (action === "sandbox.facturacom.config.diagnose") return runFacturaComConfigDiagnose(env, options);
   if (action === "sandbox.smoke.create") return runSmokeAction(action, "create", env, paths);
   if (action === "sandbox.smoke.download") return runSmokeAction(action, "download", env, paths);
   if (action === "sandbox.smoke.cancel") return runSmokeAction(action, "cancel", env, paths);

@@ -1538,6 +1538,9 @@ Alcance:
 
 - `STAMP_DRAFT_SANDBOX` desde Telegram producto requiere
   `--require-live-sandbox`;
+- el Action Layer resuelve configuracion con
+  `scripts/lib/facturacom-sandbox-config-resolver.js` desde `process.env` o
+  `.env.pac.sandbox.local`;
 - mock sandbox queda reservado para tests, fixtures y diagnostico tecnico;
 - Sandbox Operativo Live usa Factura.com Sandbox como proveedor real de prueba;
 - falta de configuracion live devuelve `NEEDS_CONFIG`;

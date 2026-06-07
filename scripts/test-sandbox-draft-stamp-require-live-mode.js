@@ -107,9 +107,10 @@ check("require_live_sandbox_blocks_mock_mode_before_mock_stamp", async () => {
     env: liveEnv({ FACTURACOM_SANDBOX_MODE: "mock" }),
     storageRoot: tempRoot,
     requireLiveSandbox: true,
+    loadLocalEnv: false,
   });
   assert.strictEqual(result.status, "NEEDS_CONFIG");
-  assert.strictEqual(result.output.error_class, "FACTURACOM_SANDBOX_LIVE_OPERATIONAL_MODE_REQUIRED");
+  assert.strictEqual(result.output.error_class, "FACTURACOM_SANDBOX_MODE_REQUIRED");
   assert.notStrictEqual(result.output.invoice_status, "SANDBOX_TIMBRADO");
   assert.notStrictEqual(result.output.payment_status, "PENDIENTE");
   assert.strictEqual(fs.existsSync(path.join(tempRoot, "draft-stamps", "DRAFT-MOCK-BLOCKED")), false);
@@ -130,6 +131,7 @@ for (const [name, envPatch, expectedCode] of [
       env: liveEnv(envPatch),
       storageRoot: tempRoot,
       requireLiveSandbox: true,
+      loadLocalEnv: false,
     });
     assert.strictEqual(result.status, "NEEDS_CONFIG");
     assert(result.output.validation_error_codes.includes(expectedCode), `${expectedCode} missing`);

@@ -1047,6 +1047,8 @@ Documento: `docs/PHASE_7_16_SANDBOX_XML_PDF_DOWNLOAD_CLIENT_STORAGE.md`.
 7.16B endurece el timbrado producto desde Telegram: `STAMP_DRAFT_SANDBOX`
 requiere Factura.com Sandbox Live con `--require-live-sandbox`. El mock queda
 solo para tests/fixtures y ya no se usa como fallback operativo desde Telegram.
+El Action Layer resuelve configuracion con un resolver canonico desde
+`process.env` o `.env.pac.sandbox.local`; n8n no contiene credenciales PAC.
 
 Documento: `docs/PHASE_7_16B_FACTURACOM_SANDBOX_OPERATIVO_LIVE.md`.
 

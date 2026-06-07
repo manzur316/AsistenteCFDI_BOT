@@ -124,7 +124,10 @@ check("telegram_stamp_missing_live_summary_is_human", () => {
   assert(/Factura.com Sandbox Live no configurado/.test(result.telegram_message));
   assert(/El modo mock no se usa para timbrado operativo desde Telegram/.test(result.telegram_message));
   assert(/Sandbox Operativo Live/.test(result.telegram_message));
-  assert(/FACTURACOM_SANDBOX_MODE=live/.test(result.telegram_message));
+  assert(/Configuracion detectada:/.test(result.telegram_message));
+  assert(/Modo live: no/.test(result.telegram_message));
+  assert(/API key: faltante/.test(result.telegram_message));
+  assert(/Fuente config: missing/.test(result.telegram_message));
   assert(!/Timbrado sandbox OK|SANDBOX_TIMBRADO/.test(result.telegram_message), "must not look stamped");
   assert(!/sendDocument|<\?xml|%PDF|https:\/\/api\.factura\.com/i.test(result.telegram_message), "unsafe output");
   return "human";
