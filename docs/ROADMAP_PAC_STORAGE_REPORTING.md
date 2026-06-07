@@ -1104,7 +1104,26 @@ scripts/test-sandbox-stamp-in-progress-self-blocking.js
 scripts/test-telegram-sandbox-stamp-workflow-state-order.js
 ```
 
-Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
+### Factura.com Sandbox Live Stamping Adapter 7.15
+
+La fase 7.15 habilita `sandbox.draft.stamp` contra Factura.com Sandbox live
+desde el adapter, manteniendo mock como default. Live requiere
+`FACTURACOM_SANDBOX_MODE=live`, `FACTURACOM_SANDBOX_LIVE=1`, URL sandbox,
+credenciales locales y configuracion de receptor/serie/uso/forma/metodo/CP. La
+respuesta Telegram solo muestra presencia de UUID/PAC ID/XML/PDF; los artifacts
+locales se guardan sanitizados bajo `runtime/storage-sandbox/draft-stamps/`.
+
+Documento y pruebas:
+
+```text
+docs/PHASE_7_15_FACTURACOM_SANDBOX_LIVE_STAMPING_ADAPTER.md
+scripts/test-factura-com-sandbox-live-adapter-contract.js
+scripts/test-factura-com-sandbox-live-gating.js
+scripts/test-sandbox-draft-stamp-live-mode.js
+scripts/test-sandbox-live-stamp-storage-manifest.js
+```
+
+Siguiente fase recomendada: `7.16 Sandbox XML/PDF Download and Client Storage`.
 
 ### PAC Sandbox To Production Roadmap
 

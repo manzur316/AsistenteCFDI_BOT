@@ -1017,7 +1017,21 @@ scripts/test-sandbox-stamp-in-progress-self-blocking.js
 scripts/test-telegram-sandbox-stamp-workflow-state-order.js
 ```
 
-Siguiente fase recomendada: `7.15 Telegram Product E2E Signoff`.
+Fase 7.15 agrega timbrado live contra Factura.com Sandbox en el adapter, con
+modo mock por defecto y live solo con `FACTURACOM_SANDBOX_MODE=live` +
+`FACTURACOM_SANDBOX_LIVE=1`. El Action Layer guarda manifests sanitizados bajo
+`runtime/storage-sandbox/draft-stamps/` y Telegram solo muestra presencia de
+UUID/PAC ID/XML/PDF, sin valores ni documentos:
+
+```text
+docs/PHASE_7_15_FACTURACOM_SANDBOX_LIVE_STAMPING_ADAPTER.md
+scripts/test-factura-com-sandbox-live-adapter-contract.js
+scripts/test-factura-com-sandbox-live-gating.js
+scripts/test-sandbox-draft-stamp-live-mode.js
+scripts/test-sandbox-live-stamp-storage-manifest.js
+```
+
+Siguiente fase recomendada: `7.16 Sandbox XML/PDF Download and Client Storage`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

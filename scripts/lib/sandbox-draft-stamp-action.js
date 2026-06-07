@@ -8,6 +8,7 @@ const {
   promoteCanonicalDraftToInvoiceDocument,
 } = require("./canonical-invoice-builder");
 const { FacturaComSandboxAdapter } = require("./factura-com-sandbox-adapter");
+const { sanitizeValue } = require("./factura-com-live-client");
 const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
 
 const SANDBOX_DRAFT_STAMP_STATUS = Object.freeze({
@@ -233,6 +234,35 @@ function canonicalInputFromDraft(draft = {}) {
   };
 }
 
+function sanitizeSandboxArtifact(value) {
+  const sanitized = sanitizeValue(value);
+  function walk(item, keyName = "") {
+    if (item === null || item === undefined) return item;
+    if (typeof item === "string") {
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item)) return "[REDACTED_UUID_PRESENT]";
+      if (/^CFDI[A-Z0-9_-]{4,}$/i.test(item) || /^UID[A-Z0-9_-]{4,}$/i.test(item)) return "[REDACTED_UID_PRESENT]";
+      return item;
+    }
+    if (typeof item === "number" || typeof item === "boolean") return item;
+    if (Array.isArray(item)) return item.map((child) => walk(child, keyName));
+    if (typeof item === "object") {
+      const output = {};
+      for (const [key, child] of Object.entries(item)) {
+        if (/^(uuid|foliofiscal|folio_fiscal|uid|cfdi_uid|pac_invoice_id|invoice_id)$/i.test(key)) {
+          output[key] = child ? "[REDACTED_ID_PRESENT]" : child;
+        } else if (/path|ruta/i.test(key)) {
+          output[key] = child ? "[REDACTED_PATH]" : child;
+        } else {
+          output[key] = walk(child, key);
+        }
+      }
+      return output;
+    }
+    return null;
+  }
+  return walk(sanitized);
+}
+
 function draftErrorContext(draft = {}, options = {}) {
   const safeDraft = draft && typeof draft === "object" ? draft : {};
   const client = normalizeClient(safeDraft.current_client || safeDraft.client || safeDraft.client_snapshot || {});
@@ -248,17 +278,21 @@ function draftErrorContext(draft = {}, options = {}) {
 }
 
 function writeSandboxStampManifest(input = {}) {
-  const { draft, storageRoot, canonicalDraft, invoiceDocument, pacResult, now = new Date() } = input;
+  const { draft, storageRoot, canonicalDraft, invoiceDocument, pacRequest, pacResult, now = new Date() } = input;
   if (!storageRoot) return null;
   const stamp = now.toISOString().replace(/[:.]/g, "-");
   const dir = path.join(storageRoot, "draft-stamps", safeId(draft.draft_id), stamp);
   fs.mkdirSync(dir, { recursive: true });
   const manifestPath = path.join(dir, "sandbox-stamp-manifest.json");
+  const canonicalRequestPath = path.join(dir, "canonical-request.sanitized.json");
+  const providerResponsePath = path.join(dir, "provider-response.sanitized.json");
+  const normalizedResultPath = path.join(dir, "normalized-result.json");
   const manifest = {
-    schema_version: "sandbox_draft_stamp_manifest.v1",
+    schema_version: "sandbox_draft_stamp_manifest.v2",
     generated_at: now.toISOString(),
     provider: "Factura.com Sandbox",
     environment: PAC_ENVIRONMENTS.SANDBOX,
+    mode: pacResult.live_mode === true ? "live" : "mock",
     draft_id: draft.draft_id,
     invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
     canonical_draft_ready: canonicalDraft.ready_for_pac === true,
@@ -273,10 +307,39 @@ function writeSandboxStampManifest(input = {}) {
     },
     xml_available: pacResult.xml_available === true,
     pdf_available: pacResult.pdf_available === true,
+    artifact_files: {
+      canonical_request: "canonical-request.sanitized.json",
+      provider_response: "provider-response.sanitized.json",
+      normalized_result: "normalized-result.json",
+    },
     human_review_warning: "BORRADOR SUJETO A REVISION HUMANA",
   };
+  fs.writeFileSync(canonicalRequestPath, `${JSON.stringify(sanitizeSandboxArtifact(pacRequest || {}), null, 2)}\n`, "utf8");
+  fs.writeFileSync(providerResponsePath, `${JSON.stringify(sanitizeSandboxArtifact(pacResult.raw || pacResult.response || {}), null, 2)}\n`, "utf8");
+  fs.writeFileSync(normalizedResultPath, `${JSON.stringify(sanitizeSandboxArtifact({
+    ok: pacResult.ok === true,
+    provider: pacResult.provider,
+    environment: pacResult.environment,
+    operation: pacResult.operation,
+    status: pacResult.status,
+    mode: pacResult.live_mode === true ? "live" : "mock",
+    uuid_present: Boolean(pacResult.uuid),
+    pac_invoice_id_present: Boolean(pacResult.pac_invoice_id),
+    cfdi_uid_present: Boolean(pacResult.cfdi_uid),
+    serie_present: Boolean(pacResult.serie),
+    folio_present: Boolean(pacResult.folio),
+    xml_available: pacResult.xml_available === true,
+    pdf_available: pacResult.pdf_available === true,
+    normalized_errors: pacResult.normalized_errors || [],
+    normalized_warnings: pacResult.normalized_warnings || [],
+  }), null, 2)}\n`, "utf8");
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-  return manifestPath;
+  return {
+    manifestPath,
+    canonicalRequestPath,
+    providerResponsePath,
+    normalizedResultPath,
+  };
 }
 
 async function runSandboxDraftStamp(options = {}) {
@@ -321,7 +384,11 @@ async function runSandboxDraftStamp(options = {}) {
     return {
       status: validation.status,
       output: {
-        error_class: validation.errors.includes("DRAFT_NOT_FOUND") ? "DRAFT_CONTEXT_MISSING" : "DRAFT_VALIDATION_ERROR",
+        error_class: validation.errors.includes("DRAFT_NOT_FOUND")
+          ? "DRAFT_CONTEXT_MISSING"
+          : validation.errors.includes("FACTURACOM_SANDBOX_LIVE_REQUIRED")
+            ? "FACTURACOM_SANDBOX_LIVE_REQUIRED"
+            : "DRAFT_VALIDATION_ERROR",
         ...draftErrorContext(draft, options),
         validation_errors: validation.errors,
         validation_error_codes: validationCodes,
@@ -392,28 +459,38 @@ async function runSandboxDraftStamp(options = {}) {
 
   const pacRequest = pacRequestResult.pac_request;
   pacRequest.payload.canonical_draft = canonicalDraft;
-  const adapter = options.adapter || new FacturaComSandboxAdapter();
-  const pacResult = await adapter.stampSandbox(pacRequest, options.adapterContext || {});
+  const adapterEnv = options.env || process.env;
+  const adapter = options.adapter || new FacturaComSandboxAdapter({ env: adapterEnv });
+  const pacResult = await adapter.stampSandbox(pacRequest, {
+    ...(options.adapterContext || {}),
+    env: adapterEnv,
+  });
   if (pacResult.ok !== true) {
+    const normalizedErrors = pacResult.normalized_errors || [];
+    const firstErrorCode = normalizedErrors[0]?.code || "PAC_SANDBOX_ERROR";
+    const needsConfig = String(pacResult.status || "").toUpperCase() === "NEEDS_CONFIG"
+      || firstErrorCode === "FACTURACOM_SANDBOX_CONFIG_MISSING"
+      || firstErrorCode === "FACTURACOM_SANDBOX_LOCAL_CONFIG_MISSING";
     return {
-      status: "ERROR",
+      status: needsConfig ? "NEEDS_CONFIG" : "ERROR",
       output: {
-        error_class: "PAC_SANDBOX_ERROR",
+        error_class: firstErrorCode,
         ...draftErrorContext(draft, options),
         provider: "Factura.com Sandbox",
         pac_status: pacResult.status || "PAC_ERROR",
-        normalized_errors: pacResult.normalized_errors || [],
+        normalized_errors: normalizedErrors,
       },
       warnings: pacResult.normalized_warnings || [],
-      errors: (pacResult.normalized_errors || []).map((item) => item.code || item.message || "PAC_ERROR"),
+      errors: normalizedErrors.map((item) => item.code || item.message || "PAC_ERROR"),
     };
   }
 
-  const manifestPath = writeSandboxStampManifest({
+  const manifestFiles = writeSandboxStampManifest({
     draft,
     storageRoot: options.storageRoot,
     canonicalDraft,
     invoiceDocument: invoiceResult.invoice_document,
+    pacRequest,
     pacResult,
   });
 
@@ -428,8 +505,11 @@ async function runSandboxDraftStamp(options = {}) {
       client_display_name: validation.client.display_name || validation.client.client_id,
       client_id: validation.client.client_id,
       total: invoiceResult.invoice_document.total,
-      artifacts_count: manifestPath ? 1 : 0,
-      manifest_path: manifestPath || null,
+      artifacts_count: manifestFiles ? 4 : 0,
+      manifest_path: manifestFiles?.manifestPath || null,
+      canonical_request_path: manifestFiles?.canonicalRequestPath || null,
+      provider_response_path: manifestFiles?.providerResponsePath || null,
+      normalized_result_path: manifestFiles?.normalizedResultPath || null,
       canonical: {
         draft_ready_for_pac: true,
         invoice_status: invoiceResult.invoice_document.status,
@@ -440,8 +520,13 @@ async function runSandboxDraftStamp(options = {}) {
         provider: pacResult.provider,
         environment: pacResult.environment,
         status: pacResult.status,
+        mode: pacResult.live_mode === true ? "live" : "mock",
+        live_mode: pacResult.live_mode === true,
         uuid_present: Boolean(pacResult.uuid),
         pac_invoice_id_present: Boolean(pacResult.pac_invoice_id),
+        cfdi_uid_present: Boolean(pacResult.cfdi_uid),
+        serie_present: Boolean(pacResult.serie),
+        folio_present: Boolean(pacResult.folio),
         xml_available: pacResult.xml_available === true,
         pdf_available: pacResult.pdf_available === true,
       },

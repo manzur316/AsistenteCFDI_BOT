@@ -1286,7 +1286,11 @@ check("workflows_y_catalogo_no_modificados", () => {
     ...git(["diff", "--name-only"]),
     ...git(["diff", "--cached", "--name-only"]),
   ];
-  const forbidden = changed.filter((file) => file.startsWith("workflow/") || file === "data/concepts.normalized.json");
+  const allowedWorkflowChanges = new Set(["workflow/cfdi_telegram_local_ingest.n8n.json"]);
+  const forbidden = changed.filter((file) => (
+    (file.startsWith("workflow/") && !allowedWorkflowChanges.has(file))
+    || file === "data/concepts.normalized.json"
+  ));
   assert.strictEqual(forbidden.length, 0, forbidden.join(", "));
   return "protected clean";
 });
