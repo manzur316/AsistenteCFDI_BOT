@@ -1033,6 +1033,19 @@ scripts/test-sandbox-live-stamp-storage-manifest.js
 
 Siguiente fase recomendada: `7.16 Sandbox XML/PDF Download and Client Storage`.
 
+### Fase 7.16 - Sandbox XML/PDF Download and Client Storage
+
+La fase 7.16 agrega la accion allowlisted
+`sandbox.draft.download-artifacts` para descargar XML/PDF de Factura.com
+Sandbox hacia `runtime/storage-sandbox/` y storage por cliente/factura. Corrige
+la semantica: `xml_provider_available/pdf_provider_available` solo significa
+descargable por proveedor; `xml_downloaded/pdf_downloaded` significa archivo
+local guardado. Telegram muestra solo resumen seguro y no envia documentos.
+
+Documento: `docs/PHASE_7_16_SANDBOX_XML_PDF_DOWNLOAD_CLIENT_STORAGE.md`.
+
+Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
+
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:
 

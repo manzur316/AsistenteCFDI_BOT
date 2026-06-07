@@ -1,3 +1,7 @@
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+
 const {
   PAC_ENVIRONMENTS,
   assertPacAdapter,
@@ -24,7 +28,22 @@ const SANDBOX_MODES = Object.freeze({
   LIVE: "live",
 });
 const LIVE_CREATE_PATH = "/v4/cfdi40/create";
+const DOWNLOAD_PATHS = Object.freeze({
+  XML: (ref) => `/v4/cfdi40/${encodeURIComponent(ref)}/xml`,
+  PDF: (ref) => `/v4/cfdi40/${encodeURIComponent(ref)}/pdf`,
+});
+const ARTIFACT_STATUSES = Object.freeze({
+  NOT_REQUESTED: "NOT_REQUESTED",
+  DOWNLOAD_READY: "DOWNLOAD_READY",
+  DOWNLOADED: "DOWNLOADED",
+  PARTIAL_DOWNLOAD: "PARTIAL_DOWNLOAD",
+  DOWNLOAD_ERROR: "DOWNLOAD_ERROR",
+  NEEDS_CONFIG: "NEEDS_CONFIG",
+  NEEDS_RUNTIME: "NEEDS_RUNTIME",
+});
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const repoRoot = path.resolve(__dirname, "../..");
+const runtimeRoot = path.join(repoRoot, "runtime");
 const RFC_PATTERN = /^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/i;
 
 function text(value) {
@@ -73,6 +92,11 @@ function defaultStampResponse(canonicalPacRequest = {}) {
     uuid: "00000000-0000-4000-8000-000000000999",
     serie: "SANDBOX",
     folio: text(sourceInvoice.internal_invoice_id) || "MOCK",
+    xml_provider_available: false,
+    pdf_provider_available: false,
+    xml_downloaded: false,
+    pdf_downloaded: false,
+    artifact_status: ARTIFACT_STATUSES.NOT_REQUESTED,
     xml_available: false,
     pdf_available: false,
   };
@@ -84,9 +108,76 @@ function defaultCancelResponse(invoiceRef = {}) {
     status: "SANDBOX_CANCELLED",
     pac_invoice_id: text(invoiceRef.pac_invoice_id || invoiceRef.id),
     uuid: text(invoiceRef.uuid),
+    xml_provider_available: false,
+    pdf_provider_available: false,
+    xml_downloaded: false,
+    pdf_downloaded: false,
+    artifact_status: ARTIFACT_STATUSES.NOT_REQUESTED,
     xml_available: false,
     pdf_available: false,
   };
+}
+
+function isInside(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function safeRelative(filePath) {
+  const resolved = path.resolve(filePath);
+  if (isInside(repoRoot, resolved)) return path.relative(repoRoot, resolved).replace(/\\/g, "/");
+  return "[BLOCKED_PATH]";
+}
+
+function assertRuntimeStorageDir(storageDir) {
+  const raw = text(storageDir);
+  if (!raw) return null;
+  const resolved = path.resolve(raw);
+  if (!isInside(runtimeRoot, resolved)) {
+    throw new Error("storageDir debe estar dentro de runtime/.");
+  }
+  return resolved;
+}
+
+function artifactHash(buffer) {
+  return crypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+function writeJson(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function artifactBufferFromResponse(rawResponse = {}, kind = "XML") {
+  const direct = rawResponse.rawBuffer || rawResponse.bodyBuffer || rawResponse.buffer;
+  if (Buffer.isBuffer(direct)) return direct;
+  const data = rawResponse.data;
+  if (Buffer.isBuffer(data)) return data;
+  if (typeof rawResponse.base64 === "string") return Buffer.from(rawResponse.base64, "base64");
+  if (data && typeof data === "object" && typeof data.base64 === "string") return Buffer.from(data.base64, "base64");
+  if (typeof data === "string" && (kind === "XML" || data.startsWith("%PDF"))) return Buffer.from(data, kind === "PDF" ? "binary" : "utf8");
+  if (typeof rawResponse.rawText === "string") return Buffer.from(rawResponse.rawText, kind === "PDF" ? "binary" : "utf8");
+  return null;
+}
+
+function invoiceRefValue(invoiceRef = {}) {
+  const candidates = [
+    invoiceRef.cfdi_uid,
+    invoiceRef.uid,
+    invoiceRef.pac_invoice_id,
+    invoiceRef.invoice_id,
+    invoiceRef.id,
+    invoiceRef.uuid,
+    invoiceRef.cfdi_uuid,
+    invoiceRef.internal_invoice_id,
+  ];
+  for (const candidate of candidates) {
+    const value = text(candidate);
+    if (value) return value;
+  }
+  if (invoiceRef.manifest && typeof invoiceRef.manifest === "object") return invoiceRefValue(invoiceRef.manifest);
+  if (invoiceRef.pac_result && typeof invoiceRef.pac_result === "object") return invoiceRefValue(invoiceRef.pac_result);
+  return null;
 }
 
 function isUuid(value) {
@@ -323,7 +414,7 @@ class FacturaComSandboxAdapter {
       message: safeApiMessagePreview(safeError.message || error?.message || "Configuracion sandbox Factura.com incompleta.", env),
       status: "NEEDS_CONFIG",
       data: safeError,
-    }, { operation: "stampSandbox", status: "NEEDS_CONFIG" });
+    }, { operation: context.operation || "stampSandbox", status: "NEEDS_CONFIG" });
   }
 
   async liveStampSandbox(canonicalPacRequest = {}, context = {}) {
@@ -394,6 +485,11 @@ class FacturaComSandboxAdapter {
         serie: text(identity.serie),
         folio: text(identity.folio),
         provider_status: text(identity.status || response.api_status || response.status),
+        xml_provider_available: hasIdentity,
+        pdf_provider_available: hasIdentity,
+        xml_downloaded: false,
+        pdf_downloaded: false,
+        artifact_status: hasIdentity ? ARTIFACT_STATUSES.DOWNLOAD_READY : ARTIFACT_STATUSES.NOT_REQUESTED,
         xml_available: hasIdentity,
         pdf_available: hasIdentity,
         raw: sanitizeValue(response, env),
@@ -431,25 +527,149 @@ class FacturaComSandboxAdapter {
       status: "SANDBOX_STAMPED",
       pac_invoice_id: `FACTURA-COM-MOCK-${text(payloadOrRequest.internal_invoice_id) || "INVOICE"}`,
       uuid: "00000000-0000-4000-8000-000000000998",
+      xml_provider_available: false,
+      pdf_provider_available: false,
+      xml_downloaded: false,
+      pdf_downloaded: false,
+      artifact_status: ARTIFACT_STATUSES.NOT_REQUESTED,
       xml_available: false,
       pdf_available: false,
     }, { operation: "stampSandbox" });
   }
 
-  downloadXml(invoiceRef = {}) {
-    return this.normalizeError({
-      code: "ARTIFACT_DOWNLOAD_DEFERRED_TO_PHASE_7_16",
-      message: "La descarga XML sandbox queda diferida a la fase 7.16.",
-      data: { invoice_ref: invoiceRef },
-    }, { operation: "downloadXml" });
+  async downloadArtifact(kind = "XML", invoiceRef = {}, context = {}) {
+    const artifactType = kind === "PDF" ? "PDF" : "XML";
+    const operation = artifactType === "PDF" ? "downloadPdf" : "downloadXml";
+    const field = artifactType.toLowerCase();
+    const blocked = blockIfNotSandbox(invoiceRef.environment || context.environment || PAC_ENVIRONMENTS.SANDBOX);
+    if (blocked) return blocked;
+
+    if (sandboxMode(this.options, context) !== SANDBOX_MODES.LIVE) {
+      return normalizeFacturaComErrorResponse({
+        code: `FACTURACOM_SANDBOX_${artifactType}_LIVE_MODE_REQUIRED`,
+        message: "La descarga XML/PDF sandbox requiere FACTURACOM_SANDBOX_MODE=live.",
+        status: "NEEDS_CONFIG",
+      }, { operation, status: "NEEDS_CONFIG" });
+    }
+
+    const env = envFrom(context, this.options);
+    try {
+      assertFacturaComSandboxEnv(env);
+    } catch (error) {
+      return this.normalizeConfigError(error, { env, operation });
+    }
+
+    const ref = invoiceRefValue(invoiceRef);
+    if (!ref) {
+      return normalizeFacturaComErrorResponse({
+        code: `FACTURACOM_SANDBOX_${artifactType}_IDENTITY_REQUIRED`,
+        message: "Se requiere cfdi_uid, pac_invoice_id o uuid para descargar artefactos sandbox.",
+        status: "NEEDS_RUNTIME",
+      }, { operation, status: "NEEDS_RUNTIME" });
+    }
+
+    let storageDir = null;
+    try {
+      storageDir = assertRuntimeStorageDir(context.storageDir || context[`${field}StorageDir`]);
+    } catch (error) {
+      return normalizeFacturaComErrorResponse({
+        code: `FACTURACOM_SANDBOX_${artifactType}_STORAGE_INVALID`,
+        message: safeApiMessagePreview(error.message, env),
+        status: "NEEDS_RUNTIME",
+      }, { operation, status: "NEEDS_RUNTIME" });
+    }
+
+    const requestFn = context.requestFn || this.options.requestFn || facturaComRequest;
+    const requestPath = DOWNLOAD_PATHS[artifactType](ref);
+    try {
+      const rawResponse = await requestFn({
+        method: "GET",
+        path: requestPath,
+        env,
+      });
+      const response = normalizeFacturaComHttpResponse(rawResponse, env);
+      if (response.ok !== true || response.api_ok === false) {
+        return normalizeFacturaComErrorResponse({
+          code: `FACTURACOM_SANDBOX_${artifactType}_DOWNLOAD_FAILED`,
+          message: response.api_message_summary || response.statusText || `No se pudo descargar ${artifactType} sandbox.`,
+          status: "PAC_SANDBOX_ERROR",
+          data: sanitizeValue({
+            status: response.status,
+            statusText: response.statusText,
+            contentType: response.contentType,
+            request_path: requestPath,
+          }, env),
+        }, { operation, status: "PAC_SANDBOX_ERROR" });
+      }
+
+      const buffer = artifactBufferFromResponse(rawResponse, artifactType);
+      if (!buffer || buffer.length === 0) {
+        return normalizeFacturaComErrorResponse({
+          code: `FACTURACOM_SANDBOX_${artifactType}_EMPTY_RESPONSE`,
+          message: `Factura.com Sandbox no devolvio contenido ${artifactType} descargable.`,
+          status: "PAC_SANDBOX_ERROR",
+        }, { operation, status: "PAC_SANDBOX_ERROR" });
+      }
+
+      let artifactPath = null;
+      let manifestPath = null;
+      const fileName = artifactType === "PDF" ? "cfdi.pdf" : "cfdi.xml";
+      const checksum = artifactHash(buffer);
+      if (storageDir) {
+        fs.mkdirSync(storageDir, { recursive: true });
+        artifactPath = path.join(storageDir, fileName);
+        fs.writeFileSync(artifactPath, buffer);
+        manifestPath = path.join(storageDir, "manifest.json");
+        writeJson(manifestPath, {
+          schema_version: "facturacom_sandbox_artifact_download.v1",
+          generated_at: new Date().toISOString(),
+          provider: PROVIDER,
+          environment: PAC_ENVIRONMENTS.SANDBOX,
+          operation,
+          artifact_type: artifactType,
+          artifact_status: ARTIFACT_STATUSES.DOWNLOADED,
+          [`${field}_provider_available`]: true,
+          [`${field}_downloaded`]: true,
+          [`${field}_storage_path`]: safeRelative(artifactPath),
+          [`${field}_sha256`]: checksum,
+          [`${field}_size_bytes`]: buffer.length,
+          requires_human_review: true,
+        });
+      }
+
+      return {
+        ok: true,
+        provider: PROVIDER,
+        environment: PAC_ENVIRONMENTS.SANDBOX,
+        operation,
+        artifact_type: artifactType,
+        artifact_status: ARTIFACT_STATUSES.DOWNLOADED,
+        [`${field}_provider_available`]: true,
+        [`${field}_downloaded`]: true,
+        [`${field}_size_bytes`]: buffer.length,
+        [`${field}_sha256`]: checksum,
+        [`${field}_storage_path`]: artifactPath ? safeRelative(artifactPath) : null,
+        [`${field}_manifest_path`]: manifestPath ? safeRelative(manifestPath) : null,
+        normalized_errors: [],
+        normalized_warnings: [],
+        requires_human_review: true,
+      };
+    } catch (error) {
+      return normalizeFacturaComErrorResponse({
+        code: `FACTURACOM_SANDBOX_${artifactType}_DOWNLOAD_FAILED`,
+        message: safeApiMessagePreview(error?.message || `Error al descargar ${artifactType} sandbox.`, env),
+        status: "PAC_SANDBOX_ERROR",
+        data: sanitizeFacturaComError(error, env),
+      }, { operation, status: "PAC_SANDBOX_ERROR" });
+    }
   }
 
-  downloadPdf(invoiceRef = {}) {
-    return this.normalizeError({
-      code: "ARTIFACT_DOWNLOAD_DEFERRED_TO_PHASE_7_16",
-      message: "La descarga PDF sandbox queda diferida a la fase 7.16.",
-      data: { invoice_ref: invoiceRef },
-    }, { operation: "downloadPdf" });
+  downloadXml(invoiceRef = {}, context = {}) {
+    return this.downloadArtifact("XML", invoiceRef, context);
+  }
+
+  downloadPdf(invoiceRef = {}, context = {}) {
+    return this.downloadArtifact("PDF", invoiceRef, context);
   }
 
   getStatus(invoiceRef = {}) {
@@ -477,6 +697,7 @@ class FacturaComSandboxAdapter {
 
 module.exports = {
   ADAPTER_NAME,
+  ARTIFACT_STATUSES,
   PROVIDER,
   SANDBOX_MODES,
   extractLiveIdentity,

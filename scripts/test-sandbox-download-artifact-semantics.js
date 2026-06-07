@@ -5,7 +5,7 @@ const path = require("path");
 const { runSandboxDraftStamp } = require("./lib/sandbox-draft-stamp-action");
 
 const root = path.resolve(__dirname, "..");
-const tempRoot = path.join(root, "runtime", "test-sandbox-live-stamp-storage-manifest");
+const tempRoot = path.join(root, "runtime", "test-sandbox-download-semantics");
 const checks = [];
 
 function check(name, fn) {
@@ -45,12 +45,10 @@ function env() {
 
 function draft() {
   return {
-    draft_id: "DRAFT-LIVE-MANIFEST-716",
+    draft_id: "DRAFT-SEMANTICS-716",
     status: "APROBADO",
     payment_status: "NO_APLICA",
     emitter_id: "EMITTER-DEMO",
-    original_text: "venta de camara CCTV",
-    ready_to_copy: true,
     amount: 1000,
     subtotal: 1000,
     tax_mode: "ADD_IVA",
@@ -60,9 +58,9 @@ function draft() {
     total: 1160,
     blockers: [],
     current_client: {
-      client_id: "CLIENT-DEMO-LIVE",
-      display_name: "Cliente Demo Live",
-      razon_social: "CLIENTE DEMO LIVE SA DE CV",
+      client_id: "CLIENT-DEMO",
+      display_name: "Cliente Demo",
+      razon_social: "CLIENTE DEMO SA DE CV",
       rfc: "XAXX010101000",
       regimen_fiscal: "601",
       codigo_postal_fiscal: "77500",
@@ -83,15 +81,7 @@ function draft() {
   };
 }
 
-function assertSafeStorageText(text) {
-  assert(!/SANDBOXKEYLOCAL123|SANDBOXSECRETLOCAL123|SANDBOXPLUGINLOCAL123/i.test(text), "credential leaked");
-  assert(!/XAXX010101000|[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}/i.test(text), "RFC leaked");
-  assert(!/00000000-0000-4000-8000-000000000716/i.test(text), "UUID leaked");
-  assert(!/CFDIUID716|CLIENTUID716/i.test(text), "UID leaked");
-  assert(!/<\?xml|<cfdi:Comprobante|%PDF|sendDocument|sendMediaGroup/i.test(text), "document leaked");
-}
-
-check("live_stamp_writes_sanitized_manifest_bundle", async () => {
+check("stamp_sets_download_ready_but_not_downloaded", async () => {
   cleanTemp();
   const result = await runSandboxDraftStamp({
     draft: draft(),
@@ -105,44 +95,31 @@ check("live_stamp_writes_sanitized_manifest_bundle", async () => {
         contentType: "application/json",
         data: {
           response: "success",
-          message: "Factura creada y enviada satisfactoriamente",
           Data: {
             UID: "CFDIUID716",
             UUID: "00000000-0000-4000-8000-000000000716",
-            Serie: "SBOX",
-            Folio: "716",
           },
         },
       }),
     },
   });
   assert.strictEqual(result.status, "OK");
-  const paths = [
-    result.output.manifest_path,
-    result.output.canonical_request_path,
-    result.output.provider_response_path,
-    result.output.normalized_result_path,
-  ];
-  for (const file of paths) {
-    assert(file && fs.existsSync(file), file);
-    assert(file.startsWith(tempRoot), file);
-    assertSafeStorageText(fs.readFileSync(file, "utf8"));
-  }
+  assert.strictEqual(result.output.pac_result.xml_provider_available, true);
+  assert.strictEqual(result.output.pac_result.pdf_provider_available, true);
+  assert.strictEqual(result.output.pac_result.xml_downloaded, false);
+  assert.strictEqual(result.output.pac_result.pdf_downloaded, false);
+  assert.strictEqual(result.output.pac_result.artifact_status, "DOWNLOAD_READY");
   const manifest = JSON.parse(fs.readFileSync(result.output.manifest_path, "utf8"));
-  assert.strictEqual(manifest.schema_version, "sandbox_draft_stamp_manifest.v2");
-  assert.strictEqual(manifest.mode, "live");
-  assert.strictEqual(manifest.pac_identity.uuid_present, true);
-  assert.strictEqual(manifest.pac_identity.pac_invoice_id_present, true);
   assert.strictEqual(manifest.xml_provider_available, true);
   assert.strictEqual(manifest.pdf_provider_available, true);
   assert.strictEqual(manifest.xml_downloaded, false);
   assert.strictEqual(manifest.pdf_downloaded, false);
   assert.strictEqual(manifest.artifact_status, "DOWNLOAD_READY");
-  return path.basename(result.output.manifest_path);
+  return result.output.pac_result.artifact_status;
 });
 
 Promise.all(checks).then((results) => {
-  console.log("Sandbox Live Stamp Storage Manifest Tests");
+  console.log("Sandbox Download Artifact Semantics Tests");
   for (const item of results) printCheck(item.name, item.pass, item.value);
   const failed = results.filter((item) => !item.pass);
   console.log(`\nPASS total: ${results.length - failed.length}/${results.length}`);

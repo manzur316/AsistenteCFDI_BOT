@@ -1505,3 +1505,28 @@ Bot privado + guardrails fiscales + storage propio + reporting propio + adapters
 
 Factura.com entra como primer sandbox adapter, no como dependencia central del
 producto.
+
+## Fase 7.16 - Sandbox XML/PDF Download and Client Storage
+
+La fase 7.16 queda definida en
+`docs/PHASE_7_16_SANDBOX_XML_PDF_DOWNLOAD_CLIENT_STORAGE.md`.
+
+Alcance:
+
+- accion allowlisted `sandbox.draft.download-artifacts`;
+- descarga XML/PDF solo desde Factura.com Sandbox live-gated;
+- storage local en `runtime/storage-sandbox/`;
+- storage por cliente/factura;
+- `sandbox_pac_summary` aditivo en PostgreSQL;
+- Telegram muestra resumen seguro sin documentos ni IDs fiscales completos.
+
+La semantica queda separada:
+
+- `xml_provider_available/pdf_provider_available`: proveedor parece tener
+  artefacto descargable;
+- `xml_downloaded/pdf_downloaded`: archivo local descargado y almacenado.
+
+Produccion, PAC real productivo, envio de XML/PDF por Telegram y reporte fiscal
+mensual siguen fuera de alcance.
+
+Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.

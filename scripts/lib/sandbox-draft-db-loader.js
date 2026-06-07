@@ -77,6 +77,7 @@ function buildDraftByIdQuery(draftId) {
     "'status', d.status,",
     "'invoice_status', COALESCE(d.invoice_status, CASE WHEN d.status = 'PENDIENTE' THEN 'BORRADOR' ELSE d.status END),",
     "'payment_status', COALESCE(d.payment_status, 'NO_APLICA'),",
+    "'sandbox_pac_summary', COALESCE(to_jsonb(d)->'sandbox_pac_summary', '{}'::jsonb),",
     "'action', d.action,",
     "'ready_to_copy', d.ready_to_copy,",
     "'requires_human_review', d.requires_human_review,",

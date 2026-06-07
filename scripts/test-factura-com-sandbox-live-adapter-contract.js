@@ -104,8 +104,11 @@ check("live_mode_calls_facturacom_create_endpoint_with_sandbox_body", async () =
   assert.strictEqual(result.status, "SANDBOX_STAMPED");
   assert.strictEqual(result.cfdi_uid, "CFDIUID714");
   assert.strictEqual(result.uuid, "00000000-0000-4000-8000-000000000714");
-  assert.strictEqual(result.xml_available, true);
-  assert.strictEqual(result.pdf_available, true);
+  assert.strictEqual(result.xml_provider_available, true);
+  assert.strictEqual(result.pdf_provider_available, true);
+  assert.strictEqual(result.xml_downloaded, false);
+  assert.strictEqual(result.pdf_downloaded, false);
+  assert.strictEqual(result.artifact_status, "DOWNLOAD_READY");
   return result.status;
 });
 

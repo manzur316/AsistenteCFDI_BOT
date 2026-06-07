@@ -131,8 +131,11 @@ check("sandbox_draft_stamp_live_mode_returns_safe_presence_flags", async () => {
   assert.strictEqual(result.output.pac_result.mode, "live");
   assert.strictEqual(result.output.pac_result.uuid_present, true);
   assert.strictEqual(result.output.pac_result.pac_invoice_id_present, true);
-  assert.strictEqual(result.output.pac_result.xml_available, true);
-  assert.strictEqual(result.output.pac_result.pdf_available, true);
+  assert.strictEqual(result.output.pac_result.xml_provider_available, true);
+  assert.strictEqual(result.output.pac_result.pdf_provider_available, true);
+  assert.strictEqual(result.output.pac_result.xml_downloaded, false);
+  assert.strictEqual(result.output.pac_result.pdf_downloaded, false);
+  assert.strictEqual(result.output.pac_result.artifact_status, "DOWNLOAD_READY");
   const raw = JSON.stringify(result);
   assert(!/<\?xml|<cfdi:Comprobante|%PDF|sendDocument|sendMediaGroup/i.test(raw));
   return result.output.invoice_status;
@@ -175,8 +178,10 @@ check("n8n_summary_reports_presence_without_ids", () => {
         uuid_present: true,
         pac_invoice_id_present: true,
         cfdi_uid_present: true,
-        xml_available: true,
-        pdf_available: true,
+        xml_provider_available: true,
+        pdf_provider_available: true,
+        xml_downloaded: false,
+        pdf_downloaded: false,
       },
     },
   });
@@ -190,8 +195,8 @@ check("n8n_summary_reports_presence_without_ids", () => {
   assert(result.telegram_message.includes("Resultado PAC: live sandbox"));
   assert(result.telegram_message.includes("UUID sandbox: presente (oculto)"));
   assert(result.telegram_message.includes("PAC/CFDI ID sandbox: presente (oculto)"));
-  assert(result.telegram_message.includes("XML disponible: si"));
-  assert(result.telegram_message.includes("PDF disponible: si"));
+  assert(result.telegram_message.includes("XML disponible: pendiente de descarga"));
+  assert(result.telegram_message.includes("PDF disponible: pendiente de descarga"));
   assert(!/00000000-0000-4000-8000-000000000715|CFDIUID715/i.test(result.telegram_message));
   return "presence only";
 });

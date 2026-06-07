@@ -10,6 +10,7 @@ const { generateAccountantChecklist } = require("../generate-sandbox-accountant-
 const { analyze: analyzePackage } = require("../analyze-sandbox-accountant-package");
 const { analyzeAudit } = require("../analyze-sandbox-action-audit");
 const { runSandboxDraftCancel } = require("./sandbox-draft-cancel-action");
+const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-artifacts-action");
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
 const { DEFAULT_STORAGE_ROOT, scanSensitiveFiles } = require("./sandbox-storage-engine");
 const { DEFAULT_PACKAGE_ROOT } = require("./sandbox-accountant-package");
@@ -37,6 +38,7 @@ const ACTIONS = [
   "sandbox.latest.result",
   "sandbox.audit.summary",
   "sandbox.draft.stamp",
+  "sandbox.draft.download-artifacts",
   "sandbox.draft.cancel",
 ];
 
@@ -440,6 +442,15 @@ async function runDraftStamp(paths, env, options = {}) {
   return stableStep("sandbox.draft.stamp", result.status, result.output, result.warnings, result.errors);
 }
 
+async function runDraftDownloadArtifacts(paths, env, options = {}) {
+  const result = await runSandboxDraftDownloadArtifacts({
+    ...options,
+    env,
+    storageRoot: paths.storageRoot,
+  });
+  return stableStep("sandbox.draft.download-artifacts", result.status, result.output, result.warnings, result.errors);
+}
+
 async function runDraftCancel(paths, env, options = {}) {
   const result = await runSandboxDraftCancel({
     ...options,
@@ -515,6 +526,7 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.latest.result") return runLatestResult(paths);
   if (action === "sandbox.audit.summary") return runAuditSummary(paths);
   if (action === "sandbox.draft.stamp") return runDraftStamp(paths, env, options);
+  if (action === "sandbox.draft.download-artifacts") return runDraftDownloadArtifacts(paths, env, options);
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
   return stableStep(action, "ERROR", {}, [], ["UNHANDLED_ACTION"]);
 }
