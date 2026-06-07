@@ -1052,6 +1052,20 @@ El Action Layer resuelve configuracion con un resolver canonico desde
 
 Documento: `docs/PHASE_7_16B_FACTURACOM_SANDBOX_OPERATIVO_LIVE.md`.
 
+### SATBOT multi-provider evolution
+
+7.16C agrega foundation multi-tenant + multi-provider: Factura.com sigue como
+provider personal actual, Facturapi queda como provider comercial futuro
+preferente y SATBOT Core usa Canonical Provider Contracts. Tenant Fiscal
+Profile sera obligatorio antes de vender el bot; Fiscal Activity Rules permitira
+sugerir conceptos segun regimen/giro con revision humana.
+
+Documentos:
+
+- `docs/ADR_0001_MULTITENANT_MULTIPROVIDER_SATBOT.md`
+- `docs/PHASE_7_16C_MULTIPROVIDER_CANONICAL_FOUNDATION.md`
+- `docs/FISCAL_ACTIVITY_RULES_ARCHITECTURE.md`
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

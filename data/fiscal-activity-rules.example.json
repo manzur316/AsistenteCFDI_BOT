@@ -1,0 +1,25 @@
+{
+  "schema_version": "fiscal_activity_rules.example.v1",
+  "non_productive": true,
+  "human_review_required": true,
+  "rules": [
+    {
+      "rule_id": "RULE-CCTV-INSTALL-MAINT-EXAMPLE",
+      "activity_id": "ACT-CCTV-INSTALL-MAINT-EXAMPLE",
+      "activity_name": "Servicios de instalacion y mantenimiento de equipo de seguridad electronica",
+      "regimen_fiscal": "626",
+      "allowed_operations": ["DIAGNOSTICO", "INSTALACION", "MANTENIMIENTO", "CONFIGURACION"],
+      "allowed_families": ["CCTV", "RED", "CONTROL_ACCESO"],
+      "suggested_concept_prefixes": ["SVC-CCTV-", "SVC-RED-", "SVC-AC-"],
+      "blocked_terms": ["software", "app movil", "ia como servicio", "marketing", "renta de equipo"],
+      "requires_clarification_terms": ["servicio tecnico", "sistema", "equipo", "general"],
+      "risk_level": "MEDIUM",
+      "version": "example-1"
+    }
+  ],
+  "notes": [
+    "Ejemplo no productivo.",
+    "No modifica data/concepts.normalized.json.",
+    "Todo concepto queda sujeto a revision humana."
+  ]
+}

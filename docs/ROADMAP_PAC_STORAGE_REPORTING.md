@@ -1547,4 +1547,20 @@ Alcance:
 - produccion, PAC real productivo y envio de XML/PDF por Telegram siguen
   bloqueados.
 
+## Fase 7.16C - Multi-Provider Canonical Foundation
+
+La fase 7.16C queda definida en
+`docs/PHASE_7_16C_MULTIPROVIDER_CANONICAL_FOUNDATION.md` y
+`docs/ADR_0001_MULTITENANT_MULTIPROVIDER_SATBOT.md`.
+
+Alcance:
+
+- SATBOT Core usa Canonical Provider Contracts;
+- `factura_com` sigue como provider personal actual;
+- `facturapi` queda como provider comercial futuro preferente;
+- Tenant Fiscal Profile y Fiscal Activity Rules quedan como foundation;
+- Provider Account, Provider Client Link, Provider Invoice Link y usage ledger
+  quedan preparados;
+- no se implementa Facturapi HTTP client ni produccion fiscal real.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
