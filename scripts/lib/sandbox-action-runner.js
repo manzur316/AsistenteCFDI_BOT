@@ -12,6 +12,7 @@ const { analyzeAudit } = require("../analyze-sandbox-action-audit");
 const { runSandboxDraftCancel } = require("./sandbox-draft-cancel-action");
 const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-artifacts-action");
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
+const { runSatCfdiRulesDiagnose } = require("./sat-cfdi-rules-diagnose-action");
 const {
   resolveFacturaComSandboxConfig,
   safeFacturaComSandboxConfig,
@@ -26,7 +27,7 @@ const DEFAULT_ACTION_RESULTS_ROOT = path.join(runtimeRoot, "action-results-sandb
 const DEFAULT_ACTION_AUDIT_ROOT = path.join(runtimeRoot, "sandbox-action-audit");
 const ACTION_SCHEMA_VERSION = "sandbox_action_result.v1";
 const ACTION_AUDIT_SCHEMA_VERSION = "sandbox_action_audit.v1";
-const ACTION_STATUSES = ["OK", "ERROR", "SKIPPED", "NEEDS_RUNTIME", "NEEDS_CONFIG", "PACKAGE_SAFETY_ERROR"];
+const ACTION_STATUSES = ["OK", "ERROR", "SKIPPED", "NEEDS_RUNTIME", "NEEDS_CONFIG", "NEEDS_SOURCE", "PACKAGE_SAFETY_ERROR"];
 
 const ACTIONS = [
   "sandbox.preflight",
@@ -45,6 +46,7 @@ const ACTIONS = [
   "sandbox.draft.stamp",
   "sandbox.draft.download-artifacts",
   "sandbox.draft.cancel",
+  "sandbox.cfdi.rules.diagnose",
 ];
 
 function isInside(parent, child) {
@@ -483,6 +485,15 @@ async function runDraftCancel(paths, env, options = {}) {
   return stableStep("sandbox.draft.cancel", result.status, result.output, result.warnings, result.errors);
 }
 
+function runCfdiRulesDiagnose(options = {}) {
+  const output = runSatCfdiRulesDiagnose(options);
+  const status = output.source_registry.ok && output.rule_sets.valid ? "OK" : "NEEDS_SOURCE";
+  const warnings = [];
+  if (!output.source_registry.ok) warnings.push("SAT_SOURCE_NEEDS_LOCAL_FILES");
+  if (!output.catalogs.loaded) warnings.push("SAT_CATALOG_INDEX_ONLY");
+  return stableStep("sandbox.cfdi.rules.diagnose", status, output, warnings, []);
+}
+
 function finalStatusFromSteps(steps) {
   if (steps.some((step) => step.status === "PACKAGE_SAFETY_ERROR")) return "PACKAGE_SAFETY_ERROR";
   if (steps.some((step) => step.status === "ERROR")) return "ERROR";
@@ -552,6 +563,7 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.draft.stamp") return runDraftStamp(paths, env, options);
   if (action === "sandbox.draft.download-artifacts") return runDraftDownloadArtifacts(paths, env, options);
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
+  if (action === "sandbox.cfdi.rules.diagnose") return runCfdiRulesDiagnose(options);
   return stableStep(action, "ERROR", {}, [], ["UNHANDLED_ACTION"]);
 }
 

@@ -123,9 +123,17 @@ Sandbox Live, `sandbox.draft.stamp`, `sandbox.draft.download-artifacts` y
 
 Expandir contratos con casos reales de cada proveedor y fixtures auditados.
 
-### Fase B - Tenant Fiscal Profile + Activity Rules
+### Fase B - Tenant Fiscal Profile + SAT CFDI 4.0 Rules Foundation
 
-Volver obligatorio el Tenant Fiscal Profile antes de operar un tenant SaaS.
+Foundation implementada en:
+
+- `docs/PHASE_B_TENANT_FISCAL_PROFILE_ACTIVITY_RULES.md`
+- `docs/PHASE_B_SAT_CATALOG_RULE_FOUNDATION.md`
+- `docs/CFDI_40_RULE_ENGINE_ARCHITECTURE.md`
+- `docs/SAT_CATALOG_IMPORT_RUNBOOK.md`
+
+Una fase posterior debe volver obligatorio el Tenant Fiscal Profile activo antes
+de operar un tenant SaaS.
 
 ### Fase C - Provider Client Sync
 

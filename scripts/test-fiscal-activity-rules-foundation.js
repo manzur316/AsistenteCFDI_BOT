@@ -7,6 +7,7 @@ const docPath = path.join(root, "docs", "FISCAL_ACTIVITY_RULES_ARCHITECTURE.md")
 const examplePath = path.join(root, "data", "fiscal-activity-rules.example.json");
 const catalogPath = path.join(root, "data", "concepts.normalized.json");
 const checks = [];
+const { assertFiscalActivityRulesDocument } = require("./lib/fiscal-activities/fiscal-activity-contract");
 
 function check(name, fn) {
   try {
@@ -36,10 +37,13 @@ check("example_rules_are_non_productive_and_parseable", () => {
   const data = JSON.parse(fs.readFileSync(examplePath, "utf8"));
   assert.strictEqual(data.non_productive, true);
   assert.strictEqual(data.human_review_required, true);
-  assert(Array.isArray(data.rules));
-  assert(data.rules.length > 0);
-  assert(data.rules[0].allowed_operations.includes("INSTALACION"));
-  assert(data.rules[0].blocked_terms.includes("renta de equipo"));
+  assert(Array.isArray(data.activities));
+  assert(Array.isArray(data.concept_rules));
+  assert(data.activities.some((activity) => activity.activity_code === "TECH_CCTV_NETWORK_SERVICES"));
+  assert(data.concept_rules.some((rule) => rule.suggested_clave_unidad.includes("E48")));
+  assert(data.global_blocked_terms.includes("renta de equipo"));
+  const validation = assertFiscalActivityRulesDocument(data);
+  assert.strictEqual(validation.ok, true, validation.errors.join(", "));
   return data.schema_version;
 });
 

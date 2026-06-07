@@ -1563,4 +1563,23 @@ Alcance:
   quedan preparados;
 - no se implementa Facturapi HTTP client ni produccion fiscal real.
 
+## Fase B - Tenant Fiscal Profile + SAT CFDI 4.0 Rules Foundation
+
+La fase B queda definida en
+`docs/PHASE_B_TENANT_FISCAL_PROFILE_ACTIVITY_RULES.md`,
+`docs/PHASE_B_SAT_CATALOG_RULE_FOUNDATION.md`,
+`docs/CFDI_40_RULE_ENGINE_ARCHITECTURE.md` y
+`docs/SAT_CATALOG_IMPORT_RUNBOOK.md`.
+
+Alcance:
+
+- Source Registry para `catCFDI_V_4_20260603.xls` y Anexo 20 local;
+- foundation SQL `sat_catalog_sources` y `sat_catalog_entries`;
+- CFDI 4.0 Rule Engine advisory con reglas core curadas;
+- Tenant Fiscal Profile + activity links + invoice policy;
+- Fiscal Activity Rules foundation y elegibilidad de concepto;
+- diagnostico Action Layer `sandbox.cfdi.rules.diagnose`;
+- no se modifica `data/concepts.normalized.json`;
+- no se abre produccion fiscal real.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.

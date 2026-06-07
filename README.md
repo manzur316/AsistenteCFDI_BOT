@@ -1065,6 +1065,13 @@ Documentos:
 - `docs/ADR_0001_MULTITENANT_MULTIPROVIDER_SATBOT.md`
 - `docs/PHASE_7_16C_MULTIPROVIDER_CANONICAL_FOUNDATION.md`
 - `docs/FISCAL_ACTIVITY_RULES_ARCHITECTURE.md`
+- `docs/PHASE_B_TENANT_FISCAL_PROFILE_ACTIVITY_RULES.md`
+- `docs/CFDI_40_RULE_ENGINE_ARCHITECTURE.md`
+- `docs/SAT_CATALOG_IMPORT_RUNBOOK.md`
+
+Fase B agrega foundation de fuentes SAT, catalogo CFDI 4.0, Rule Engine
+advisory, Tenant Fiscal Profile y Fiscal Activity Rules. Sigue bloqueado
+produccion/PAC real/timbrado productivo; todo requiere revision humana.
 
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
 

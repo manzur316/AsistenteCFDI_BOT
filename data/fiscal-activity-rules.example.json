@@ -1,25 +1,78 @@
 {
-  "schema_version": "fiscal_activity_rules.example.v1",
+  "schema_version": "fiscal_activity_rules.example.v2",
   "non_productive": true,
+  "tenant_id": "TENANT_PERSONAL_DEFAULT",
   "human_review_required": true,
-  "rules": [
+  "disclaimer": "Ejemplo foundation. No activa conceptos nuevos ni sustituye contador.",
+  "global_blocked_terms": [
+    "software",
+    "app movil",
+    "pagina web",
+    "saas",
+    "inteligencia artificial",
+    "n8n",
+    "marketing",
+    "diseno grafico",
+    "video",
+    "comida",
+    "plomeria",
+    "pintura",
+    "albanileria",
+    "construccion civil",
+    "consultoria fiscal",
+    "consultoria legal",
+    "consultoria contable",
+    "renta de equipo"
+  ],
+  "activities": [
     {
-      "rule_id": "RULE-CCTV-INSTALL-MAINT-EXAMPLE",
-      "activity_id": "ACT-CCTV-INSTALL-MAINT-EXAMPLE",
-      "activity_name": "Servicios de instalacion y mantenimiento de equipo de seguridad electronica",
-      "regimen_fiscal": "626",
-      "allowed_operations": ["DIAGNOSTICO", "INSTALACION", "MANTENIMIENTO", "CONFIGURACION"],
-      "allowed_families": ["CCTV", "RED", "CONTROL_ACCESO"],
-      "suggested_concept_prefixes": ["SVC-CCTV-", "SVC-RED-", "SVC-AC-"],
-      "blocked_terms": ["software", "app movil", "ia como servicio", "marketing", "renta de equipo"],
-      "requires_clarification_terms": ["servicio tecnico", "sistema", "equipo", "general"],
-      "risk_level": "MEDIUM",
-      "version": "example-1"
+      "activity_code": "TECH_CCTV_NETWORK_SERVICES",
+      "activity_name": "Servicios tecnicos CCTV, redes y videovigilancia",
+      "activity_source": "TENANT_CONFIGURED_FOUNDATION_EXAMPLE",
+      "applies_to_regimen": ["626"],
+      "applies_to_person_type": ["FISICA"],
+      "notes": "Semilla personal actual para pruebas advisory. Requiere revision humana."
     }
   ],
-  "notes": [
-    "Ejemplo no productivo.",
-    "No modifica data/concepts.normalized.json.",
-    "Todo concepto queda sujeto a revision humana."
+  "concept_rules": [
+    {
+      "rule_id": "TECH_CCTV_NETWORK_SERVICES_DIAGNOSTIC",
+      "activity_code": "TECH_CCTV_NETWORK_SERVICES",
+      "concept_family": "CCTV",
+      "allowed_clave_prod_serv": ["81111812"],
+      "suggested_clave_unidad": ["E48", "ACT"],
+      "default_objeto_imp": "02",
+      "default_tax_mode": "IVA_16_TRANSFERRED",
+      "confidence": 70,
+      "severity": "SUGGESTION",
+      "human_review_required": true,
+      "examples": ["diagnostico tecnico CCTV/redes", "mantenimiento preventivo", "soporte tecnico"]
+    },
+    {
+      "rule_id": "TECH_CCTV_NETWORK_SERVICES_PRODUCTS",
+      "activity_code": "TECH_CCTV_NETWORK_SERVICES",
+      "concept_family": "CCTV_PRODUCTO",
+      "allowed_clave_prod_serv": ["46171610", "43201803"],
+      "suggested_clave_unidad": ["H87"],
+      "default_objeto_imp": "02",
+      "default_tax_mode": "IVA_16_TRANSFERRED",
+      "confidence": 65,
+      "severity": "SUGGESTION",
+      "human_review_required": true,
+      "examples": ["venta de equipo CCTV", "fuente de poder para camara", "disco duro para DVR"]
+    },
+    {
+      "rule_id": "TECH_CCTV_NETWORK_SERVICES_NETWORKING",
+      "activity_code": "TECH_CCTV_NETWORK_SERVICES",
+      "concept_family": "REDES",
+      "allowed_clave_prod_serv": ["81111812", "43222600"],
+      "suggested_clave_unidad": ["E48", "H87"],
+      "default_objeto_imp": "02",
+      "default_tax_mode": "IVA_16_TRANSFERRED",
+      "confidence": 65,
+      "severity": "SUGGESTION",
+      "human_review_required": true,
+      "examples": ["configuracion de red", "cableado estructurado", "venta de router o switch"]
+    }
   ]
 }

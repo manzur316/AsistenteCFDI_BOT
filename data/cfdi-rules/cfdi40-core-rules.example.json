@@ -1,0 +1,22 @@
+{
+  "schema_version": "cfdi40_core_rules.example.v1",
+  "non_productive": true,
+  "rule_set": "CFDI_40_CORE",
+  "source_document": "Anexo_20_Guia_de_llenado_CFDI.pdf",
+  "human_review_required": true,
+  "disclaimer": "Ejemplo curado para pruebas foundation. No sustituye contador, SAT ni PAC.",
+  "rules": [
+    {
+      "rule_id": "CFDI40_PAYMENT_PPD_REQUIRES_FORMA99",
+      "condition": "metodo_pago = PPD",
+      "expected": "forma_pago = 99",
+      "severity": "BLOCKER"
+    },
+    {
+      "rule_id": "CFDI40_OBJETOIMP_02_REQUIRES_CONCEPT_TAXES",
+      "condition": "concepto.objeto_imp = 02",
+      "expected": "concepto.impuestos requerido",
+      "severity": "BLOCKER"
+    }
+  ]
+}

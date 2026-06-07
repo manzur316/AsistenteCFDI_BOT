@@ -1,106 +1,114 @@
 # Fiscal Activity Rules Architecture
 
-## Proposito
+## Principio
 
-Fiscal Activity Rules conecta el Tenant Fiscal Profile con los conceptos CFDI
-sugeribles. No sustituye contador y no activa conceptos nuevos por si sola.
-
-Regla central:
+Fiscal Activity Rules conecta el perfil fiscal de cada tenant con familias de
+conceptos sugeribles. No activa conceptos nuevos por si sola. No sustituye contador
+y no modifica `data/concepts.normalized.json`.
 
 ```text
-Tenant Fiscal Profile + Fiscal Activity Rules + catalogo activo -> sugerencia con revision humana.
+Tenant Fiscal Profile
+  -> actividades fiscales configuradas
+  -> reglas por actividad
+  -> elegibilidad de concepto
+  -> borrador sujeto a revision humana
 ```
 
-## Modelo conceptual
+## Entidades
 
 ### FiscalActivity
 
-Representa una actividad fiscal declarada o autorizada para un tenant.
+Actividad fiscal/giro configurada por tenant.
 
-Campos esperados:
-
-- `activity_id`
-- `tenant_id`
 - `activity_code`
 - `activity_name`
-- `source`
-- `status`
-- `regimen_fiscal`
-- `human_review_required`
+- `activity_source`
+- `applies_to_regimen`
+- `applies_to_person_type`
+- `notes`
 
 ### ConceptRule
 
-Regla versionada que conecta una actividad con familias, operaciones y conceptos
-candidatos.
-
-Campos esperados:
+Regla versionada que sugiere o limita conceptos para una actividad.
 
 - `rule_id`
-- `activity_id`
-- `allowed_operations`
-- `allowed_families`
-- `suggested_concept_prefixes`
-- `blocked_terms`
-- `requires_clarification_terms`
-- `risk_level`
-- `version`
+- `activity_code`
+- `concept_family`
+- `allowed_clave_prod_serv[]`
+- `suggested_clave_unidad[]`
+- `default_objeto_imp`
+- `default_tax_mode`
+- `confidence`
+- `severity`
+- `human_review_required`
+- `examples[]`
 
 ### TenantActivityLink
 
-Vincula un tenant con actividades fiscales vigentes.
+Vinculo entre tenant, perfil fiscal y actividad vigente.
 
-Campos esperados:
-
+- `activity_link_id`
 - `tenant_id`
-- `activity_id`
+- `profile_id`
+- `activity_code`
+- `activity_name`
+- `activity_source`
 - `status`
-- `source`
-- `reviewed_by_human`
-- `reviewed_at`
 
-### ConceptEligibility
+### ConceptEligibilityResult
 
-Resultado evaluable por SATBOT Core antes de sugerir o bloquear.
+Resultado determinista usado antes de sugerir un concepto:
 
-Estados sugeridos:
+- `allowed`
+- `suggested`
+- `needs_review`
+- `blocked`
+- `reason_codes[]`
+- `candidate_concepts[]`
 
-- `ELIGIBLE`
-- `NEEDS_CLARIFICATION`
-- `BLOCKED`
-- `ACTIVITY_REVIEW_REQUIRED`
+## Semilla personal actual
 
-## Ejemplo operativo
+El ejemplo local `data/fiscal-activity-rules.example.json` incluye:
 
-Actividad: servicios de instalacion/mantenimiento CCTV.
-
-Conceptos permitidos o sugeridos:
-
-- diagnostico tecnico;
-- instalacion de camaras;
-- mantenimiento preventivo;
+- `TECH_CCTV_NETWORK_SERVICES`
+- diagnostico tecnico CCTV/redes;
+- instalacion y mantenimiento;
 - configuracion de red;
-- cableado estructurado.
+- cableado estructurado;
+- venta de equipo CCTV/redes cuando aplique.
 
-Bloqueos:
+Las claves SAT incluidas son sugerencias de prueba y requieren validacion humana
+y catalogo SAT vigente antes de operar.
+
+## Bloqueos base
+
+La foundation mantiene fuera de alcance:
 
 - software;
-- apps;
-- IA como servicio;
+- apps moviles;
+- web;
+- SaaS;
+- IA;
+- n8n como servicio;
 - marketing;
-- renta de equipo;
-- obra civil general.
+- diseno grafico;
+- video;
+- comida;
+- plomeria;
+- pintura;
+- albanileria;
+- construccion civil general;
+- consultoria fiscal/legal/contable;
+- renta de equipo.
 
-## Reglas de seguridad fiscal
+## Relacion con providers
 
-- Todo concepto es sugerencia con revision humana.
-- El tenant debe configurar sus actividades fiscales antes de operar.
-- Las reglas pueden variar por regimen, actividad y tenant.
-- Las reglas deben versionarse.
-- El catalogo activo del bot sigue siendo fuente operativa de conceptos.
-- `data/concepts.normalized.json` no se modifica en esta fase.
+Estas reglas viven en SATBOT Core y son independientes del PAC. Factura.com,
+Facturapi u otro adapter solo reciben documentos canonicos ya evaluados.
 
-## Relacion con multi-provider
+## Seguridad fiscal
 
-Fiscal Activity Rules vive en SATBOT Core. No depende de `factura_com` ni de
-`facturapi`. Los Provider Adapter solo reciben documentos canonicos ya
-validados por Tenant Fiscal Profile y reglas fiscales.
+- Todo resultado conserva `human_review_required=true`.
+- El PAC/SAT siguen validando al timbrar.
+- SATBOT hace prevalidacion y sugerencias.
+- No se abre produccion fiscal real en esta fase.
