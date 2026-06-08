@@ -1618,6 +1618,9 @@ Alcance:
 - acciones allowlisted: `sandbox.provider.client.lookup`,
   `sandbox.provider.client.sync`, `sandbox.provider.client.link` y
   `sandbox.provider.client.diagnose`;
+- en entorno local Docker, las acciones pueden usar
+  `CFDI_DB_EXEC_MODE=docker` para ejecutar `psql` dentro de
+  `cfdi-postgres` sin depender de password TCP local;
 - mapper y adapter cliente Factura.com Sandbox quedan bajo host sandbox;
 - produccion, PAC real productivo, workflows y catalogo activo no cambian.
 

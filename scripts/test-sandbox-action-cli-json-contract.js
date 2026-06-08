@@ -99,6 +99,20 @@ check("parse_args_accepts_provider_client_sync_flags", () => {
   return parsed.options.clientId;
 });
 
+check("parse_args_accepts_db_exec_mode_flag", () => {
+  const parsed = parseArgs([
+    "sandbox.provider.client.link",
+    "--db-exec-mode", "docker",
+    "--client-id", "CLIENT-1",
+    "--provider-client-uid", "CLIENTUID-1",
+  ]);
+  assert.strictEqual(parsed.action, "sandbox.provider.client.link");
+  assert.strictEqual(parsed.options.dbExecMode, "docker");
+  assert.strictEqual(parsed.options.clientId, "CLIENT-1");
+  assert.strictEqual(parsed.options.providerClientUid, "CLIENTUID-1");
+  return parsed.options.dbExecMode;
+});
+
 check("controlled_missing_draft_exits_zero_with_json", () => {
   const { child, parsed } = runCli(["sandbox.draft.stamp"], { FACTURACOM_SANDBOX_LIVE: "1" });
   assert.strictEqual(child.status, 0);

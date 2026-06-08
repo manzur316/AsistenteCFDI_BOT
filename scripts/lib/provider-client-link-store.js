@@ -1,5 +1,4 @@
-const childProcess = require("child_process");
-const { connectionFromEnv } = require("./sandbox-draft-db-loader");
+const { runPsqlJson } = require("./local-db-psql-runner");
 const { normalizeRfc, redactRfc, redactUid } = require("./factura-com-provider-client-mapper");
 
 const DEFAULT_TENANT_ID = "TENANT_PERSONAL_DEFAULT";
@@ -116,33 +115,8 @@ function buildProviderClientLinkSelectSql(input = {}) {
   ].join(" ");
 }
 
-function parsePsqlJson(raw) {
-  const line = String(raw || "").split(/\r?\n/).map((item) => item.trim()).find(Boolean);
-  return line ? JSON.parse(line) : null;
-}
-
 function runPsql(sql, options = {}) {
-  const config = { ...connectionFromEnv(options.env || process.env), ...(options.dbConfig || {}) };
-  const env = { ...process.env, PGCONNECT_TIMEOUT: "8" };
-  if (config.password) env.PGPASSWORD = config.password;
-  const args = [
-    "-w",
-    "-h", String(config.host),
-    "-p", String(config.port),
-    "-d", String(config.database),
-    "-U", String(config.user),
-    "-At",
-    "-F", "",
-    "-c", sql,
-  ];
-  const execFileSync = options.execFileSync || childProcess.execFileSync;
-  const raw = execFileSync(config.psqlBin || "psql", args, {
-    env,
-    encoding: "utf8",
-    windowsHide: true,
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  return parsePsqlJson(raw);
+  return runPsqlJson(sql, options);
 }
 
 function saveProviderClientLink(input = {}, options = {}) {

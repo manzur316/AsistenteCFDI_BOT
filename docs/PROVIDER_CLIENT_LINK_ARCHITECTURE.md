@@ -57,6 +57,21 @@ El UID proveedor real solo debe viajar:
 - en PostgreSQL local;
 - nunca como texto completo en Telegram o JSON de auditoria.
 
+## Modo DB local Docker
+
+Para entornos locales donde PostgreSQL corre en el contenedor
+`cfdi-postgres`, el Action Layer puede ejecutar `psql` dentro del contenedor:
+
+```powershell
+$env:CFDI_DB_EXEC_MODE="docker"
+$env:CFDI_PG_DOCKER_CONTAINER="cfdi-postgres"
+$env:CFDI_PGDATABASE="cfdi_bot"
+$env:CFDI_PGUSER="cfdi_bot_user"
+```
+
+Esto evita depender de password TCP contra `127.0.0.1:5432`. El modo TCP
+permanece disponible para otros entornos.
+
 ## No-go
 
 - No produccion.

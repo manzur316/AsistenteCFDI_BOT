@@ -129,6 +129,9 @@ function parseArgs(argv) {
     } else if (key === "--provider-client-uid") {
       options.providerClientUid = rest[index + 1] || "";
       index += 1;
+    } else if (key === "--db-exec-mode") {
+      options.dbExecMode = rest[index + 1] || "";
+      index += 1;
     } else if (key === "--rfc") {
       options.rfc = rest[index + 1] || "";
       index += 1;

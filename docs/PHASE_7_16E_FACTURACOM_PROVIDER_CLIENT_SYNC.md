@@ -103,6 +103,27 @@ o, si el UID ya fue verificado manualmente:
 node scripts/run-sandbox-action.js sandbox.provider.client.link --client-id CLIENT-... --provider-client-uid UID...
 ```
 
+## PostgreSQL local con Docker
+
+En entorno local Docker, las acciones del Action Layer que leen PostgreSQL
+pueden usar `docker exec` en lugar de TCP/password:
+
+```powershell
+$env:CFDI_DB_EXEC_MODE="docker"
+$env:CFDI_PG_DOCKER_CONTAINER="cfdi-postgres"
+$env:CFDI_PGDATABASE="cfdi_bot"
+$env:CFDI_PGUSER="cfdi_bot_user"
+```
+
+Tambien se puede pasar el modo por CLI:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.provider.client.link --db-exec-mode docker --client-id CLIENT-... --provider-client-uid UID...
+```
+
+En este modo no se usa `-h 127.0.0.1`, no se exige password TCP y el UID
+proveedor sigue redaccionado en el output seguro.
+
 ## Seguridad
 
 - No se imprimen RFC completos.

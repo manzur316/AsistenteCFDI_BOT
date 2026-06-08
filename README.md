@@ -1088,6 +1088,10 @@ bandera explicita. Ver
 `docs/PHASE_7_16E_FACTURACOM_PROVIDER_CLIENT_SYNC.md` y
 `docs/PROVIDER_CLIENT_LINK_ARCHITECTURE.md`.
 
+En entorno local Docker, las acciones del Action Layer que consultan
+PostgreSQL pueden usar `CFDI_DB_EXEC_MODE=docker` con el contenedor
+`cfdi-postgres` para evitar password TCP contra `127.0.0.1:5432`.
+
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
 los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a

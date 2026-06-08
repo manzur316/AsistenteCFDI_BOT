@@ -1,11 +1,9 @@
-const childProcess = require("child_process");
+const {
+  DEFAULT_CONNECTION,
+  connectionFromEnv,
+  runPsqlRaw,
+} = require("./local-db-psql-runner");
 
-const DEFAULT_CONNECTION = Object.freeze({
-  host: "127.0.0.1",
-  port: "5432",
-  database: "cfdi_bot",
-  user: "cfdi_bot_user",
-});
 
 function text(value) {
   const cleaned = String(value ?? "").trim();
@@ -15,17 +13,6 @@ function text(value) {
 function sqlQuote(value) {
   if (value === null || value === undefined) return "NULL";
   return `'${String(value).replace(/'/g, "''")}'`;
-}
-
-function connectionFromEnv(env = process.env) {
-  return {
-    psqlBin: env.CFDI_PSQL_BIN || env.PSQL_BIN || "psql",
-    host: env.CFDI_PGHOST || env.POSTGRES_HOST || env.PGHOST || DEFAULT_CONNECTION.host,
-    port: env.CFDI_PGPORT || env.POSTGRES_PORT || env.PGPORT || DEFAULT_CONNECTION.port,
-    database: env.CFDI_PGDATABASE || env.POSTGRES_DB || env.PGDATABASE || DEFAULT_CONNECTION.database,
-    user: env.CFDI_PGUSER || env.POSTGRES_USER || env.PGUSER || DEFAULT_CONNECTION.user,
-    password: env.CFDI_PGPASSWORD || env.POSTGRES_PASSWORD || env.PGPASSWORD || "",
-  };
 }
 
 function buildDraftByIdQuery(draftId) {
@@ -188,30 +175,8 @@ function normalizeDraftRow(row) {
 function loadDraftFromPostgres(draftId, options = {}) {
   const safeDraftId = text(draftId);
   if (!safeDraftId) return null;
-  const config = {
-    ...connectionFromEnv(options.env || process.env),
-    ...options,
-  };
-  const env = { ...process.env, PGCONNECT_TIMEOUT: "8" };
-  if (config.password) env.PGPASSWORD = config.password;
-  const args = [
-    "-w",
-    "-h", String(config.host),
-    "-p", String(config.port),
-    "-d", String(config.database),
-    "-U", String(config.user),
-    "-At",
-    "-F", "",
-    "-c", buildDraftByIdQuery(safeDraftId),
-  ];
-  const execFileSync = options.execFileSync || childProcess.execFileSync;
   try {
-    const raw = execFileSync(config.psqlBin || "psql", args, {
-      env,
-      encoding: "utf8",
-      windowsHide: true,
-      maxBuffer: 10 * 1024 * 1024,
-    });
+    const raw = runPsqlRaw(buildDraftByIdQuery(safeDraftId), options);
     return normalizeDraftRow(parsePsqlJsonOutput(raw));
   } catch (error) {
     const stderr = error && error.stderr ? String(error.stderr).trim() : "";
