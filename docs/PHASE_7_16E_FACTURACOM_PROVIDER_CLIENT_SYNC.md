@@ -103,6 +103,27 @@ o, si el UID ya fue verificado manualmente:
 node scripts/run-sandbox-action.js sandbox.provider.client.link --client-id CLIENT-... --provider-client-uid UID...
 ```
 
+## Readiness gate 7.18A
+
+La fase 7.18A agrega el gate read-only:
+
+```text
+sandbox.provider.client.readiness
+```
+
+Este diagnostico lee `cfdi_clients` y `provider_client_links`, separa
+`ready_for_provider_stamp` de `ready_for_provider_email`, y devuelve
+`recommended_action` para la UX futura sin mutar PostgreSQL ni llamar al
+proveedor.
+
+Referencias:
+
+```text
+docs/PHASE_7_18A_PROVIDER_CLIENT_READINESS_GATE.md
+docs/PROVIDER_CLIENT_SYNC_ARCHITECTURE.md
+docs/PROVIDER_CLIENT_READINESS_RUNBOOK.md
+```
+
 ## Normalizacion SAT de cliente local
 
 Hotfix 7.16E-LOCAL agrega un guard previo a provider sync y payload sandbox:

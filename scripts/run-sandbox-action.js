@@ -129,6 +129,12 @@ function parseArgs(argv) {
     } else if (key === "--provider-client-uid") {
       options.providerClientUid = rest[index + 1] || "";
       index += 1;
+    } else if (key === "--provider") {
+      options.provider = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--environment") {
+      options.environment = rest[index + 1] || "";
+      index += 1;
     } else if (key === "--cfdi-uid") {
       options.cfdiUid = rest[index + 1] || "";
       index += 1;

@@ -30,6 +30,7 @@ const {
   runProviderClientLookup,
   runProviderClientSync,
 } = require("./provider-client-sync-action");
+const { runProviderClientReadiness } = require("./provider-client/provider-client-readiness-action");
 const {
   resolveFacturaComSandboxConfig,
   safeFacturaComSandboxConfig,
@@ -92,6 +93,7 @@ const ACTIONS = [
   "sandbox.provider.client.link",
   "sandbox.provider.client.diagnose",
   "sandbox.provider.client.email.diagnose",
+  "sandbox.provider.client.readiness",
 ];
 
 function isInside(parent, child) {
@@ -540,6 +542,7 @@ function runCfdiRulesDiagnose(options = {}) {
 }
 
 async function runProviderClientAction(action, options = {}) {
+  if (action === "sandbox.provider.client.readiness") return runProviderClientReadiness(options);
   if (action === "sandbox.provider.client.lookup") return runProviderClientLookup(options);
   if (action === "sandbox.provider.client.sync") return runProviderClientSync(options);
   if (action === "sandbox.provider.client.link") return runProviderClientLink(options);

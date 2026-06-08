@@ -122,7 +122,6 @@ for (const [name, envPatch, expectedCode] of [
   ["missing_api_key", { FACTURACOM_API_KEY: "" }, "FACTURACOM_SANDBOX_API_KEY_REQUIRED"],
   ["missing_secret_key", { FACTURACOM_SECRET_KEY: "" }, "FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED"],
   ["missing_plugin", { FACTURACOM_PLUGIN: "" }, "FACTURACOM_SANDBOX_PLUGIN_REQUIRED"],
-  ["missing_receiver_uid", { FACTURACOM_SANDBOX_RECEIVER_UID: "" }, "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED"],
   ["missing_serie", { FACTURACOM_SANDBOX_SERIE: "" }, "FACTURACOM_SANDBOX_SERIE_REQUIRED"],
 ]) {
   check(`require_live_sandbox_${name}_returns_needs_config`, async () => {
@@ -140,6 +139,44 @@ for (const [name, envPatch, expectedCode] of [
     return expectedCode;
   });
 }
+
+check("require_live_sandbox_missing_receiver_uid_is_allowed_when_provider_link_exists", async () => {
+  const result = await runSandboxDraftStamp({
+    draft: approvedDraft({
+      draft_id: "DRAFT-LIVE-LINK-NO-RECEIVER-UID",
+      provider_client_link: {
+        provider_client_link_id: "PCL-NO-RECEIVER",
+        provider_client_uid: "CLIENTUID-LINK-NO-RECEIVER",
+        provider: "factura_com",
+        environment: "SANDBOX",
+        sync_status: "LINKED",
+      },
+    }),
+    env: liveEnv({ FACTURACOM_SANDBOX_RECEIVER_UID: "" }),
+    storageRoot: tempRoot,
+    requireLiveSandbox: true,
+    loadLocalEnv: false,
+    adapter: {
+      stampSandbox: async () => ({
+        ok: true,
+        provider: "factura_com",
+        environment: "SANDBOX",
+        status: "OK",
+        live_mode: true,
+        cfdi_uid: "CFDIUID-NO-RECEIVER",
+        uuid: "00000000-0000-4000-8000-000000716017",
+        serie: "SBOX",
+        folio: "NOUID",
+        artifact_status: "DOWNLOAD_READY",
+        normalized_warnings: [],
+      }),
+    },
+  });
+  assert.strictEqual(result.status, "OK");
+  assert.strictEqual(result.output.provider_client_uid_source, "provider_client_links");
+  assert.strictEqual(result.output.pac_provider_config.receiver_uid_present, true);
+  return result.output.provider_client_uid_source;
+});
 
 check("require_live_sandbox_success_uses_live_and_download_ready", async () => {
   cleanTemp();

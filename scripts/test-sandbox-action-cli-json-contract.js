@@ -81,6 +81,8 @@ check("parse_args_accepts_provider_client_sync_flags", () => {
     "sandbox.provider.client.sync",
     "--client-id", "CLIENT-1",
     "--provider-client-uid", "CLIENTUID-1",
+    "--provider", "factura_com",
+    "--environment", "SANDBOX",
     "--rfc", "ABC010203AB1",
     "--legal-name", "Cliente Demo",
     "--fiscal-zip", "77500",
@@ -93,6 +95,8 @@ check("parse_args_accepts_provider_client_sync_flags", () => {
   assert.strictEqual(parsed.action, "sandbox.provider.client.sync");
   assert.strictEqual(parsed.options.clientId, "CLIENT-1");
   assert.strictEqual(parsed.options.providerClientUid, "CLIENTUID-1");
+  assert.strictEqual(parsed.options.provider, "factura_com");
+  assert.strictEqual(parsed.options.environment, "SANDBOX");
   assert.strictEqual(parsed.options.createIfMissing, true);
   assert.strictEqual(parsed.options.validatedByHuman, true);
   assert.strictEqual(parsed.options.allowLegacyReceiverUid, true);

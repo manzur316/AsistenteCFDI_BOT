@@ -1138,6 +1138,15 @@ launcher local recomendado, sin versionar sus scripts locales. Ver
 7.17B corrige la persistencia de tokens `DELIVERY_CONFIRM_*`; reimporta
 `workflow/cfdi_telegram_local_ingest.n8n.json` en n8n para activar el fix.
 
+7.18A agrega el gate read-only `sandbox.provider.client.readiness`: valida
+`cfdi_clients + provider_client_links` antes de timbrado sandbox live, separa
+`ready_for_provider_stamp` de `ready_for_provider_email`, y deja
+`FACTURACOM_SANDBOX_RECEIVER_UID` solo como fallback legacy con
+`--allow-legacy-receiver-uid`. Ver
+`docs/PHASE_7_18A_PROVIDER_CLIENT_READINESS_GATE.md`,
+`docs/PROVIDER_CLIENT_SYNC_ARCHITECTURE.md` y
+`docs/PROVIDER_CLIENT_READINESS_RUNBOOK.md`.
+
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
 los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a

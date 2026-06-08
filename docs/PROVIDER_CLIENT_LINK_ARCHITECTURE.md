@@ -14,9 +14,14 @@ fallback legacy/test y requiere bandera explicita.
 ```text
 cfdi_clients
   -> provider_client_links
+  -> sandbox.provider.client.readiness
   -> sandbox.draft.stamp
   -> Factura.com Sandbox receptor_uid
 ```
+
+Desde 7.18A, `sandbox.provider.client.readiness` es el gate read-only que
+confirma si el cliente puede timbrarse o si requiere sincronizacion/revision
+antes de `sandbox.draft.stamp`.
 
 ## Tabla local
 

@@ -16,6 +16,10 @@ const {
 const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
 const { safeLinkOutput } = require("./provider-client-link-store");
 const { normalizeClientFiscalFields } = require("./clients/client-fiscal-field-normalizer");
+const {
+  buildProviderClientReadiness,
+  summarizeProviderClientReadiness,
+} = require("./provider-client/provider-client-readiness-contract");
 
 const SANDBOX_DRAFT_STAMP_STATUS = Object.freeze({
   STAMPING: "SANDBOX_TIMBRANDO",
@@ -82,6 +86,7 @@ function normalizeClient(client = {}) {
     tipo_persona: text(source.tipo_persona || source.person_type),
     email: text(source.email || source.correo),
     email_confirmed: source.email_confirmed === true || source.emailConfirmed === true,
+    provider_email_sync_status: text(source.provider_email_sync_status),
     validated_by_human: source.validated_by_human === true,
     fiscal_normalization_summary: source.fiscal_normalization_summary || null,
     fiscal_normalization_report: normalized.normalization_report,
@@ -356,6 +361,25 @@ function resolveProviderClientLink(draft = {}, options = {}) {
   };
 }
 
+function providerClientReadinessFromDraft(draft = {}, providerClientLink = {}, options = {}) {
+  const client = normalizeClient(draft.current_client || draft.client || draft.client_snapshot || {});
+  const link = providerClientLink?.provider_client_uid
+    ? {
+        ...(providerClientLink.link || {}),
+        provider_client_uid: providerClientLink.provider_client_uid,
+        sync_status: providerClientLink.link?.sync_status || "LINKED",
+      }
+    : providerClientLink?.link || {};
+  return buildProviderClientReadiness({
+    tenant_id: link.tenant_id || "TENANT_PERSONAL_DEFAULT",
+    client_id: client.client_id || draft.client_id,
+    provider: link.provider || options.provider || "factura_com",
+    environment: link.environment || options.environment || "SANDBOX",
+    client,
+    provider_client_link: link,
+  });
+}
+
 function effectiveProviderConfigForLinkedClient(config, providerClientUid) {
   if (!config || !text(providerClientUid)) return config;
   const errors = Array.isArray(config.errors)
@@ -501,6 +525,9 @@ async function runSandboxDraftStamp(options = {}) {
 
   const requestedEnv = options.env || process.env;
   const providerClientLink = resolveProviderClientLink(draft || {}, options);
+  const providerClientReadiness = providerClientReadinessFromDraft(draft || {}, providerClientLink, options);
+  const hasLinkedProviderClient = providerClientReadiness.provider_client_link_found === true;
+  const legacyFallbackRequested = options.allowLegacyReceiverUid === true && providerClientLink.source === "legacy_env";
   const rawPacProviderConfig = options.requireLiveSandbox === true
     ? resolveFacturaComSandboxConfig({
       env: requestedEnv,
@@ -508,6 +535,27 @@ async function runSandboxDraftStamp(options = {}) {
       loadLocalEnv: options.loadLocalEnv,
     })
     : null;
+  const blockingConfigErrors = (rawPacProviderConfig?.errors || [])
+    .filter((error) => error !== "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED");
+  if (options.requireLiveSandbox === true && blockingConfigErrors.length === 0 && !hasLinkedProviderClient && !legacyFallbackRequested) {
+    return {
+      status: "NEEDS_RUNTIME",
+      output: {
+        error_class: "PROVIDER_CLIENT_LINK_MISSING",
+        ...draftErrorContext(draft, options),
+        provider: "Factura.com Sandbox",
+        provider_client_link_status: "MISSING",
+        provider_client_uid_source: "missing",
+        provider_client_link: null,
+        provider_client_readiness: summarizeProviderClientReadiness(providerClientReadiness),
+        recommended_action: "SYNC_PROVIDER_CLIENT",
+        next_action: "Ejecuta sandbox.provider.client.sync o sandbox.provider.client.link antes de timbrar sandbox live.",
+        sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
+      },
+      warnings: providerClientReadiness.warnings || [],
+      errors: ["PROVIDER_CLIENT_LINK_MISSING"],
+    };
+  }
   const pacProviderConfig = effectiveProviderConfigForLinkedClient(
     rawPacProviderConfig,
     providerClientLink.provider_client_uid,
@@ -543,13 +591,18 @@ async function runSandboxDraftStamp(options = {}) {
         pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
         provider_client_link_status: providerClientLink.provider_client_uid ? "FOUND" : "MISSING",
         provider_client_uid_source: providerClientLink.source,
+        legacy_receiver_uid_used: legacyFallbackRequested === true,
+        provider_client_readiness: summarizeProviderClientReadiness(providerClientReadiness),
         provider_client_link: providerClientLink.safe_link,
         next_action: validation.errors.includes("PROVIDER_CLIENT_LINK_MISSING")
           ? "Ejecuta sandbox.provider.client.sync o sandbox.provider.client.link antes de timbrar sandbox live."
           : null,
         sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
       },
-      warnings: validation.warnings,
+      warnings: [
+        ...validation.warnings,
+        ...(legacyFallbackRequested ? ["LEGACY_RECEIVER_UID_USED"] : []),
+      ],
       errors: validation.errors,
     };
   }
@@ -653,12 +706,17 @@ async function runSandboxDraftStamp(options = {}) {
         pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
         provider_client_link_status: providerClientLink.provider_client_uid ? "FOUND" : "MISSING",
         provider_client_uid_source: providerClientLink.source,
+        legacy_receiver_uid_used: legacyFallbackRequested === true,
+        provider_client_readiness: summarizeProviderClientReadiness(providerClientReadiness),
         provider_client_link: providerClientLink.safe_link,
         pac_status: pacResult.status || "PAC_ERROR",
         normalized_errors: normalizedErrors,
         ...payloadDiagnostics,
       },
-      warnings: pacResult.normalized_warnings || [],
+      warnings: [
+        ...(pacResult.normalized_warnings || []),
+        ...(legacyFallbackRequested ? ["LEGACY_RECEIVER_UID_USED"] : []),
+      ],
       errors: normalizedErrors.map((item) => item.code || item.message || "PAC_ERROR"),
     };
   }
@@ -680,6 +738,8 @@ async function runSandboxDraftStamp(options = {}) {
       pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
       provider_client_link_status: providerClientLink.provider_client_uid ? "FOUND" : "MISSING",
       provider_client_uid_source: providerClientLink.source,
+      legacy_receiver_uid_used: legacyFallbackRequested === true,
+      provider_client_readiness: summarizeProviderClientReadiness(providerClientReadiness),
       provider_client_link: providerClientLink.safe_link,
       invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
       draft_status: text(draft.status),
@@ -760,7 +820,10 @@ async function runSandboxDraftStamp(options = {}) {
       sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
       requires_human_review: true,
     },
-    warnings: pacResult.normalized_warnings || [],
+    warnings: [
+      ...(pacResult.normalized_warnings || []),
+      ...(legacyFallbackRequested ? ["LEGACY_RECEIVER_UID_USED"] : []),
+    ],
     errors: [],
   };
 }
@@ -775,4 +838,5 @@ module.exports = {
   runSandboxDraftStamp,
   readDraftFromOptions,
   validateDraftForSandboxStamp,
+  providerClientReadinessFromDraft,
 };

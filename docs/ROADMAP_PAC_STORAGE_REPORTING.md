@@ -1631,6 +1631,25 @@ Alcance:
 - mapper y adapter cliente Factura.com Sandbox quedan bajo host sandbox;
 - produccion, PAC real productivo, workflows y catalogo activo no cambian.
 
+## Fase 7.18A - Provider Client Readiness Gate
+
+La fase 7.18A agrega `sandbox.provider.client.readiness`, un diagnostico
+read-only para validar `cfdi_clients + provider_client_links` antes de timbrar
+sandbox live. El gate separa `ready_for_provider_stamp` de
+`ready_for_provider_email`, bloquea falta de link con
+`PROVIDER_CLIENT_LINK_MISSING`, y degrada `FACTURACOM_SANDBOX_RECEIVER_UID` a
+fallback legacy/test que requiere `--allow-legacy-receiver-uid`.
+
+Referencias:
+
+```text
+docs/PHASE_7_18A_PROVIDER_CLIENT_READINESS_GATE.md
+docs/PROVIDER_CLIENT_SYNC_ARCHITECTURE.md
+docs/PROVIDER_CLIENT_READINESS_RUNBOOK.md
+```
+
+Siguiente fase recomendada: `7.18B Provider Client Sync UX Prepare/Confirm`.
+
 ## Fase 7.16I - Sandbox XML/PDF Content Validation + Delivery Prep
 
 La fase 7.16I queda definida en:
