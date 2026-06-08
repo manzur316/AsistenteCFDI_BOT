@@ -80,10 +80,21 @@ sandbox.documents.provider-email.diagnose
 sandbox.documents.provider-email.send
 sandbox.provider.client.email.diagnose
 sandbox.documents.delivery.send --channel PROVIDER_EMAIL
+sandbox.documents.delivery.prepare --channel PROVIDER_EMAIL
+sandbox.documents.delivery.confirm --channel PROVIDER_EMAIL
+sandbox.documents.delivery.status
+sandbox.documents.delivery.ledger
 ```
 
 Dry-run valida documentos, recipient y soporte del proveedor sin llamar al
 endpoint de envio.
+
+Desde 7.17, el envio real desde Telegram debe pasar por `prepare` y una
+confirmacion humana antes de ejecutar `send --send-real --confirmed`. Cada
+intento se registra en `document_delivery_ledger` con destinatario redactado,
+hashes/tamanos de XML/PDF y estado normalizado. Si ya existe un `SENT` para el
+mismo draft, canal, destino y hashes, el reenvio queda bloqueado salvo
+confirmacion explicita (`--force` en CLI o boton de reenvio controlado).
 
 El diagnostico generico por canal debe respetar el canal solicitado:
 

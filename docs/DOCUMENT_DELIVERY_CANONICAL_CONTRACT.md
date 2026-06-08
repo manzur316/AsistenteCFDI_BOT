@@ -34,11 +34,14 @@ Decisiones de esta fase:
 READY
 SENT
 DRY_RUN
+BLOCKED_DUPLICATE
 NEEDS_CONFIG
 NEEDS_DOCUMENTS
 NEEDS_RECIPIENT
 BLOCKED_INVALID_DOCUMENTS
+BLOCKED_PROVIDER_PDF_INVALID
 PROVIDER_ERROR
+TELEGRAM_ERROR
 ERROR
 ```
 
@@ -130,3 +133,33 @@ que el PDF adjunto por el proveedor sea visible.
 
 Telegram Document Channel puede usar el PDF local validado si el canal interno
 esta habilitado y los archivos pasan validacion.
+
+## Delivery Ledger 7.17
+
+La fase 7.17 agrega un ledger local sandbox para registrar intentos de entrega
+documental sin guardar documentos ni destinatarios completos:
+
+```text
+sql/016_document_delivery_ledger.sql
+scripts/lib/document-delivery/document-delivery-ledger-store.js
+```
+
+Acciones allowlisted:
+
+```text
+sandbox.documents.delivery.status
+sandbox.documents.delivery.prepare
+sandbox.documents.delivery.confirm
+sandbox.documents.delivery.send
+sandbox.documents.delivery.ledger
+```
+
+La llave canonica de idempotencia usa ambiente, draft, canal, destino
+redactado/hasheado y hashes XML/PDF. Si ya existe una entrega `SENT` para la
+misma combinacion, el reenvio se bloquea por default y requiere `--force` o una
+confirmacion humana explicita desde Telegram.
+
+El ledger solo conserva evidencia sanitizada: hashes, tamanos, paths relativos
+bajo `runtime/`, estado, errores normalizados y destinatario redactado. No debe
+guardar token, email completo, chat_id completo, RFC, UUID/UID completos,
+XML/PDF, CSD, `.env` ni credenciales PAC.

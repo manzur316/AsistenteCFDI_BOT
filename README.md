@@ -1127,6 +1127,15 @@ fallback local `pdf_source=LOCAL_RENDERED_FROM_XML` desde XML raw validado. Ver
 `docs/PHASE_7_16L_PDF_ARTIFACT_REALITY_FIX.md` y
 `docs/PDF_LOCAL_RENDERED_FALLBACK.md`.
 
+7.17 conecta la UX Telegram/n8n de entrega documental sandbox con confirmacion
+humana, acciones Action Layer `sandbox.documents.delivery.status|prepare|confirm|send|ledger`,
+ledger local `document_delivery_ledger`, bloqueo de duplicados por idempotencia
+y diagnostico seguro de errores Telegram/Provider Email. V3 SAFE queda como
+launcher local recomendado, sin versionar sus scripts locales. Ver
+`docs/PHASE_7_17_TELEGRAM_DELIVERY_UX_LEDGER.md`,
+`docs/DOCUMENT_DELIVERY_LEDGER.md`, `docs/TELEGRAM_DELIVERY_UX_RUNBOOK.md` y
+`docs/LOCAL_LAUNCHER_V3_SAFE_RUNBOOK.md`.
+
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
 los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a
@@ -1134,7 +1143,8 @@ los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a
 Ver `docs/ADR_0003_SHARED_TELEGRAM_BOT_ACCESS_MODEL.md` y
 `docs/ROADMAP_SHARED_BOT_SUBSCRIPTION_ACCESS.md`.
 
-Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
+Siguiente fase recomendada: cerrar 7.17 con evidencia E2E local o documentar
+`NO VALIDADO END-TO-END` cuando falte Docker, n8n, Telegram o credenciales.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
 produccion futura queda fijado en:

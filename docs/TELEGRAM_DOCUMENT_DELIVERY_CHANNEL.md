@@ -25,7 +25,11 @@ Acciones Action Layer:
 
 ```text
 sandbox.documents.delivery.diagnose
+sandbox.documents.delivery.status
+sandbox.documents.delivery.prepare
+sandbox.documents.delivery.confirm
 sandbox.documents.delivery.send
+sandbox.documents.delivery.ledger
 sandbox.documents.provider-email.diagnose
 sandbox.documents.provider-email.send
 ```
@@ -96,3 +100,28 @@ node scripts/run-sandbox-action.js sandbox.documents.delivery.diagnose --draft-i
 
 Provider Email se diagnostica aparte con `--channel PROVIDER_EMAIL`. Esa ruta no
 debe devolver `TELEGRAM_DOCUMENT_DELIVERY_NEEDS_CONFIG`.
+
+## UX Telegram 7.17
+
+El workflow principal puede mostrar botones de entrega documental despues de una
+descarga sandbox valida:
+
+```text
+Enviar por correo
+Enviar a canal documentos
+Ver estado documental
+```
+
+El canal Telegram documental nunca envia automaticamente. La ruta segura es:
+
+```text
+prepare -> confirmacion humana -> send --send-real --confirmed -> ledger
+```
+
+Si Telegram devuelve error al enviar documentos, la evidencia se normaliza con
+campos seguros como `telegram_http_status`, `telegram_error_code` y
+`telegram_description_safe`. No se expone token ni chat_id completo.
+
+El ledger bloquea duplicados por default cuando ya existe un `SENT` para el
+mismo draft/canal/destino/hashes. Reenviar requiere confirmacion humana
+explicita; nunca ocurre por accidente desde el callback inicial.

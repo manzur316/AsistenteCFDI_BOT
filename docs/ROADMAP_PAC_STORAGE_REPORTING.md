@@ -1732,6 +1732,32 @@ Alcance:
 Fuera de alcance: produccion, PAC productivo, CSD, SMTP principal, envio
 automatico, runtime versionado, OCR y cambios a `data/concepts.normalized.json`.
 
+## Fase 7.17 - Telegram UX + Delivery Ledger + E2E Workflow Activation
+
+La fase 7.17 queda definida en:
+
+```text
+docs/PHASE_7_17_TELEGRAM_DELIVERY_UX_LEDGER.md
+docs/DOCUMENT_DELIVERY_LEDGER.md
+docs/TELEGRAM_DELIVERY_UX_RUNBOOK.md
+docs/LOCAL_LAUNCHER_V3_SAFE_RUNBOOK.md
+```
+
+Alcance:
+
+- botones Telegram para `Enviar por correo`, `Enviar a canal documentos` y
+  `Ver estado documental`;
+- confirmacion humana antes de `send --send-real --confirmed`;
+- ledger local sandbox `document_delivery_ledger`;
+- idempotencia por draft/canal/destino/hashes y bloqueo de duplicados;
+- accion segura `sandbox.documents.delivery.ledger`;
+- diagnostico sanitizado de errores Telegram y Provider Email;
+- V3 SAFE como launcher local recomendado sin versionar scripts locales.
+
+Fuera de alcance: produccion fiscal real, PAC productivo, CSD, SMTP principal,
+email2/email3, envio automatico sin confirmacion, runtime versionado y cambios a
+`data/concepts.normalized.json`.
+
 ## Fase 7.16F - Shared Telegram Bot Identity + Subscription Access Foundation
 
 La fase 7.16F queda definida en
@@ -1750,4 +1776,6 @@ Alcance:
 - Trial Mode y bots dedicados quedan como roadmap futuro;
 - no cambia workflow operativo, billing, WhatsApp, WebAdmin ni produccion.
 
-Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
+Siguiente fase recomendada: cerrar 7.17 con E2E local completo cuando Docker,
+n8n, Telegram y credenciales sandbox esten disponibles; si falta alguno,
+documentar explicitamente `NO VALIDADO END-TO-END`.

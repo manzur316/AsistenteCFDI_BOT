@@ -14,8 +14,12 @@ const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-a
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
 const { runSandboxPdfDiagnose } = require("./sandbox-pdf-diagnose-action");
 const {
+  runSandboxDocumentDeliveryConfirm,
   runSandboxDocumentDeliveryDiagnose,
+  runSandboxDocumentDeliveryLedger,
+  runSandboxDocumentDeliveryPrepare,
   runSandboxDocumentDeliverySend,
+  runSandboxDocumentDeliveryStatus,
 } = require("./sandbox-document-delivery-action");
 const { runSatCfdiRulesDiagnose } = require("./sat-cfdi-rules-diagnose-action");
 const { runClientFiscalNormalizeDiagnose } = require("./client-fiscal-normalize-diagnose-action");
@@ -40,7 +44,20 @@ const DEFAULT_ACTION_RESULTS_ROOT = path.join(runtimeRoot, "action-results-sandb
 const DEFAULT_ACTION_AUDIT_ROOT = path.join(runtimeRoot, "sandbox-action-audit");
 const ACTION_SCHEMA_VERSION = "sandbox_action_result.v1";
 const ACTION_AUDIT_SCHEMA_VERSION = "sandbox_action_audit.v1";
-const ACTION_STATUSES = ["OK", "ERROR", "SKIPPED", "NEEDS_RUNTIME", "NEEDS_CONFIG", "NEEDS_SOURCE", "PACKAGE_SAFETY_ERROR"];
+const ACTION_STATUSES = [
+  "OK",
+  "READY",
+  "DRY_RUN",
+  "SENT",
+  "BLOCKED_DUPLICATE",
+  "ERROR",
+  "SKIPPED",
+  "NEEDS_RUNTIME",
+  "NEEDS_CONFIG",
+  "NEEDS_SOURCE",
+  "PACKAGE_SAFETY_ERROR",
+];
+const ACTION_OK_STATUSES = new Set(["OK", "READY", "DRY_RUN", "SENT", "BLOCKED_DUPLICATE"]);
 
 const ACTIONS = [
   "sandbox.preflight",
@@ -60,8 +77,12 @@ const ACTIONS = [
   "sandbox.draft.download-artifacts",
   "sandbox.draft.cancel",
   "sandbox.documents.pdf.diagnose",
+  "sandbox.documents.delivery.status",
+  "sandbox.documents.delivery.prepare",
+  "sandbox.documents.delivery.confirm",
   "sandbox.documents.delivery.diagnose",
   "sandbox.documents.delivery.send",
+  "sandbox.documents.delivery.ledger",
   "sandbox.documents.provider-email.diagnose",
   "sandbox.documents.provider-email.send",
   "sandbox.cfdi.rules.diagnose",
@@ -600,8 +621,12 @@ async function executeAction(action, env = process.env, options = {}) {
     const result = await runSandboxPdfDiagnose({ ...options, env });
     return stableStep("sandbox.documents.pdf.diagnose", result.status, result.output, result.warnings, result.errors);
   }
+  if (action === "sandbox.documents.delivery.status") return runSandboxDocumentDeliveryStatus({ ...options, env });
+  if (action === "sandbox.documents.delivery.prepare") return runSandboxDocumentDeliveryPrepare({ ...options, env });
+  if (action === "sandbox.documents.delivery.confirm") return runSandboxDocumentDeliveryConfirm({ ...options, env });
   if (action === "sandbox.documents.delivery.diagnose") return runSandboxDocumentDeliveryDiagnose({ ...options, env });
   if (action === "sandbox.documents.delivery.send") return runSandboxDocumentDeliverySend({ ...options, env });
+  if (action === "sandbox.documents.delivery.ledger") return runSandboxDocumentDeliveryLedger({ ...options, env });
   if (action === "sandbox.documents.provider-email.diagnose") return runSandboxDocumentDeliveryDiagnose({ ...options, env, channel: "PROVIDER_EMAIL" });
   if (action === "sandbox.documents.provider-email.send") return runSandboxDocumentDeliverySend({ ...options, env, channel: "PROVIDER_EMAIL" });
   if (action === "sandbox.cfdi.rules.diagnose") return runCfdiRulesDiagnose(options);
@@ -624,7 +649,7 @@ async function runSandboxAction(action, options = {}) {
     schema_version: ACTION_SCHEMA_VERSION,
     action: action || "UNKNOWN",
     status: step.status,
-    ok: step.status === "OK",
+    ok: ACTION_OK_STATUSES.has(step.status),
     started_at: startedAt,
     finished_at: finishedAt,
     duration_ms: Date.now() - started,

@@ -118,13 +118,17 @@ check("parse_args_accepts_document_delivery_flags", () => {
     "sandbox.documents.delivery.send",
     "--draft-id", "DRAFT-1",
     "--channel", "PROVIDER_EMAIL",
-    "--dry-run",
+    "--send-real",
+    "--confirmed",
+    "--force",
     "--confirm-recipient",
   ]);
   assert.strictEqual(parsed.action, "sandbox.documents.delivery.send");
   assert.strictEqual(parsed.options.draftId, "DRAFT-1");
   assert.strictEqual(parsed.options.channel, "PROVIDER_EMAIL");
-  assert.strictEqual(parsed.options.dryRun, true);
+  assert.strictEqual(parsed.options.dryRun, false);
+  assert.strictEqual(parsed.options.confirmed, true);
+  assert.strictEqual(parsed.options.force, true);
   assert.strictEqual(parsed.options.confirmRecipient, true);
   return parsed.options.channel;
 });

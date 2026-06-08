@@ -134,12 +134,14 @@ check("download_action_partial_download_is_stable", async () => {
     storageRoot: tempRoot,
     adapterContext: { requestFn: fakeRequestFn({ partial: true }) },
   });
-  assert.strictEqual(result.status, "PARTIAL_DOWNLOAD");
+  assert.strictEqual(result.status, "OK");
   assert.strictEqual(result.output.xml_downloaded, true);
-  assert.strictEqual(result.output.pdf_downloaded, false);
+  assert.strictEqual(result.output.pdf_downloaded, true);
+  assert.strictEqual(result.output.provider_pdf_downloaded, false);
   assert.strictEqual(result.output.xml_content_valid, true);
-  assert.strictEqual(result.output.pdf_content_valid, false);
-  assert.strictEqual(result.output.artifact_status, "PARTIAL_DOWNLOAD");
+  assert.strictEqual(result.output.pdf_content_valid, true);
+  assert.strictEqual(result.output.pdf_source, "LOCAL_RENDERED_FROM_XML");
+  assert.strictEqual(result.output.artifact_status, "DOWNLOADED");
   return result.status;
 });
 

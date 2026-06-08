@@ -174,6 +174,10 @@ function parseArgs(argv) {
       options.dryRun = true;
     } else if (key === "--send-real") {
       options.dryRun = false;
+    } else if (key === "--force") {
+      options.force = true;
+    } else if (key === "--confirmed") {
+      options.confirmed = true;
     } else if (key === "--channel") {
       options.channel = rest[index + 1] || "";
       index += 1;

@@ -21,6 +21,13 @@ const {
   validateDeliveryFiles,
 } = require("./telegram-document-delivery-channel");
 const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
+const {
+  LEDGER_STATUSES,
+  buildDeliveryIdempotencyKey,
+  findExistingDelivery,
+  ledgerSummaryForDraft,
+  recordDeliveryAttempt,
+} = require("./document-delivery/document-delivery-ledger-store");
 
 const repoRoot = path.resolve(__dirname, "../..");
 const runtimeRoot = path.join(repoRoot, "runtime");
@@ -136,6 +143,167 @@ function providerEmailSyncStatusFromDraft(draft = {}) {
   if (normalized === "NOT_PROVIDED") return "UNKNOWN";
   if (normalized === "MANUAL_LINKED") return "UNKNOWN";
   return normalized;
+}
+
+function dbOptions(options = {}) {
+  return {
+    env: options.env || process.env,
+    dbConfig: options.dbConfig,
+    dbExecMode: options.dbExecMode,
+    execMode: options.execMode,
+    pgDockerContainer: options.pgDockerContainer,
+    execFileSync: options.execFileSync,
+  };
+}
+
+function shouldUseDeliveryLedger(options = {}) {
+  const env = options.env || process.env || {};
+  return Boolean(
+    options.execFileSync
+      || options.dbExecMode
+      || options.execMode
+      || options.pgDockerContainer
+      || options.dbConfig
+      || env.CFDI_DB_EXEC_MODE
+      || env.CFDI_PG_DOCKER_CONTAINER
+      || env.CFDI_PGPASSWORD
+      || env.PGPASSWORD
+  );
+}
+
+function invoiceStatusFromDraft(draft = {}) {
+  return text(draft.invoice_status || draft.sandbox_pac_summary?.invoice_status || draft.status);
+}
+
+function paymentStatusFromDraft(draft = {}) {
+  return text(draft.payment_status || draft.sandbox_pac_summary?.payment_status) || "NO_APLICA";
+}
+
+function folioFromDraft(draft = {}) {
+  const summary = draft.sandbox_pac_summary || {};
+  return text(summary.folio || draft.folio || summary.pac_result?.folio) || "N/A";
+}
+
+function isSandboxStamped(draft = {}) {
+  return invoiceStatusFromDraft(draft) === "SANDBOX_TIMBRADO";
+}
+
+function deliveryRowsByChannel(rows = [], channel) {
+  return rows.filter((row) => String(row.channel || "").toUpperCase() === channel);
+}
+
+function latestStatus(rows = []) {
+  return rows[0]?.delivery_status || null;
+}
+
+function sentAt(rows = []) {
+  return rows.find((row) => row.delivery_status === "SENT")?.sent_at || null;
+}
+
+function deliveryChannelReady(channel, diagnose = {}) {
+  return diagnose.status === "OK" || diagnose.status === DOCUMENT_DELIVERY_STATUSES.READY;
+}
+
+function ledgerBaseFromDraft(draft, channel, validation, documentMetadata, options = {}) {
+  const email = primaryEmailFromDraft(draft);
+  const telegramConfig = diagnoseDocumentDeliveryConfig(options.env || process.env);
+  const source = draft.sandbox_pac_summary || {};
+  return {
+    draft_id: text(draft.draft_id || options.draftId),
+    client_id: text(draft.client_id || clientFromDraft(draft).client_id),
+    provider: "factura_com",
+    environment: "SANDBOX",
+    channel,
+    recipient_present: channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL ? Boolean(email) : telegramConfig.delivery_chat_id_present === true,
+    recipient_email: channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL ? email : null,
+    recipient_redacted: channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL ? redactEmail(email) : telegramConfig.delivery_chat_id_redacted,
+    email_confirmed: channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL ? emailConfirmedFromDraft(draft) : null,
+    provider_email_sync_status: channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL ? providerEmailSyncStatusFromDraft(draft) : null,
+    telegram_chat_id_present: channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL ? telegramConfig.delivery_chat_id_present === true : null,
+    documents_valid: validation.ok === true,
+    xml_content_valid: validation.xml.ok === true,
+    pdf_content_valid: validation.pdf.ok === true,
+    pdf_source: documentMetadata.pdf_source,
+    xml_sha256: validation.xml.sha256,
+    pdf_sha256: validation.pdf.sha256,
+    xml_size_bytes: validation.xml.size_bytes,
+    pdf_size_bytes: validation.pdf.size_bytes,
+    human_xml_path: validation.xml_path_safe,
+    human_pdf_path: validation.pdf_path_safe,
+    evidence_sanitized: {
+      invoice_status: invoiceStatusFromDraft(draft),
+      payment_status: paymentStatusFromDraft(draft),
+      folio: folioFromDraft(draft),
+      provider_email_sync_status: providerEmailSyncStatusFromDraft(draft),
+      pdf_source: documentMetadata.pdf_source,
+      provider_pdf_content_valid: documentMetadata.provider_pdf_content_valid,
+      artifact_status: source.artifact_status || null,
+    },
+  };
+}
+
+function canonicalLedgerKey(base = {}) {
+  return buildDeliveryIdempotencyKey(base);
+}
+
+function attemptLedgerKey(base = {}, status) {
+  const canonical = canonicalLedgerKey(base);
+  if (status === LEDGER_STATUSES.SENT) return canonical;
+  return `${canonical}:${status}:${Date.now()}`;
+}
+
+function safeRecordDeliveryAttempt(input = {}, options = {}) {
+  if (!shouldUseDeliveryLedger(options)) {
+    return null;
+  }
+  try {
+    return recordDeliveryAttempt(input, dbOptions(options));
+  } catch (error) {
+    return {
+      delivery_record_failed: true,
+      error: error.code || "DELIVERY_LEDGER_WRITE_FAILED",
+    };
+  }
+}
+
+function safeFindExistingSent(base = {}, options = {}) {
+  if (!shouldUseDeliveryLedger(options)) {
+    return null;
+  }
+  try {
+    return findExistingDelivery({
+      ...base,
+      idempotency_key: canonicalLedgerKey(base),
+      onlySent: true,
+    }, dbOptions(options));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function deliveryStatusFromSendResult(channel, result = {}, dryRun = true) {
+  if (dryRun) return LEDGER_STATUSES.DRY_RUN;
+  if (result.status === "OK" && channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL) return LEDGER_STATUSES.SENT;
+  if (result.output?.status === DOCUMENT_DELIVERY_STATUSES.SENT) return LEDGER_STATUSES.SENT;
+  if (channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL) return LEDGER_STATUSES.PROVIDER_ERROR;
+  return LEDGER_STATUSES.TELEGRAM_ERROR;
+}
+
+function appendLedgerOutput(result = {}, ledgerRecord, idempotencyKey) {
+  return {
+    ...result,
+    output: {
+      ...(result.output || {}),
+      idempotency_key: idempotencyKey,
+      delivery_ledger: ledgerRecord ? {
+        delivery_id: ledgerRecord.delivery_id || null,
+        delivery_status: ledgerRecord.delivery_status || null,
+        channel: ledgerRecord.channel || null,
+        recipient_redacted: ledgerRecord.recipient_redacted || null,
+        sent_at: ledgerRecord.sent_at || null,
+      } : null,
+    },
+  };
 }
 
 function loadDraftForDiagnose(options = {}) {
@@ -283,6 +451,258 @@ function runSandboxDocumentDeliveryDiagnose(options = {}) {
   };
 }
 
+function runSandboxDocumentDeliveryStatus(options = {}) {
+  let draft = null;
+  try {
+    draft = loadDraftForDiagnose(options);
+  } catch (_error) {
+    return {
+      status: "NEEDS_RUNTIME",
+      output: { draft_id: text(options.draftId), error_class: "DRAFT_DB_LOAD_FAILED" },
+      warnings: [],
+      errors: ["DRAFT_DB_LOAD_FAILED"],
+    };
+  }
+  if (!draft) {
+    return {
+      status: "NEEDS_RUNTIME",
+      output: { draft_id: text(options.draftId), error_class: "DRAFT_CONTEXT_MISSING" },
+      warnings: [],
+      errors: ["DRAFT_CONTEXT_MISSING"],
+    };
+  }
+  const files = draftFiles(draft, options);
+  const documentMetadata = draftDocumentMetadata(draft, options);
+  const validation = validateDeliveryFiles(files);
+  const ledgerRows = ledgerSummaryForDraft(draft.draft_id || options.draftId, dbOptions(options));
+  const providerRows = deliveryRowsByChannel(ledgerRows, DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL);
+  const telegramRows = deliveryRowsByChannel(ledgerRows, DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL);
+  const providerDiagnose = runSandboxDocumentDeliveryDiagnose({ ...options, draft, channel: DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL });
+  const telegramDiagnose = runSandboxDocumentDeliveryDiagnose({ ...options, draft, channel: DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL });
+  return {
+    status: "OK",
+    output: {
+      draft_id: text(draft.draft_id),
+      client_id: text(draft.client_id || clientFromDraft(draft).client_id),
+      invoice_status: invoiceStatusFromDraft(draft),
+      payment_status: paymentStatusFromDraft(draft),
+      artifact_status: text(draft.sandbox_pac_summary?.artifact_status),
+      documents_valid: validation.ok === true,
+      xml_content_valid: validation.xml.ok === true,
+      pdf_content_valid: validation.pdf.ok === true,
+      pdf_source: documentMetadata.pdf_source,
+      human_xml_path_present: Boolean(validation.xml_path_safe),
+      human_pdf_path_present: Boolean(validation.pdf_path_safe),
+      provider_email: {
+        ready: deliveryChannelReady(DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL, providerDiagnose),
+        sent: Boolean(sentAt(providerRows)),
+        last_status: latestStatus(providerRows),
+        last_sent_at: sentAt(providerRows),
+      },
+      telegram_document_channel: {
+        ready: deliveryChannelReady(DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL, telegramDiagnose),
+        sent: Boolean(sentAt(telegramRows)),
+        last_status: latestStatus(telegramRows),
+        last_sent_at: sentAt(telegramRows),
+      },
+      ledger_summary: {
+        total: ledgerRows.length,
+        provider_email_count: providerRows.length,
+        telegram_document_channel_count: telegramRows.length,
+      },
+    },
+    warnings: [],
+    errors: [],
+  };
+}
+
+function runSandboxDocumentDeliveryLedger(options = {}) {
+  const draftId = text(options.draftId || options.draft_id);
+  if (!draftId) {
+    return {
+      status: "NEEDS_RUNTIME",
+      output: { draft_id: null, ledger_rows: [], ledger_summary: { total: 0 } },
+      warnings: [],
+      errors: ["DRAFT_ID_REQUIRED"],
+    };
+  }
+  const rows = ledgerSummaryForDraft(draftId, dbOptions(options));
+  const byChannel = rows.reduce((acc, row) => {
+    const channel = text(row.channel) || "UNKNOWN";
+    acc[channel] = (acc[channel] || 0) + 1;
+    return acc;
+  }, {});
+  const byStatus = rows.reduce((acc, row) => {
+    const status = text(row.delivery_status) || "UNKNOWN";
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  return {
+    status: "OK",
+    output: {
+      draft_id: draftId,
+      ledger_rows: rows,
+      ledger_summary: {
+        total: rows.length,
+        by_channel: byChannel,
+        by_status: byStatus,
+        latest_status: rows[0]?.delivery_status || null,
+        latest_channel: rows[0]?.channel || null,
+        latest_sent_at: rows.find((row) => row.delivery_status === "SENT")?.sent_at || null,
+      },
+    },
+    warnings: [],
+    errors: [],
+  };
+}
+
+function runSandboxDocumentDeliveryPrepare(options = {}) {
+  let draft = null;
+  try {
+    draft = loadDraftForDiagnose(options);
+  } catch (_error) {
+    return {
+      status: "NEEDS_RUNTIME",
+      output: { draft_id: text(options.draftId), error_class: "DRAFT_DB_LOAD_FAILED", confirmation_required: false },
+      warnings: [],
+      errors: ["DRAFT_DB_LOAD_FAILED"],
+    };
+  }
+  if (!draft) {
+    return {
+      status: "NEEDS_RUNTIME",
+      output: { draft_id: text(options.draftId), error_class: "DRAFT_CONTEXT_MISSING", confirmation_required: false },
+      warnings: [],
+      errors: ["DRAFT_CONTEXT_MISSING"],
+    };
+  }
+  const channel = normalizeChannel(options.channel || options.deliveryChannel);
+  if (!isSandboxStamped(draft)) {
+    return {
+      status: "NEEDS_DOCUMENTS",
+      output: {
+        draft_id: text(draft.draft_id || options.draftId),
+        channel,
+        invoice_status: invoiceStatusFromDraft(draft),
+        confirmation_required: false,
+      },
+      warnings: ["La factura sandbox aun no esta timbrada."],
+      errors: ["SANDBOX_INVOICE_NOT_STAMPED"],
+    };
+  }
+  const diagnose = runSandboxDocumentDeliveryDiagnose({ ...options, draft, channel });
+  const files = draftFiles(draft, options);
+  const documentMetadata = draftDocumentMetadata(draft, options);
+  const validation = validateDeliveryFiles(files);
+  const base = ledgerBaseFromDraft(draft, channel, validation, documentMetadata, options);
+  const idempotencyKey = canonicalLedgerKey(base);
+  const duplicate = safeFindExistingSent(base, options);
+  if (duplicate) {
+    safeRecordDeliveryAttempt({
+      ...base,
+      delivery_status: LEDGER_STATUSES.BLOCKED_DUPLICATE,
+      delivery_action: "PREPARE",
+      idempotency_key: attemptLedgerKey(base, LEDGER_STATUSES.BLOCKED_DUPLICATE),
+      normalized_warnings: ["DELIVERY_ALREADY_SENT"],
+      evidence_sanitized: { duplicate_delivery_id: duplicate.delivery_id, duplicate_sent_at: duplicate.sent_at },
+    }, options);
+    return {
+      status: LEDGER_STATUSES.BLOCKED_DUPLICATE,
+      output: {
+        draft_id: text(draft.draft_id || options.draftId),
+        channel,
+        confirmation_required: true,
+        duplicate_sent: true,
+        idempotency_key: idempotencyKey,
+        duplicate_delivery: {
+          delivery_id: duplicate.delivery_id,
+          sent_at: duplicate.sent_at,
+          recipient_redacted: duplicate.recipient_redacted,
+        },
+      },
+      warnings: ["DELIVERY_ALREADY_SENT"],
+      errors: [],
+    };
+  }
+  if (diagnose.status !== "OK") {
+    safeRecordDeliveryAttempt({
+      ...base,
+      delivery_status: diagnose.status,
+      delivery_action: "PREPARE",
+      idempotency_key: attemptLedgerKey(base, diagnose.status),
+      normalized_errors: diagnose.errors || [],
+      normalized_warnings: diagnose.warnings || [],
+      evidence_sanitized: diagnose.output || {},
+    }, options);
+    return {
+      status: diagnose.status,
+      output: {
+        ...(diagnose.output || {}),
+        confirmation_required: false,
+        idempotency_key: idempotencyKey,
+      },
+      warnings: diagnose.warnings || [],
+      errors: diagnose.errors || [],
+    };
+  }
+  safeRecordDeliveryAttempt({
+    ...base,
+    delivery_status: LEDGER_STATUSES.READY,
+    delivery_action: "PREPARE",
+    idempotency_key: attemptLedgerKey(base, LEDGER_STATUSES.READY),
+    normalized_warnings: diagnose.warnings || [],
+    evidence_sanitized: diagnose.output || {},
+  }, options);
+  return {
+    status: LEDGER_STATUSES.READY,
+    output: {
+      draft_id: text(draft.draft_id || options.draftId),
+      client_id: base.client_id,
+      invoice_status: invoiceStatusFromDraft(draft),
+      payment_status: paymentStatusFromDraft(draft),
+      channel,
+      idempotency_key: idempotencyKey,
+      confirmation_required: true,
+      documents_valid: validation.ok === true,
+      xml_content_valid: validation.xml.ok === true,
+      pdf_content_valid: validation.pdf.ok === true,
+      pdf_source: documentMetadata.pdf_source,
+      confirmation_summary: {
+        client_display_name: safeClientName(draft),
+        folio: folioFromDraft(draft),
+        total: draft.total ?? null,
+        channel,
+        recipient_redacted: base.recipient_redacted,
+        documents: ["XML", "PDF"],
+        provider: "Factura.com Sandbox",
+      },
+      confirmation_token_payload: {
+        draft_id: text(draft.draft_id || options.draftId),
+        channel,
+        action: channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL
+          ? "DELIVERY_CONFIRM_PROVIDER_EMAIL"
+          : "DELIVERY_CONFIRM_TELEGRAM_CHANNEL",
+        confirmation_required: true,
+        idempotency_key: idempotencyKey,
+      },
+    },
+    warnings: diagnose.warnings || [],
+    errors: [],
+  };
+}
+
+function runSandboxDocumentDeliveryConfirm(options = {}) {
+  const prepared = runSandboxDocumentDeliveryPrepare(options);
+  return {
+    ...prepared,
+    output: {
+      ...(prepared.output || {}),
+      confirmed: prepared.status === LEDGER_STATUSES.READY,
+      send_action: prepared.status === LEDGER_STATUSES.READY ? "sandbox.documents.delivery.send" : null,
+    },
+  };
+}
+
 async function runSandboxDocumentDeliverySend(options = {}) {
   let draft = null;
   try {
@@ -338,6 +758,62 @@ async function runSandboxDocumentDeliverySend(options = {}) {
       errors: ["BLOCKED_INVALID_DOCUMENTS"],
     };
   }
+  const dryRun = options.dryRun !== false;
+  const sourceKind = String(options.auditContext?.source_kind || options.auditContext?.sourceKind || "").toUpperCase();
+  const fromTelegramCallback = sourceKind === "CALLBACK_QUERY";
+  const baseLedger = ledgerBaseFromDraft(draft, channel, validation, documentMetadata, options);
+  const idempotencyKey = canonicalLedgerKey(baseLedger);
+  if (!dryRun && fromTelegramCallback && options.confirmed !== true) {
+    const ledgerRecord = safeRecordDeliveryAttempt({
+      ...baseLedger,
+      delivery_status: LEDGER_STATUSES.ERROR,
+      delivery_action: "SEND",
+      idempotency_key: attemptLedgerKey(baseLedger, LEDGER_STATUSES.ERROR),
+      normalized_errors: ["DELIVERY_CONFIRMATION_REQUIRED"],
+      evidence_sanitized: { source_kind: sourceKind, confirmation_required: true },
+    }, options);
+    return appendLedgerOutput({
+      status: LEDGER_STATUSES.ERROR,
+      output: {
+        draft_id: text(draft.draft_id || options.draftId),
+        channel,
+        confirmation_required: true,
+        error_class: "DELIVERY_CONFIRMATION_REQUIRED",
+      },
+      warnings: ["Se requiere confirmacion humana antes de enviar documentos desde Telegram."],
+      errors: ["DELIVERY_CONFIRMATION_REQUIRED"],
+    }, ledgerRecord, idempotencyKey);
+  }
+  const existingSent = safeFindExistingSent(baseLedger, options);
+  if (existingSent && options.force !== true) {
+    const ledgerRecord = safeRecordDeliveryAttempt({
+      ...baseLedger,
+      delivery_status: LEDGER_STATUSES.BLOCKED_DUPLICATE,
+      delivery_action: "SEND",
+      idempotency_key: attemptLedgerKey(baseLedger, LEDGER_STATUSES.BLOCKED_DUPLICATE),
+      normalized_warnings: ["DELIVERY_ALREADY_SENT"],
+      evidence_sanitized: {
+        duplicate_delivery_id: existingSent.delivery_id,
+        duplicate_sent_at: existingSent.sent_at,
+      },
+    }, options);
+    return appendLedgerOutput({
+      status: LEDGER_STATUSES.BLOCKED_DUPLICATE,
+      output: {
+        draft_id: text(draft.draft_id || options.draftId),
+        channel,
+        documents_valid: true,
+        duplicate_sent: true,
+        duplicate_delivery: {
+          delivery_id: existingSent.delivery_id,
+          sent_at: existingSent.sent_at,
+          recipient_redacted: existingSent.recipient_redacted,
+        },
+      },
+      warnings: ["DELIVERY_ALREADY_SENT"],
+      errors: [],
+    }, ledgerRecord, idempotencyKey);
+  }
 
   const canonicalRequest = buildCanonicalDocumentDeliveryRequest({
     provider: "factura_com",
@@ -373,7 +849,15 @@ async function runSandboxDocumentDeliverySend(options = {}) {
     if (documentMetadata.pdf_source === "LOCAL_RENDERED_FROM_XML"
       && documentMetadata.provider_pdf_content_valid !== true
       && String(options.env?.PROVIDER_EMAIL_ALLOW_WITH_PROVIDER_PDF_INVALID || process.env.PROVIDER_EMAIL_ALLOW_WITH_PROVIDER_PDF_INVALID || "0") !== "1") {
-      return {
+      const ledgerRecord = safeRecordDeliveryAttempt({
+        ...baseLedger,
+        delivery_status: LEDGER_STATUSES.BLOCKED_PROVIDER_PDF_INVALID,
+        delivery_action: dryRun ? "DRY_RUN" : "SEND",
+        idempotency_key: attemptLedgerKey(baseLedger, LEDGER_STATUSES.BLOCKED_PROVIDER_PDF_INVALID),
+        normalized_errors: ["PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID"],
+        normalized_warnings: ["Provider email queda bloqueado porque el PDF del proveedor no fue validado visualmente."],
+      }, options);
+      return appendLedgerOutput({
         status: "PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID",
         output: {
           draft_id: text(draft.draft_id || options.draftId),
@@ -385,19 +869,32 @@ async function runSandboxDocumentDeliverySend(options = {}) {
         },
         warnings: ["Provider email queda bloqueado porque el PDF del proveedor no fue validado visualmente."],
         errors: ["PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID"],
-      };
+      }, ledgerRecord, idempotencyKey);
     }
-    return runProviderEmailDelivery({
+    const providerResult = await runProviderEmailDelivery({
       ...options,
       draft,
       canonicalRequest,
       canonicalValidation,
     });
+    const ledgerStatus = deliveryStatusFromSendResult(channel, providerResult, dryRun);
+    const ledgerRecord = safeRecordDeliveryAttempt({
+      ...baseLedger,
+      delivery_status: ledgerStatus,
+      delivery_action: dryRun ? "DRY_RUN" : "SEND",
+      idempotency_key: dryRun ? attemptLedgerKey(baseLedger, LEDGER_STATUSES.DRY_RUN) : idempotencyKey,
+      sent_at: ledgerStatus === LEDGER_STATUSES.SENT ? providerResult.output?.sent_at || new Date().toISOString() : null,
+      provider_message: providerResult.output?.provider_message,
+      normalized_errors: providerResult.errors || [],
+      normalized_warnings: providerResult.warnings || [],
+      evidence_sanitized: providerResult.output || {},
+    }, options);
+    return appendLedgerOutput(providerResult, ledgerRecord, idempotencyKey);
   }
   const result = await sendSandboxInvoiceDocumentsToTelegram({
     files,
     env: options.env || process.env,
-    dryRun: options.dryRun !== false,
+    dryRun,
     requestFn: options.requestFn,
     caption: [
       `Factura sandbox - ${safeClientName(draft)}`,
@@ -410,7 +907,18 @@ async function runSandboxDocumentDeliverySend(options = {}) {
       "Borrador sujeto a revision humana.",
     ].filter(Boolean).join("\n"),
   });
-  return {
+  const telegramStatus = deliveryStatusFromSendResult(channel, result, dryRun);
+  const ledgerRecord = safeRecordDeliveryAttempt({
+    ...baseLedger,
+    delivery_status: telegramStatus,
+    delivery_action: dryRun ? "DRY_RUN" : "SEND",
+    idempotency_key: dryRun ? attemptLedgerKey(baseLedger, LEDGER_STATUSES.DRY_RUN) : idempotencyKey,
+    sent_at: telegramStatus === LEDGER_STATUSES.SENT ? new Date().toISOString() : null,
+    normalized_errors: result.errors || [],
+    normalized_warnings: result.warnings || [],
+    evidence_sanitized: result,
+  }, options);
+  return appendLedgerOutput({
     status: result.status === "OK" || result.status === "DRY_RUN" ? "OK" : result.status,
     output: {
       draft_id: text(draft.draft_id || options.draftId),
@@ -426,7 +934,7 @@ async function runSandboxDocumentDeliverySend(options = {}) {
     },
     warnings: result.warnings || [],
     errors: result.errors || [],
-  };
+  }, ledgerRecord, idempotencyKey);
 }
 
 async function runProviderEmailDelivery(options = {}) {
@@ -553,5 +1061,9 @@ async function runProviderEmailDelivery(options = {}) {
 
 module.exports = {
   runSandboxDocumentDeliveryDiagnose,
+  runSandboxDocumentDeliveryConfirm,
+  runSandboxDocumentDeliveryLedger,
+  runSandboxDocumentDeliveryPrepare,
   runSandboxDocumentDeliverySend,
+  runSandboxDocumentDeliveryStatus,
 };

@@ -31,6 +31,28 @@ function redactChatId(value) {
   return `[REDACTED_CHAT_ID len=${raw.length}]`;
 }
 
+function safeTelegramDescription(value) {
+  const textValue = text(value);
+  if (!textValue) return null;
+  return textValue
+    .replace(/(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}/g, "[redacted-token]")
+    .replace(/[A-Za-z]:[\\/][^\s|]+/g, "[redacted-path]")
+    .replace(/\b-?\d{6,}\b/g, "[redacted-id]")
+    .slice(0, 240);
+}
+
+function normalizeTelegramSendResult(result = {}) {
+  const data = result.data && typeof result.data === "object" ? result.data : {};
+  const errorCode = data.error_code || result.error_code || null;
+  const description = safeTelegramDescription(data.description || result.description || result.error || result.message);
+  return {
+    ok: result.ok === true,
+    telegram_http_status: result.status || result.telegram_http_status || null,
+    telegram_error_code: errorCode,
+    telegram_description_safe: description,
+  };
+}
+
 function resolveRuntimeFile(filePath) {
   const raw = text(filePath);
   if (!raw) return null;
@@ -86,7 +108,7 @@ async function defaultTelegramRequest({ token, chatId, filePath, caption, reques
   body.append("document", new Blob([fs.readFileSync(filePath)]), path.basename(filePath));
   const response = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, { method: "POST", body });
   const data = await response.json().catch(() => ({}));
-  return { ok: response.ok && data.ok !== false, status: response.status, data };
+  return normalizeTelegramSendResult({ ok: response.ok && data.ok !== false, status: response.status, data });
 }
 
 async function sendSandboxInvoiceDocumentsToTelegram({
@@ -139,8 +161,17 @@ async function sendSandboxInvoiceDocumentsToTelegram({
   const targetChat = chatId || env.TELEGRAM_DOCUMENT_DELIVERY_CHAT_ID;
   const results = [];
   for (const filePath of [validation.xml_path, validation.pdf_path]) {
-    results.push(await defaultTelegramRequest({ token, chatId: targetChat, filePath, caption, requestFn }));
+    try {
+      results.push(normalizeTelegramSendResult(await defaultTelegramRequest({ token, chatId: targetChat, filePath, caption, requestFn })));
+    } catch (error) {
+      results.push(normalizeTelegramSendResult({
+        ok: false,
+        status: null,
+        error: error.message || String(error),
+      }));
+    }
   }
+  const failed = results.filter((item) => item.ok !== true);
   return {
     status: results.every((item) => item.ok === true) ? "OK" : "ERROR",
     ok: results.every((item) => item.ok === true),
@@ -148,13 +179,17 @@ async function sendSandboxInvoiceDocumentsToTelegram({
     delivery_ready: true,
     files_valid: true,
     sent_count: results.filter((item) => item.ok === true).length,
-    errors: results.every((item) => item.ok === true) ? [] : ["TELEGRAM_DOCUMENT_SEND_FAILED"],
+    telegram_results: results,
+    telegram_error_diagnostics: failed,
+    errors: failed.length ? ["TELEGRAM_DOCUMENT_SEND_FAILED"] : [],
     warnings: [],
   };
 }
 
 module.exports = {
   diagnoseDocumentDeliveryConfig,
+  normalizeTelegramSendResult,
+  safeTelegramDescription,
   sendSandboxInvoiceDocumentsToTelegram,
   validateDeliveryFiles,
 };
