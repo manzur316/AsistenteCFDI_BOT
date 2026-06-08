@@ -39,7 +39,9 @@ node scripts/run-sandbox-action.js sandbox.documents.delivery.prepare --db-exec-
 ```
 
 If ready, Telegram shows a confirmation summary with redacted recipient email.
-Only after a one-time confirmation token does it run:
+The summary response creates a new persisted `DELIVERY_CONFIRM_PROVIDER_EMAIL`
+token in `cfdi_action_tokens`. Only after that one-time confirmation token is
+pressed does it run:
 
 ```powershell
 node scripts/run-sandbox-action.js sandbox.documents.delivery.send --db-exec-mode docker --draft-id DRAFT-... --channel PROVIDER_EMAIL --send-real --confirmed
@@ -53,8 +55,8 @@ The bot first runs:
 node scripts/run-sandbox-action.js sandbox.documents.delivery.prepare --db-exec-mode docker --draft-id DRAFT-... --channel TELEGRAM_DOCUMENT_CHANNEL
 ```
 
-If ready, Telegram shows a confirmation summary. Only after confirmation does it
-run:
+If ready, Telegram shows a confirmation summary and creates a persisted
+`DELIVERY_CONFIRM_TELEGRAM_CHANNEL` token. Only after confirmation does it run:
 
 ```powershell
 node scripts/run-sandbox-action.js sandbox.documents.delivery.send --db-exec-mode docker --draft-id DRAFT-... --channel TELEGRAM_DOCUMENT_CHANNEL --send-real --confirmed
@@ -62,6 +64,9 @@ node scripts/run-sandbox-action.js sandbox.documents.delivery.send --db-exec-mod
 
 The workflow does not call `sendDocument` directly. Document sending lives in
 the Action Layer.
+
+Confirmation copy for this channel must say that XML/PDF will be sent to the
+configured document channel and not to the operational chat.
 
 ## Duplicate Protection
 
@@ -74,6 +79,20 @@ No se reenvio para evitar duplicados.
 ```
 
 Resend requires explicit human confirmation and the Action Layer `--force` flag.
+The `Reenviar de todos modos` button appears only after a previous `SENT`
+duplicate is detected, and it uses a fresh `DELIVERY_FORCE_*` token.
+
+## Diagnosing token_no_encontrado
+
+If a delivery confirmation button says the token is missing:
+
+1. Reimport `workflow/cfdi_telegram_local_ingest.n8n.json` in n8n.
+2. Press `Enviar por correo` or `Enviar a canal documentos` again.
+3. Before confirming, query `cfdi_action_tokens` for the draft and confirm that
+   `DELIVERY_CONFIRM_PROVIDER_EMAIL` or `DELIVERY_CONFIRM_TELEGRAM_CHANNEL`
+   exists with `used_at IS NULL`.
+4. Confirm once, then verify `used_at` is filled and `document_delivery_ledger`
+   has `SENT` if the Action Layer succeeded.
 
 ## Status
 

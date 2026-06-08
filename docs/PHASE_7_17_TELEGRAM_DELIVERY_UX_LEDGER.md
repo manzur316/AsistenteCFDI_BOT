@@ -2,6 +2,10 @@
 
 Status: implementation slice.
 
+7.17B hotfix: Telegram confirmation buttons now require persisted
+`DELIVERY_CONFIRM_*` tokens created after `sandbox.documents.delivery.prepare`.
+The workflow must be reimported in n8n after this JSON change.
+
 This phase moves sandbox document delivery from "works by Action Layer command"
 to "Telegram/n8n can prepare, confirm, send and audit delivery attempts".
 
@@ -20,6 +24,11 @@ to "Telegram/n8n can prepare, confirm, send and audit delivery attempts".
   - `Enviar a canal documentos`
   - `Ver estado documental`
 - Require one-time confirmation tokens before real sends.
+- Persist `DELIVERY_CONFIRM_PROVIDER_EMAIL` and
+  `DELIVERY_CONFIRM_TELEGRAM_CHANNEL` in `cfdi_action_tokens` before showing the
+  confirmation buttons.
+- Show `DELIVERY_FORCE_*` only when the Action Layer reports a previous `SENT`
+  duplicate for the same draft/channel/destination/document hashes.
 - Keep n8n as orchestrator and Action Layer as executor.
 
 ## Ledger Safety
@@ -53,6 +62,26 @@ No se reenvio para evitar duplicados.
 ```
 
 Resend requires an explicit force token and Action Layer `--force`.
+
+`READY`, `DRY_RUN`, `ERROR`, `PROVIDER_ERROR`, `TELEGRAM_ERROR` and
+`BLOCKED_DUPLICATE` do not block a later real send. The idempotency key remains
+stable and does not include status, action, timestamp or random values.
+
+## 7.17B Confirmation Token Flow
+
+```text
+DELIVERY_PREPARE_* token
+-> sandbox.documents.delivery.prepare
+-> summary node creates DELIVERY_CONFIRM_* token
+-> user taps Confirmar envio
+-> token is marked used_at
+-> sandbox.documents.delivery.send --send-real --confirmed
+-> ledger promotes READY/DRY_RUN to SENT when successful
+```
+
+The token payload is minimal: `state`, `action`, `draft_id`, `channel` and
+`confirmation_required`. It must not contain full email, full chat id, token,
+RFC, UUID, UID, XML/PDF contents or runtime paths.
 
 ## E2E Gate
 

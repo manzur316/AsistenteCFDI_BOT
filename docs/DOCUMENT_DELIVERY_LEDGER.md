@@ -44,8 +44,20 @@ If a previous `SENT` exists for the same key, a new send is blocked by default.
 The Action Layer can override this only with `--force` plus explicit
 confirmation.
 
-Dry-runs and prepare checks are recorded with unique attempt keys so they do not
-block the later real `SENT`.
+Dry-runs and prepare checks use the same canonical key, but they do not block the
+later real `SENT` because duplicate lookup filters only `delivery_status =
+'SENT'`. A later successful send promotes the canonical row to `SENT`.
+
+The idempotency key must never include:
+
+- delivery status;
+- delivery action;
+- timestamp;
+- random value.
+
+If a `SENT` row exists and a later non-SENT duplicate event is recorded, the
+ledger preserves the original `SENT` status and appends sanitized evidence
+instead of degrading the row.
 
 ## Safety
 

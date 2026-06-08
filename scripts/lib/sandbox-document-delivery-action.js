@@ -247,9 +247,7 @@ function canonicalLedgerKey(base = {}) {
 }
 
 function attemptLedgerKey(base = {}, status) {
-  const canonical = canonicalLedgerKey(base);
-  if (status === LEDGER_STATUSES.SENT) return canonical;
-  return `${canonical}:${status}:${Date.now()}`;
+  return canonicalLedgerKey(base);
 }
 
 function safeRecordDeliveryAttempt(input = {}, options = {}) {
@@ -887,7 +885,11 @@ async function runSandboxDocumentDeliverySend(options = {}) {
       provider_message: providerResult.output?.provider_message,
       normalized_errors: providerResult.errors || [],
       normalized_warnings: providerResult.warnings || [],
-      evidence_sanitized: providerResult.output || {},
+      evidence_sanitized: {
+        ...(providerResult.output || {}),
+        confirmed: options.confirmed === true,
+        force: options.force === true,
+      },
     }, options);
     return appendLedgerOutput(providerResult, ledgerRecord, idempotencyKey);
   }
@@ -916,7 +918,11 @@ async function runSandboxDocumentDeliverySend(options = {}) {
     sent_at: telegramStatus === LEDGER_STATUSES.SENT ? new Date().toISOString() : null,
     normalized_errors: result.errors || [],
     normalized_warnings: result.warnings || [],
-    evidence_sanitized: result,
+    evidence_sanitized: {
+      ...result,
+      confirmed: options.confirmed === true,
+      force: options.force === true,
+    },
   }, options);
   return appendLedgerOutput({
     status: result.status === "OK" || result.status === "DRY_RUN" ? "OK" : result.status,

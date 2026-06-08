@@ -1135,6 +1135,8 @@ launcher local recomendado, sin versionar sus scripts locales. Ver
 `docs/PHASE_7_17_TELEGRAM_DELIVERY_UX_LEDGER.md`,
 `docs/DOCUMENT_DELIVERY_LEDGER.md`, `docs/TELEGRAM_DELIVERY_UX_RUNBOOK.md` y
 `docs/LOCAL_LAUNCHER_V3_SAFE_RUNBOOK.md`.
+7.17B corrige la persistencia de tokens `DELIVERY_CONFIRM_*`; reimporta
+`workflow/cfdi_telegram_local_ingest.n8n.json` en n8n para activar el fix.
 
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y

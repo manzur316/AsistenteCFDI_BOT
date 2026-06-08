@@ -57,8 +57,8 @@ function draft() {
 
 function execNoDuplicate(_command, args) {
   const sql = args.join(" ");
-  if (sql.includes("delivery_status = 'SENT'")) return "\n";
-  const status = sql.includes("'SENT'") ? "SENT" : sql.includes("'DRY_RUN'") ? "DRY_RUN" : "READY";
+  if (sql.includes("FROM document_delivery_ledger") && sql.includes("delivery_status = 'SENT'")) return "\n";
+  const status = sql.includes("'DRY_RUN'") ? "DRY_RUN" : sql.includes("'SENT'") ? "SENT" : "READY";
   return JSON.stringify({
     delivery_id: "DELIV-" + status,
     delivery_status: status,

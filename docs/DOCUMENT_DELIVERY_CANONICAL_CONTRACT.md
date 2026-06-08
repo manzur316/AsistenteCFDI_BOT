@@ -159,6 +159,15 @@ redactado/hasheado y hashes XML/PDF. Si ya existe una entrega `SENT` para la
 misma combinacion, el reenvio se bloquea por default y requiere `--force` o una
 confirmacion humana explicita desde Telegram.
 
+7.17B fija que la llave canonica no incluye status, action, timestamp ni
+aleatoriedad. `READY` y `DRY_RUN` quedan como evidencia preparatoria y no
+bloquean el envio real posterior; solo `SENT` activa bloqueo de duplicado.
+
+Telegram debe crear tokens `DELIVERY_CONFIRM_*` persistidos despues de
+`prepare`. Los botones de confirmacion usan `cfdi:<token>` reales y consumen el
+token una sola vez antes de ejecutar `sandbox.documents.delivery.send
+--send-real --confirmed`.
+
 El ledger solo conserva evidencia sanitizada: hashes, tamanos, paths relativos
 bajo `runtime/`, estado, errores normalizados y destinatario redactado. No debe
 guardar token, email completo, chat_id completo, RFC, UUID/UID completos,

@@ -196,6 +196,7 @@ function deliverySqlFields(input = {}) {
 function buildRecordDeliveryAttemptSql(input = {}) {
   const row = deliverySqlFields(input);
   if (!row.draft_id) throw new Error("DELIVERY_LEDGER_DRAFT_ID_REQUIRED");
+  const preserveSentWhenIncomingIsNotSent = "document_delivery_ledger.delivery_status = 'SENT' AND EXCLUDED.delivery_status <> 'SENT'";
   return [
     "INSERT INTO document_delivery_ledger (",
     "delivery_id, draft_id, client_id, provider, environment, channel, delivery_status, delivery_action,",
@@ -238,6 +239,28 @@ function buildRecordDeliveryAttemptSql(input = {}) {
       "now()",
     ].join(", "),
     ") ON CONFLICT (idempotency_key) DO UPDATE SET",
+    "delivery_status = CASE WHEN " + preserveSentWhenIncomingIsNotSent + " THEN document_delivery_ledger.delivery_status ELSE EXCLUDED.delivery_status END,",
+    "delivery_action = CASE WHEN " + preserveSentWhenIncomingIsNotSent + " THEN document_delivery_ledger.delivery_action ELSE EXCLUDED.delivery_action END,",
+    "recipient_present = EXCLUDED.recipient_present,",
+    "recipient_redacted = COALESCE(EXCLUDED.recipient_redacted, document_delivery_ledger.recipient_redacted),",
+    "email_confirmed = COALESCE(EXCLUDED.email_confirmed, document_delivery_ledger.email_confirmed),",
+    "provider_email_sync_status = COALESCE(EXCLUDED.provider_email_sync_status, document_delivery_ledger.provider_email_sync_status),",
+    "telegram_chat_id_present = COALESCE(EXCLUDED.telegram_chat_id_present, document_delivery_ledger.telegram_chat_id_present),",
+    "documents_valid = EXCLUDED.documents_valid,",
+    "xml_content_valid = EXCLUDED.xml_content_valid,",
+    "pdf_content_valid = EXCLUDED.pdf_content_valid,",
+    "pdf_source = COALESCE(EXCLUDED.pdf_source, document_delivery_ledger.pdf_source),",
+    "xml_sha256 = COALESCE(EXCLUDED.xml_sha256, document_delivery_ledger.xml_sha256),",
+    "pdf_sha256 = COALESCE(EXCLUDED.pdf_sha256, document_delivery_ledger.pdf_sha256),",
+    "xml_size_bytes = COALESCE(EXCLUDED.xml_size_bytes, document_delivery_ledger.xml_size_bytes),",
+    "pdf_size_bytes = COALESCE(EXCLUDED.pdf_size_bytes, document_delivery_ledger.pdf_size_bytes),",
+    "human_xml_path = COALESCE(EXCLUDED.human_xml_path, document_delivery_ledger.human_xml_path),",
+    "human_pdf_path = COALESCE(EXCLUDED.human_pdf_path, document_delivery_ledger.human_pdf_path),",
+    "provider_message = COALESCE(EXCLUDED.provider_message, document_delivery_ledger.provider_message),",
+    "evidence_sanitized = COALESCE(document_delivery_ledger.evidence_sanitized, '{}'::jsonb) || COALESCE(EXCLUDED.evidence_sanitized, '{}'::jsonb),",
+    "normalized_errors = CASE WHEN " + preserveSentWhenIncomingIsNotSent + " THEN document_delivery_ledger.normalized_errors ELSE EXCLUDED.normalized_errors END,",
+    "normalized_warnings = CASE WHEN " + preserveSentWhenIncomingIsNotSent + " THEN document_delivery_ledger.normalized_warnings ELSE EXCLUDED.normalized_warnings END,",
+    "sent_at = CASE WHEN document_delivery_ledger.sent_at IS NOT NULL THEN document_delivery_ledger.sent_at WHEN EXCLUDED.delivery_status = 'SENT' THEN COALESCE(EXCLUDED.sent_at, now()) ELSE EXCLUDED.sent_at END,",
     "updated_at = now()",
     "RETURNING to_jsonb(document_delivery_ledger)::text;",
   ].join(" ");
