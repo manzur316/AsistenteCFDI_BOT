@@ -615,7 +615,19 @@ async function runSandboxDraftStamp(options = {}) {
     const firstErrorCode = normalizedErrors[0]?.code || "PAC_SANDBOX_ERROR";
     const needsConfig = String(pacResult.status || "").toUpperCase() === "NEEDS_CONFIG"
       || firstErrorCode === "FACTURACOM_SANDBOX_CONFIG_MISSING"
-      || firstErrorCode === "FACTURACOM_SANDBOX_LOCAL_CONFIG_MISSING";
+      || firstErrorCode === "FACTURACOM_SANDBOX_LOCAL_CONFIG_MISSING"
+      || firstErrorCode === "FACTURACOM_SANDBOX_PAYLOAD_UNRESOLVED";
+    const payloadDiagnostics = pacResult.raw && typeof pacResult.raw === "object"
+      ? sanitizeSandboxArtifact({
+        payload_unresolved_fields_present: pacResult.raw.payload_unresolved_fields_present,
+        payload_unresolved_fields_count: pacResult.raw.payload_unresolved_fields_count,
+        payload_unresolved_fields: pacResult.raw.payload_unresolved_fields,
+        local_config_errors: pacResult.raw.local_config_errors,
+        local_config_warnings: pacResult.raw.local_config_warnings,
+        receptor_compatibility: pacResult.raw.receptor_compatibility,
+        official_request_safe_summary: pacResult.raw.official_request_safe_summary,
+      })
+      : {};
     return {
       status: needsConfig ? "NEEDS_CONFIG" : "ERROR",
       output: {
@@ -628,6 +640,7 @@ async function runSandboxDraftStamp(options = {}) {
         provider_client_link: providerClientLink.safe_link,
         pac_status: pacResult.status || "PAC_ERROR",
         normalized_errors: normalizedErrors,
+        ...payloadDiagnostics,
       },
       warnings: pacResult.normalized_warnings || [],
       errors: normalizedErrors.map((item) => item.code || item.message || "PAC_ERROR"),

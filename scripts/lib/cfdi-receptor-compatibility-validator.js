@@ -225,7 +225,10 @@ function explainUsoCfdiCompatibilityFailure(input = {}) {
   if (result.errors.includes("LOCAL_INVALID_RFC_SHAPE")) parts.push(`RFC receptor con forma invalida (${result.rfc_shape}, len=${result.normalized_rfc_length}).`);
   if (result.errors.includes("LOCAL_USO_CFDI_REQUIRED")) parts.push("Falta UsoCFDI.");
   if (result.errors.includes("LOCAL_REGIMEN_FISCAL_RECEPTOR_REQUIRED")) parts.push("Falta RegimenFiscalR.");
-  if (result.errors.includes("LOCAL_USO_CFDI_NOT_IN_SAT_CATALOG")) parts.push("UsoCFDI no existe en catalogo SAT local.");
+  if (result.errors.includes("LOCAL_USO_CFDI_NOT_IN_SAT_CATALOG")) {
+    const uso = result.effective_uso_cfdi || "N/A";
+    parts.push(`UsoCFDI invalido: ${uso}. Usa clave SAT completa, por ejemplo G01 si corresponde.`);
+  }
   if (result.errors.includes("LOCAL_CFDI40161_USO_CFDI_REGIMEN_PERSONA_MISMATCH")) {
     parts.push(`UsoCFDI ${result.effective_uso_cfdi || "N/A"} no es compatible con RegimenFiscalR ${result.effective_regimen_fiscal_receptor || "N/A"} y persona ${result.effective_person_type || "N/A"}.`);
   }

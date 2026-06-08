@@ -304,6 +304,35 @@ function liveContextFromEnv(context = {}, env = {}) {
   };
 }
 
+function safePayloadUnresolvedDiagnostics(payload = {}, env = {}) {
+  const officialRequest = payload.official_request && typeof payload.official_request === "object"
+    ? payload.official_request
+    : {};
+  const body = officialRequest.body && typeof officialRequest.body === "object"
+    ? officialRequest.body
+    : {};
+  return sanitizeValue({
+    payload_unresolved_fields_present: Array.isArray(officialRequest.unresolved_fields) && officialRequest.unresolved_fields.length > 0,
+    payload_unresolved_fields_count: Array.isArray(officialRequest.unresolved_fields) ? officialRequest.unresolved_fields.length : 0,
+    payload_unresolved_fields: Array.isArray(officialRequest.unresolved_fields) ? officialRequest.unresolved_fields : [],
+    local_config_errors: Array.isArray(officialRequest.local_config_errors) ? officialRequest.local_config_errors : [],
+    local_config_warnings: Array.isArray(officialRequest.local_config_warnings) ? officialRequest.local_config_warnings : [],
+    receptor_compatibility: officialRequest.receptor_compatibility || {},
+    official_request_safe_summary: {
+      TipoDocumento_present: Boolean(text(body.TipoDocumento)),
+      UsoCFDI: text(body.UsoCFDI),
+      Serie_present: Boolean(text(body.Serie)),
+      FormaPago_present: Boolean(text(body.FormaPago)),
+      MetodoPago_present: Boolean(text(body.MetodoPago)),
+      Moneda: text(body.Moneda),
+      LugarExpedicion_present: Boolean(text(body.LugarExpedicion)),
+      Receptor_UID_present: Boolean(text(body.Receptor?.UID)),
+      RegimenFiscalR: text(body.Receptor?.RegimenFiscalR),
+      Conceptos_count: Array.isArray(body.Conceptos) ? body.Conceptos.length : 0,
+    },
+  }, env);
+}
+
 class FacturaComSandboxAdapter {
   constructor(options = {}) {
     this.adapterName = ADAPTER_NAME;
@@ -441,11 +470,12 @@ class FacturaComSandboxAdapter {
 
     const unresolved = payload.official_request?.unresolved_fields || [];
     if (unresolved.length) {
+      const diagnostics = safePayloadUnresolvedDiagnostics(payload, env);
       return normalizeFacturaComErrorResponse({
-        code: "FACTURACOM_SANDBOX_LOCAL_CONFIG_MISSING",
-        message: "Falta configuracion local para timbrado sandbox Factura.com.",
+        code: "FACTURACOM_SANDBOX_PAYLOAD_UNRESOLVED",
+        message: "Payload Factura.com sandbox incompleto o incompatible.",
         status: "NEEDS_CONFIG",
-        data: { unresolved_fields: unresolved, local_config_errors: payload.official_request?.local_config_errors || [] },
+        data: diagnostics,
       }, { operation: "stampSandbox", status: "NEEDS_CONFIG" });
     }
 
