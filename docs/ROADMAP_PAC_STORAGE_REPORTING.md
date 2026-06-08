@@ -1621,4 +1621,22 @@ Alcance:
 - mapper y adapter cliente Factura.com Sandbox quedan bajo host sandbox;
 - produccion, PAC real productivo, workflows y catalogo activo no cambian.
 
+## Fase 7.16F - Shared Telegram Bot Identity + Subscription Access Foundation
+
+La fase 7.16F queda definida en
+`docs/ADR_0003_SHARED_TELEGRAM_BOT_ACCESS_MODEL.md`,
+`docs/ROADMAP_SHARED_BOT_SUBSCRIPTION_ACCESS.md`,
+`docs/SHARED_TELEGRAM_BOT_UX_ACCESS_RULES.md` y
+`docs/TRIAL_MODE_DEMO_TENANT_ROADMAP.md`.
+
+Alcance:
+
+- un solo bot Telegram compartido como default;
+- `telegram_user_id` es identidad de canal, no tenant ni suscripcion;
+- la suscripcion vive en `tenant_id`;
+- entitlements resuelven acciones permitidas;
+- vencimiento pasa a `READ_ONLY`, no bloqueo total;
+- Trial Mode y bots dedicados quedan como roadmap futuro;
+- no cambia workflow operativo, billing, WhatsApp, WebAdmin ni produccion.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.

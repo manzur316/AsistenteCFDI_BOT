@@ -35,6 +35,13 @@ Telegram sigue siendo el canal MVP actual. Debe mantenerse simple:
 
 No debe mostrar complejidad de tenant multi-emisor salvo que sea necesario.
 
+### Shared Telegram Bot Access Model
+
+El MVP usa un solo bot Telegram compartido. El adapter futuro debe resolver
+`telegram_user_id` como identidad de canal y delegar a SATBOT Core la resolucion
+de `user_id`, `tenant_id`, `active_emitter_id`, suscripcion y entitlements.
+Bots dedicados quedan como futuro enterprise/white-label.
+
 ## WhatsApp futuro
 
 WhatsApp es canal futuro, no implementado. Requiere:

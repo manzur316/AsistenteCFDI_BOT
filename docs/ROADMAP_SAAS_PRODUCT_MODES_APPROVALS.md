@@ -22,6 +22,14 @@ al bot conversacional actual.
 | Operador | Persona que usa bot/panel |
 | Contador | Operador autorizado, no necesariamente emisor |
 
+## Shared Telegram Bot Access Model
+
+SATBOT usa por default un solo bot Telegram compartido. `telegram_user_id` se
+vincula a `user_id` interno; la suscripcion vive en `tenant_id`, no en el canal.
+El vencimiento pasa a `READ_ONLY` para consultar historial, renovar, exportar
+basico y contactar soporte. Trial Mode queda como roadmap futuro. Bots dedicados
+son opcion futura enterprise/white-label.
+
 ## Politicas de aprobacion
 
 | Politica | Descripcion | Friccion | Uso sugerido |

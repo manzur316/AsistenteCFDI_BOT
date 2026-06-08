@@ -1088,6 +1088,13 @@ bandera explicita. Ver
 `docs/PHASE_7_16E_FACTURACOM_PROVIDER_CLIENT_SYNC.md` y
 `docs/PROVIDER_CLIENT_LINK_ARCHITECTURE.md`.
 
+7.16F agrega foundation para un bot Telegram compartido:
+`telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
+los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a
+`READ_ONLY`, no a bloqueo total. Trial/demo y bots dedicados quedan como futuro.
+Ver `docs/ADR_0003_SHARED_TELEGRAM_BOT_ACCESS_MODEL.md` y
+`docs/ROADMAP_SHARED_BOT_SUBSCRIPTION_ACCESS.md`.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia
