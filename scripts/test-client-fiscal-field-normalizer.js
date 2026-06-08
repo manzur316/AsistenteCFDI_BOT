@@ -41,6 +41,19 @@ check("g1_queda_bloqueado_en_cliente", () => {
   return result.blockers.join("|");
 });
 
+check("tipo_persona_descripcion_personas_morales_normaliza", () => {
+  const result = normalizeClientFiscalFields({
+    client_id: "CLI-REAL-BILBAO",
+    regimen_fiscal: "603",
+    uso_cfdi_default: "G03",
+    codigo_postal_fiscal: "77500",
+    tipo_persona: "Personas Morales con Fines no Lucrativos",
+  });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.normalized_client.tipo_persona, "MORAL");
+  return result.normalized_client.tipo_persona;
+});
+
 check("no_expone_rfc_completo_en_summary", () => {
   const result = normalizeClientFiscalFields({
     client_id: "CLI-REAL-BILBAO",

@@ -36,10 +36,16 @@ function normalizeTipoPersona(value = null, options = {}) {
     return { ok: true, status: "NOT_PROVIDED", input: null, key: null, warnings: [], errors: [] };
   }
   const normalized = input.toUpperCase();
-  if (["FISICA", "PF", "PERSONA FISICA", "PERSONA_FISICA"].includes(normalized)) {
+  const comparable = normalized
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (["FISICA", "PF", "PERSONA FISICA", "PERSONA_FISICA"].includes(normalized) || /\bPERSONAS?\s+FISICAS?\b/.test(comparable)) {
     return { ok: true, status: "NORMALIZED", input, key: "FISICA", warnings: [], errors: [] };
   }
-  if (["MORAL", "PM", "PERSONA MORAL", "PERSONA_MORAL"].includes(normalized)) {
+  if (["MORAL", "PM", "PERSONA MORAL", "PERSONA_MORAL"].includes(normalized) || /\bPERSONAS?\s+MORALES?\b/.test(comparable)) {
     return { ok: true, status: "NORMALIZED", input, key: "MORAL", warnings: [], errors: [] };
   }
   return { ok: false, status: "NEEDS_CONFIRMATION", input, key: null, warnings: [], errors: ["TIPO_PERSONA_NEEDS_CONFIRMATION"] };
