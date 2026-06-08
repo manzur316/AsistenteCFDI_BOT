@@ -9,6 +9,15 @@ const {
   explainUsoCfdiCompatibilityFailure,
   validateReceptorForCfdi,
 } = require("./cfdi-receptor-compatibility-validator");
+const {
+  normalizeClaveUnidad,
+  normalizeFormaPago,
+  normalizeMetodoPago,
+  normalizeMoneda,
+  normalizeObjetoImp,
+  normalizeRegimenFiscal,
+  normalizeUsoCfdi,
+} = require("./sat-catalogs/sat-field-normalizer");
 
 const PROVIDER = "factura_com";
 const SCHEMA_VERSION = "factura_com_sandbox_payload.mock.v1";
@@ -37,6 +46,29 @@ function number(value, fallback = 0) {
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value ?? null));
+}
+
+function successfulNormalization(result) {
+  return result?.ok === true && result.key;
+}
+
+function safeSatNormalizationReport(result) {
+  if (!result) return null;
+  return {
+    ok: result.ok === true,
+    status: result.status,
+    catalog: result.catalog,
+    input: result.input,
+    key: result.key,
+    description: result.description,
+    source: result.source,
+    warnings: result.warnings || [],
+    errors: result.errors || [],
+  };
+}
+
+function normalizedOrOriginal(result, original) {
+  return successfulNormalization(result) ? result.key : text(original);
 }
 
 function fail(message, code, details = {}) {
@@ -93,7 +125,7 @@ function extractIdempotencyKey(context = {}) {
 
 function extractFacturaComOptions(sourceInvoice = {}, receiver = {}, context = {}) {
   const provider = context.factura_com || context.facturaCom || {};
-  return {
+  const raw = {
     receptor_uid: text(
       provider.receptor_uid
       || provider.receiver_uid
@@ -114,20 +146,45 @@ function extractFacturaComOptions(sourceInvoice = {}, receiver = {}, context = {
     lugar_expedicion: text(provider.LugarExpedicion || provider.lugar_expedicion || context.lugar_expedicion),
     comentarios: text(provider.Comentarios || provider.comentarios || context.comentarios),
   };
+  const normalization = {
+    uso_cfdi: raw.uso_cfdi ? normalizeUsoCfdi(raw.uso_cfdi) : null,
+    forma_pago: raw.forma_pago ? normalizeFormaPago(raw.forma_pago) : null,
+    metodo_pago: raw.metodo_pago ? normalizeMetodoPago(raw.metodo_pago) : null,
+    moneda: raw.moneda ? normalizeMoneda(raw.moneda) : null,
+  };
+  return {
+    ...raw,
+    uso_cfdi: normalizedOrOriginal(normalization.uso_cfdi, raw.uso_cfdi),
+    forma_pago: normalizedOrOriginal(normalization.forma_pago, raw.forma_pago),
+    metodo_pago: normalizedOrOriginal(normalization.metodo_pago, raw.metodo_pago),
+    moneda: normalizedOrOriginal(normalization.moneda, raw.moneda),
+    sat_field_normalization: normalization,
+  };
 }
 
 function mapCanonicalReceiverToFacturaComReceiver(receiver = {}) {
   const source = receiver || {};
+  const taxRegimeNormalization = normalizeRegimenFiscal(source.tax_regime || source.regimen_fiscal);
+  const cfdiUseInput = text(source.cfdi_use || source.uso_cfdi || source.uso_cfdi_default);
+  const cfdiUseNormalization = cfdiUseInput ? normalizeUsoCfdi(cfdiUseInput) : null;
   return {
     provider_field_status: TODO_DOCS_REQUIRED,
     rfc: requireText(source.rfc, "receiver.rfc"),
     legal_name: requireText(source.legal_name || source.display_name, "receiver.legal_name"),
-    tax_regime: requireText(source.tax_regime || source.regimen_fiscal, "receiver.tax_regime"),
+    tax_regime: requireText(successfulNormalization(taxRegimeNormalization) ? taxRegimeNormalization.key : (source.tax_regime || source.regimen_fiscal), "receiver.tax_regime"),
     fiscal_zip: requireText(source.fiscal_zip || source.codigo_postal_fiscal || source.cp, "receiver.fiscal_zip"),
-    cfdi_use: text(source.cfdi_use || source.uso_cfdi || source.uso_cfdi_default),
+    cfdi_use: successfulNormalization(cfdiUseNormalization) ? cfdiUseNormalization.key : cfdiUseInput,
     person_type: text(source.person_type || source.tipo_persona),
     validated_by_human: source.validated_by_human === true,
-    validation_warnings: Array.isArray(source.validation_warnings) ? clone(source.validation_warnings) : [],
+    validation_warnings: [
+      ...(Array.isArray(source.validation_warnings) ? clone(source.validation_warnings) : []),
+      ...(taxRegimeNormalization?.warnings || []),
+      ...(cfdiUseNormalization?.warnings || []),
+    ],
+    sat_field_normalization: {
+      tax_regime: safeSatNormalizationReport(taxRegimeNormalization),
+      cfdi_use: safeSatNormalizationReport(cfdiUseNormalization),
+    },
   };
 }
 
@@ -194,20 +251,28 @@ function mapLineTaxes(lineItem = {}) {
 
 function mapCanonicalLineItemToFacturaComConcept(lineItem = {}) {
   const source = lineItem || {};
+  const unitNormalization = normalizeClaveUnidad(source.unit_key || source.clave_unidad || source.unit_name || source.unidad, {
+    context: source.activity_scope?.operation_type || source.operation_type || source.item_type,
+  });
+  const taxObjectNormalization = normalizeObjetoImp(source.tax_object || source.objeto_imp || "02");
   const concept = {
     provider_field_status: TODO_DOCS_REQUIRED,
     line_id: requireText(source.line_id, "line_item.line_id"),
     description: requireText(source.description, "line_item.description"),
     clave_prod_serv: requireText(source.product_service_key || source.clave_prod_serv, "line_item.product_service_key"),
-    clave_unidad: requireText(source.unit_key || source.clave_unidad, "line_item.unit_key"),
+    clave_unidad: requireText(successfulNormalization(unitNormalization) ? unitNormalization.key : (source.unit_key || source.clave_unidad), "line_item.unit_key"),
     unidad: text(source.unit_name || source.unidad),
     quantity: number(source.quantity, 1),
     unit_price: number(source.unit_price, 0),
     subtotal: number(source.subtotal, 0),
-    tax_object: requireText(source.tax_object || source.objeto_imp, "line_item.tax_object"),
+    tax_object: requireText(successfulNormalization(taxObjectNormalization) ? taxObjectNormalization.key : (source.tax_object || source.objeto_imp), "line_item.tax_object"),
     taxes: mapLineTaxes(source),
     concept_id: text(source.concept_id || source.id),
     requires_human_review: true,
+    sat_field_normalization: {
+      clave_unidad: safeSatNormalizationReport(unitNormalization),
+      objeto_imp: safeSatNormalizationReport(taxObjectNormalization),
+    },
   };
   concept.official_fields = {
     provider_field_status: OFFICIAL_DOCS_CONFIRMED,
@@ -226,6 +291,9 @@ function mapCanonicalLineItemToFacturaComConcept(lineItem = {}) {
 
 function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, concepts = [], context = {}) {
   const options = extractFacturaComOptions(sourceInvoice, receiver, context);
+  const emitterRegimenNormalization = text(context.emitter_regimen_fiscal || sourceInvoice.emitter_regimen_fiscal)
+    ? normalizeRegimenFiscal(context.emitter_regimen_fiscal || sourceInvoice.emitter_regimen_fiscal)
+    : null;
   const body = {
     Receptor: {
       provider_field_status: options.receptor_uid ? OFFICIAL_DOCS_CONFIRMED : TODO_DOCS_REQUIRED,
@@ -233,7 +301,7 @@ function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, conce
       RegimenFiscalR: receiver.tax_regime,
     },
     TipoDocumento: options.tipo_documento,
-    RegimenFiscal: text(context.emitter_regimen_fiscal || sourceInvoice.emitter_regimen_fiscal),
+    RegimenFiscal: normalizedOrOriginal(emitterRegimenNormalization, context.emitter_regimen_fiscal || sourceInvoice.emitter_regimen_fiscal),
     Conceptos: concepts.map((concept) => concept.official_fields),
     UsoCFDI: options.uso_cfdi,
     Serie: options.serie,
@@ -252,6 +320,21 @@ function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, conce
   });
   const localConfigErrors = receptorCompatibility.errors || [];
   const localConfigWarnings = receptorCompatibility.warnings || [];
+  const normalizationReports = {
+    receiver_tax_regime: receiver.sat_field_normalization?.tax_regime || null,
+    receiver_cfdi_use: receiver.sat_field_normalization?.cfdi_use || null,
+    options_uso_cfdi: safeSatNormalizationReport(options.sat_field_normalization?.uso_cfdi),
+    forma_pago: safeSatNormalizationReport(options.sat_field_normalization?.forma_pago),
+    metodo_pago: safeSatNormalizationReport(options.sat_field_normalization?.metodo_pago),
+    moneda: safeSatNormalizationReport(options.sat_field_normalization?.moneda),
+    emitter_regimen_fiscal: safeSatNormalizationReport(emitterRegimenNormalization),
+  };
+  const normalizationWarnings = Object.values(normalizationReports)
+    .filter((item) => item?.ok && item.status === "NORMALIZED")
+    .flatMap((item) => item.warnings || ["SAT_DESCRIPTION_NORMALIZED_TO_KEY"]);
+  const normalizationErrors = Object.entries(normalizationReports)
+    .filter(([, item]) => item && item.ok !== true)
+    .map(([field, item]) => `SAT_FIELD_${field}_UNRESOLVED:${item.status}`);
 
   return {
     provider_field_status: OFFICIAL_DOCS_PARTIAL,
@@ -272,6 +355,7 @@ function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, conce
       !options.metodo_pago && "MetodoPago debe capturarse o configurarse antes de live smoke",
       !options.moneda && "Moneda debe capturarse o configurarse antes de live smoke",
       !options.lugar_expedicion && "LugarExpedicion debe capturarse o confirmarse antes de live smoke",
+      ...normalizationErrors,
       ...localConfigErrors.map((code) => `${code}: ${explainUsoCfdiCompatibilityFailure({
         rfc: receiver.rfc,
         regimenFiscalReceptor: receiver.tax_regime,
@@ -280,8 +364,9 @@ function buildOfficialFacturaComRequest(sourceInvoice = {}, receiver = {}, conce
       })}`),
     ].filter(Boolean),
     local_config_errors: localConfigErrors,
-    local_config_warnings: localConfigWarnings,
+    local_config_warnings: Array.from(new Set([...localConfigWarnings, ...normalizationWarnings])),
     receptor_compatibility: buildSafeReceptorCompatibilityReport(receptorCompatibility),
+    sat_field_normalization_report: normalizationReports,
   };
 }
 

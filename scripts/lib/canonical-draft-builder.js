@@ -3,6 +3,11 @@ const {
   REVIEW_STATUSES,
   validateCanonicalDraft,
 } = require("./canonical-cfdi-contracts");
+const { normalizeClientFiscalFields } = require("./clients/client-fiscal-field-normalizer");
+const {
+  normalizeClaveUnidad,
+  normalizeObjetoImp,
+} = require("./sat-catalogs/sat-field-normalizer");
 
 function nowIso() {
   return new Date().toISOString();
@@ -44,24 +49,28 @@ function conceptField(concept, names) {
 
 function buildCanonicalReceiverFromClient(client = {}) {
   const warnings = [];
+  const normalized = normalizeClientFiscalFields(client);
+  const normalizedClient = normalized.normalized_client || client;
   const receiver = {
-    client_id: text(client.client_id || client.id),
-    display_name: text(client.display_name || client.name || client.razon_social),
-    rfc: text(client.rfc),
-    legal_name: text(client.legal_name || client.razon_social || client.name),
-    tax_regime: text(client.tax_regime || client.regimen_fiscal),
-    cfdi_use: text(client.cfdi_use || client.uso_cfdi || client.usoCFDI),
-    uso_cfdi: text(client.uso_cfdi || client.cfdi_use || client.usoCFDI),
-    fiscal_zip: text(client.fiscal_zip || client.codigo_postal_fiscal || client.cp),
-    person_type: text(client.person_type || client.tipo_persona),
-    fiscal_profile_id: text(client.fiscal_profile_id),
-    fiscal_profile_source: text(client.fiscal_profile_source),
-    fiscal_profile_validation: client.fiscal_profile_validation || null,
-    validated_by_human: client.validated_by_human === true,
-    validation_warnings: compactWarnings(client.validation_warnings || []),
-    future_case: client.future_case === true,
+    client_id: text(normalizedClient.client_id || normalizedClient.id),
+    display_name: text(normalizedClient.display_name || normalizedClient.name || normalizedClient.razon_social),
+    rfc: text(normalizedClient.rfc),
+    legal_name: text(normalizedClient.legal_name || normalizedClient.razon_social || normalizedClient.name),
+    tax_regime: text(normalizedClient.tax_regime || normalizedClient.regimen_fiscal),
+    cfdi_use: text(normalizedClient.cfdi_use || normalizedClient.uso_cfdi || normalizedClient.usoCFDI || normalizedClient.uso_cfdi_default),
+    uso_cfdi: text(normalizedClient.uso_cfdi || normalizedClient.cfdi_use || normalizedClient.usoCFDI || normalizedClient.uso_cfdi_default),
+    fiscal_zip: text(normalizedClient.fiscal_zip || normalizedClient.codigo_postal_fiscal || normalizedClient.cp),
+    person_type: text(normalizedClient.person_type || normalizedClient.tipo_persona),
+    fiscal_profile_id: text(normalizedClient.fiscal_profile_id),
+    fiscal_profile_source: text(normalizedClient.fiscal_profile_source),
+    fiscal_profile_validation: normalizedClient.fiscal_profile_validation || null,
+    validated_by_human: normalizedClient.validated_by_human === true,
+    validation_warnings: compactWarnings([...(normalizedClient.validation_warnings || []), ...(normalized.warnings || [])]),
+    fiscal_normalization_report: normalized.normalization_report,
+    future_case: normalizedClient.future_case === true,
   };
 
+  if (!normalized.ok) warnings.push(...normalized.blockers.map((blocker) => `client_fiscal_normalization_${blocker}`));
   if (!receiver.validated_by_human) warnings.push("cliente_no_validado_por_humano");
   if (!receiver.rfc) warnings.push("rfc_faltante");
   if (!receiver.tax_regime) warnings.push("regimen_fiscal_faltante");
@@ -122,6 +131,17 @@ function buildCanonicalLineItemFromConcept(concept = {}, amountContext = {}) {
     warnings: amountContext.tax_warnings ?? concept.tax_warnings,
   });
 
+  const rawUnitKey = text(conceptField(actualConcept, ["clave_unidad", "sat.unit_key", "unit_key"]));
+  const rawUnitName = text(conceptField(actualConcept, ["unidad", "sat.unit", "unit_name"]));
+  const unitNormalization = normalizeClaveUnidad(rawUnitKey || rawUnitName, {
+    context: concept.tipo || concept.item_type || concept.operacion || concept.operation_type,
+  });
+  const rawTaxObject = text(conceptField(actualConcept, ["objeto_imp", "tax_object"])) || "02";
+  const taxObjectNormalization = normalizeObjetoImp(rawTaxObject);
+  const normalizedWarnings = [];
+  if (unitNormalization.ok && unitNormalization.status === "NORMALIZED") normalizedWarnings.push("clave_unidad_normalizada_a_clave_sat");
+  if (taxObjectNormalization.ok && taxObjectNormalization.status === "NORMALIZED") normalizedWarnings.push("objeto_imp_normalizado_a_clave_sat");
+
   return {
     line_id: text(amountContext.line_id || concept.line_id) || `LINE-${String(lineNumber).padStart(3, "0")}`,
     description: text(conceptField(actualConcept, [
@@ -132,12 +152,12 @@ function buildCanonicalLineItemFromConcept(concept = {}, amountContext = {}) {
       "description",
     ])),
     quantity,
-    unit_key: text(conceptField(actualConcept, ["clave_unidad", "sat.unit_key", "unit_key"])),
-    unit_name: text(conceptField(actualConcept, ["unidad", "sat.unit", "unit_name"])),
+    unit_key: unitNormalization.ok ? unitNormalization.key : rawUnitKey,
+    unit_name: rawUnitName || unitNormalization.description,
     product_service_key: text(conceptField(actualConcept, ["clave_prod_serv", "sat.product_service_key", "product_service_key"])),
     unit_price: unitPrice,
     subtotal,
-    tax_object: text(conceptField(actualConcept, ["objeto_imp", "tax_object"])) || "02",
+    tax_object: taxObjectNormalization.ok ? taxObjectNormalization.key : rawTaxObject,
     taxes: Array.isArray(concept.taxes) ? concept.taxes : taxArrayFromBreakdown(breakdown),
     activity_scope: amountContext.activity_scope || concept.activity_scope || {
       family: concept.familia || concept.family || concept.subfamily || null,
@@ -146,7 +166,7 @@ function buildCanonicalLineItemFromConcept(concept = {}, amountContext = {}) {
     source_confidence: number(amountContext.source_confidence ?? concept.source_confidence ?? concept.confidence, 0),
     requires_human_review: true,
     concept_id: text(actualConcept.id || concept.concept_id),
-    warnings: compactWarnings(amountContext.warnings || concept.warnings || []),
+    warnings: compactWarnings([...(amountContext.warnings || []), ...(concept.warnings || []), ...normalizedWarnings]),
   };
 }
 

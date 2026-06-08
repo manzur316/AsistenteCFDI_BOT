@@ -155,6 +155,13 @@ reporte local `receptor_compatibility=PASS|FAIL`; si el analyzer detecta un
 (`RECEPTOR_GUARD_NOT_EVALUATED_BUG`). Esta regla aplica al Hub neutral de PAC,
 no solo a Factura.com.
 
+Regla 7.16E-LOCAL: antes de mapear cliente, receptor o payload sandbox, los
+campos SAT deben normalizarse a claves oficiales cuando el texto humano sea
+inequivoco. Ejemplos permitidos: `Personas Morales con Fines no Lucrativos` ->
+`603`, `Gastos en general` -> `G03`, `Pago en una sola exhibicion` -> `PUE`.
+El sistema no debe corregir silenciosamente formatos incompletos como `G1` ni
+adivinar `ClaveProdServ`. Ver `docs/SAT_FIELD_NORMALIZATION_GUARD.md`.
+
 ## Storage Engine
 
 El Storage Engine debe organizar documentos y metadatos por una ruta logica

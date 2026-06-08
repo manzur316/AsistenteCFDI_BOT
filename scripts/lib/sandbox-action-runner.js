@@ -13,6 +13,7 @@ const { runSandboxDraftCancel } = require("./sandbox-draft-cancel-action");
 const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-artifacts-action");
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
 const { runSatCfdiRulesDiagnose } = require("./sat-cfdi-rules-diagnose-action");
+const { runClientFiscalNormalizeDiagnose } = require("./client-fiscal-normalize-diagnose-action");
 const {
   runProviderClientDiagnose,
   runProviderClientLink,
@@ -53,6 +54,7 @@ const ACTIONS = [
   "sandbox.draft.download-artifacts",
   "sandbox.draft.cancel",
   "sandbox.cfdi.rules.diagnose",
+  "sandbox.client.fiscal-normalize.diagnose",
   "sandbox.provider.client.lookup",
   "sandbox.provider.client.sync",
   "sandbox.provider.client.link",
@@ -582,6 +584,7 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.draft.download-artifacts") return runDraftDownloadArtifacts(paths, env, options);
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
   if (action === "sandbox.cfdi.rules.diagnose") return runCfdiRulesDiagnose(options);
+  if (action === "sandbox.client.fiscal-normalize.diagnose") return runClientFiscalNormalizeDiagnose(options);
   if (action.startsWith("sandbox.provider.client.")) return runProviderClientAction(action, { ...options, env });
   return stableStep(action, "ERROR", {}, [], ["UNHANDLED_ACTION"]);
 }

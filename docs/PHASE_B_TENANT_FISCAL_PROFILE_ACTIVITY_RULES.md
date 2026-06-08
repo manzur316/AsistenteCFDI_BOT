@@ -46,6 +46,12 @@ Cada tenant/emisor podra configurar:
 `TENANT_PERSONAL_DEFAULT` se mantiene como tenant semilla sin romper la operacion
 actual.
 
+Los perfiles de tenant deben guardar claves SAT, no descripciones humanas, en
+campos como `regimen_fiscal`, `default_uso_cfdi`, `default_metodo_pago` y
+`default_forma_pago`. La fase 7.16E-LOCAL agrega normalizacion segura para
+entradas inequivocas y bloquea formatos ambiguos/incompletos. Ver
+`docs/SAT_FIELD_NORMALIZATION_GUARD.md`.
+
 La fase 7.16D documenta como este perfil fiscal se usara en modos de producto
 futuros: `DIRECT_BUSINESS_MODE` para uso propio y `ACCOUNTING_FIRM_MODE` para
 despachos que administran varios emisores. Esa fase no cambia este foundation ni

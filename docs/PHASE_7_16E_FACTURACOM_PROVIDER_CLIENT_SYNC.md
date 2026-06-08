@@ -103,6 +103,28 @@ o, si el UID ya fue verificado manualmente:
 node scripts/run-sandbox-action.js sandbox.provider.client.link --client-id CLIENT-... --provider-client-uid UID...
 ```
 
+## Normalizacion SAT de cliente local
+
+Hotfix 7.16E-LOCAL agrega un guard previo a provider sync y payload sandbox:
+si `cfdi_clients.regimen_fiscal` o `uso_cfdi_default` contienen descripciones
+humanas inequivocas, el Action Layer usa claves SAT para el payload.
+
+Ejemplo:
+
+```text
+Personas Morales con Fines no Lucrativos -> 603
+Gastos en general -> G03
+```
+
+Diagnostico solo lectura:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.client.fiscal-normalize.diagnose --db-exec-mode docker --client-id CLI-REAL-BILBAO
+```
+
+El diagnostico no muta la base y no expone RFC completo. Formatos incompletos
+como `G1` siguen bloqueados. Detalle: `docs/SAT_FIELD_NORMALIZATION_GUARD.md`.
+
 ## PostgreSQL local con Docker
 
 En entorno local Docker, las acciones del Action Layer que leen PostgreSQL

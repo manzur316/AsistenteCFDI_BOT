@@ -12,6 +12,13 @@ Ese JSON fue generado desde la base fiscal original y no debe contener conceptos
 
 Por seguridad, el Excel fuente `data/base_cfdi_resico_n8n_emberhub_2026.xlsx` no se versiona en Git. Si necesitas regenerar el JSON, coloca el Excel localmente en esa ruta y ejecuta el proceso de normalizacion offline correspondiente, verificando despues los tests.
 
+Los campos de catalogos SAT usados para payloads y validaciones deben operar
+como claves, no como descripciones humanas. La fase 7.16E agrega el guard local
+de normalizacion segura documentado en `docs/SAT_FIELD_NORMALIZATION_GUARD.md`;
+por ejemplo, `Personas Morales con Fines no Lucrativos` se normaliza a `603` y
+`Gastos en general` a `G03` antes del payload sandbox, mientras `G1` sigue
+bloqueado como formato invalido.
+
 ## Seguridad de repositorio
 
 No se deben subir:

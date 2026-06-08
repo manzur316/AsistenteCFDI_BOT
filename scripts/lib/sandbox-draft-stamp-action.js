@@ -15,6 +15,7 @@ const {
 } = require("./facturacom-sandbox-config-resolver");
 const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
 const { safeLinkOutput } = require("./provider-client-link-store");
+const { normalizeClientFiscalFields } = require("./clients/client-fiscal-field-normalizer");
 
 const SANDBOX_DRAFT_STAMP_STATUS = Object.freeze({
   STAMPING: "SANDBOX_TIMBRANDO",
@@ -68,16 +69,21 @@ function normalizeConcept(concept = {}) {
 }
 
 function normalizeClient(client = {}) {
+  const normalized = normalizeClientFiscalFields(client);
+  const source = normalized.normalized_client || client;
   return {
     client_id: text(client.client_id || client.id),
-    display_name: text(client.display_name || client.razon_social || client.name),
-    razon_social: text(client.razon_social || client.legal_name || client.display_name || client.name),
-    rfc: text(client.rfc),
-    regimen_fiscal: text(client.regimen_fiscal || client.tax_regime),
-    codigo_postal_fiscal: text(client.codigo_postal_fiscal || client.fiscal_zip || client.cp),
-    uso_cfdi_default: text(client.uso_cfdi_default || client.uso_cfdi || client.cfdi_use),
-    tipo_persona: text(client.tipo_persona || client.person_type),
-    validated_by_human: client.validated_by_human === true,
+    display_name: text(source.display_name || source.razon_social || source.name),
+    razon_social: text(source.razon_social || source.legal_name || source.display_name || source.name),
+    rfc: text(source.rfc),
+    regimen_fiscal: text(source.regimen_fiscal || source.tax_regime),
+    codigo_postal_fiscal: text(source.codigo_postal_fiscal || source.fiscal_zip || source.cp),
+    uso_cfdi_default: text(source.uso_cfdi_default || source.uso_cfdi || source.cfdi_use),
+    tipo_persona: text(source.tipo_persona || source.person_type),
+    validated_by_human: source.validated_by_human === true,
+    fiscal_normalization_summary: source.fiscal_normalization_summary || null,
+    fiscal_normalization_report: normalized.normalization_report,
+    fiscal_normalization_blockers: normalized.blockers || [],
   };
 }
 
@@ -247,6 +253,8 @@ function canonicalInputFromDraft(draft = {}) {
     client: hydratedClient,
     client_snapshot: hydratedClient,
     historical_client_snapshot: historicalClient,
+    client_fiscal_normalization: hydratedClient.fiscal_normalization_summary || draft.client_fiscal_normalization || null,
+    client_fiscal_normalization_report: hydratedClient.fiscal_normalization_report || draft.client_fiscal_normalization_report || null,
     concept: normalizeConcept(draft.concept || {}),
     amount: subtotal,
     subtotal,
@@ -312,6 +320,7 @@ function draftErrorContext(draft = {}, options = {}) {
     client_id: text(client.client_id || safeDraft.client_id),
     client_display_name: text(client.display_name || client.razon_social || client.client_id || safeDraft.client_id),
     total: number(safeDraft.total),
+    client_fiscal_normalization: client.fiscal_normalization_summary || safeDraft.client_fiscal_normalization || null,
   };
 }
 
@@ -625,6 +634,7 @@ async function runSandboxDraftStamp(options = {}) {
         local_config_errors: pacResult.raw.local_config_errors,
         local_config_warnings: pacResult.raw.local_config_warnings,
         receptor_compatibility: pacResult.raw.receptor_compatibility,
+        sat_field_normalization_report: pacResult.raw.sat_field_normalization_report,
         official_request_safe_summary: pacResult.raw.official_request_safe_summary,
       })
       : {};
@@ -670,6 +680,8 @@ async function runSandboxDraftStamp(options = {}) {
       payment_status: text(draft.payment_status) === "NO_APLICA" || !text(draft.payment_status) ? "PENDIENTE" : text(draft.payment_status),
       client_display_name: validation.client.display_name || validation.client.client_id,
       client_id: validation.client.client_id,
+      client_fiscal_normalization: validation.client.fiscal_normalization_summary || draft.client_fiscal_normalization || null,
+      client_fiscal_normalization_report: validation.client.fiscal_normalization_report || draft.client_fiscal_normalization_report || null,
       total: invoiceResult.invoice_document.total,
       artifacts_count: manifestFiles ? 4 : 0,
       manifest_path: manifestFiles?.manifestPath || null,

@@ -318,6 +318,7 @@ function safePayloadUnresolvedDiagnostics(payload = {}, env = {}) {
     local_config_errors: Array.isArray(officialRequest.local_config_errors) ? officialRequest.local_config_errors : [],
     local_config_warnings: Array.isArray(officialRequest.local_config_warnings) ? officialRequest.local_config_warnings : [],
     receptor_compatibility: officialRequest.receptor_compatibility || {},
+    sat_field_normalization_report: officialRequest.sat_field_normalization_report || {},
     official_request_safe_summary: {
       TipoDocumento_present: Boolean(text(body.TipoDocumento)),
       UsoCFDI: text(body.UsoCFDI),

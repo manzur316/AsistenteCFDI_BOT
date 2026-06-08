@@ -45,6 +45,7 @@ function buildCanonicalProviderClient(input = {}) {
     sync_status: input.sync_status || "NEEDS_SYNC",
     sat_validated: input.sat_validated === true,
     raw_provider_response_sanitized: input.raw_provider_response_sanitized || {},
+    sat_field_normalization: input.sat_field_normalization || null,
   };
 }
 

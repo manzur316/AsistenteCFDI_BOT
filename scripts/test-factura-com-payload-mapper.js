@@ -137,12 +137,16 @@ expectMapperError("falta_clave_sat_falla_controlado", () => {
   mapCanonicalInvoiceToFacturaComPayload(invoice, { canonicalPacRequest, canonicalDraft, line_items: lineItems });
 }, "FACTURA_COM_REQUIRED_FIELD");
 
-expectMapperError("falta_unidad_falla_controlado", () => {
+check("unidad_descripcion_inequivoca_se_normaliza", () => {
   const { invoice, canonicalDraft, canonicalPacRequest } = buildScenario("DRAFT-DEMO-CCTV-SERVICE");
   const lineItems = clone(canonicalDraft.line_items);
   lineItems[0].unit_key = null;
-  mapCanonicalInvoiceToFacturaComPayload(invoice, { canonicalPacRequest, canonicalDraft, line_items: lineItems });
-}, "FACTURA_COM_REQUIRED_FIELD");
+  lineItems[0].unit_name = "Unidad de servicio";
+  const payload = mapCanonicalInvoiceToFacturaComPayload(invoice, { canonicalPacRequest, canonicalDraft, line_items: lineItems });
+  assert.strictEqual(payload.concepts[0].clave_unidad, "E48");
+  assert.strictEqual(payload.concepts[0].official_fields.ClaveUnidad, "E48");
+  return payload.concepts[0].clave_unidad;
+});
 
 expectMapperError("falta_cp_regimen_rfc_falla_controlado", () => {
   const { invoice, canonicalDraft, canonicalPacRequest } = buildScenario("DRAFT-DEMO-CCTV-SERVICE");

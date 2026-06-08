@@ -3,6 +3,7 @@ const {
   connectionFromEnv,
   runPsqlRaw,
 } = require("./local-db-psql-runner");
+const { normalizeClientFiscalFields } = require("./clients/client-fiscal-field-normalizer");
 
 
 function text(value) {
@@ -125,9 +126,16 @@ function parsePsqlJsonOutput(raw) {
 
 function normalizeDraftRow(row) {
   if (!row || typeof row !== "object") return null;
-  const clientSnapshot = row.client_snapshot && typeof row.client_snapshot === "object" ? row.client_snapshot : {};
-  const currentClient = row.current_client && typeof row.current_client === "object" ? row.current_client : clientSnapshot;
-  const historicalClientSnapshot = row.historical_client_snapshot && typeof row.historical_client_snapshot === "object" ? row.historical_client_snapshot : {};
+  const clientSnapshotRaw = row.client_snapshot && typeof row.client_snapshot === "object" ? row.client_snapshot : {};
+  const currentClientCandidate = row.current_client && typeof row.current_client === "object" ? row.current_client : {};
+  const currentClientRaw = Object.keys(currentClientCandidate).length ? currentClientCandidate : clientSnapshotRaw;
+  const historicalClientSnapshotRaw = row.historical_client_snapshot && typeof row.historical_client_snapshot === "object" ? row.historical_client_snapshot : {};
+  const currentClientNormalization = normalizeClientFiscalFields(currentClientRaw);
+  const snapshotNormalization = normalizeClientFiscalFields(clientSnapshotRaw);
+  const historicalClientNormalization = normalizeClientFiscalFields(historicalClientSnapshotRaw);
+  const clientSnapshot = snapshotNormalization.normalized_client || clientSnapshotRaw;
+  const currentClient = currentClientNormalization.normalized_client || currentClientRaw;
+  const historicalClientSnapshot = historicalClientNormalization.normalized_client || historicalClientSnapshotRaw;
   const lineItems = Array.isArray(row.line_items) ? row.line_items : [];
   const providerClientLink = row.provider_client_link && typeof row.provider_client_link === "object"
     ? row.provider_client_link
@@ -158,6 +166,12 @@ function normalizeDraftRow(row) {
     historical_client_snapshot: historicalClientSnapshot,
     client_snapshot: clientSnapshot,
     client: currentClient,
+    client_fiscal_normalization_report: {
+      current_client: currentClientNormalization.normalization_report,
+      client_snapshot: snapshotNormalization.normalization_report,
+      historical_client_snapshot: historicalClientNormalization.normalization_report,
+    },
+    client_fiscal_normalization: currentClient.fiscal_normalization_summary || clientSnapshot.fiscal_normalization_summary || null,
     provider_client_link: providerClientLink,
     concept,
     line_items: lineItems,
