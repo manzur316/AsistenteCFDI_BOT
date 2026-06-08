@@ -33,9 +33,14 @@ El XML sandbox debe:
 - contener `Comprobante` CFDI con namespace CFDI o `Version="4.0"`;
 - contener `TimbreFiscalDigital`;
 - contener UUID;
+- no contener marcadores de redaccion como `[REDACTED_RFC]`;
 - reportar solo metadata segura: `status`, `size_bytes`, `sha256` y banderas.
 
-No se imprime XML completo, RFC, UUID completo ni rutas absolutas en Telegram.
+El XML final guardado como documento debe ser raw CFDI del proveedor. Las
+redacciones se permiten en logs, manifests y diagnosticos, pero si aparecen en
+`cfdi.xml` o en el alias humano el estado es
+`XML_SANITIZED_ARTIFACT_INVALID`. No se imprime XML completo, RFC, UUID completo
+ni rutas absolutas en Telegram.
 
 ## Reglas PDF
 
@@ -47,11 +52,16 @@ El PDF sandbox debe:
 - contener `%%EOF`;
 - cumplir tamano minimo configurable, default 1024 bytes;
 - contener pagina y streams de contenido;
-- contener contenido visual probable: texto, graficos o imagen/XObject dibujado;
+- contener contenido visual probable: texto o graficos detectables, o render
+  positivo;
 - reportar `pdf_visual_content_present`, `pdf_page_count_estimate`,
   `pdf_text_present`, `pdf_graphics_present` y
   `pdf_image_xobject_present`;
 - reportar solo metadata segura.
+
+Desde 7.16L, imagen/XObject por si solo no valida visibilidad. Si no hay texto
+ni graficos, el PDF queda como `PDF_RENDER_CHECK_REQUIRED` salvo que un
+render-check real confirme contenido visible.
 
 Un PDF estructuralmente valido pero visualmente blanco se rechaza con
 `PDF_VISUAL_CONTENT_MISSING`. Ver:
@@ -88,6 +98,10 @@ Si el contenido es invalido:
 Solo copia a storage por cliente/factura si el artefacto fue descargado y
 validado. Placeholders o respuestas incompletas quedan como `DOWNLOAD_ERROR` o
 `PARTIAL_DOWNLOAD`.
+
+Si el XML raw es valido y el provider PDF no es usable, 7.16L permite generar
+un PDF visual local sandbox desde XML con `pdf_source=LOCAL_RENDERED_FROM_XML`.
+Ese fallback no marca el provider PDF como valido.
 
 Si XML es valido y PDF es visualmente invalido, se permite conservar el XML como
 descarga parcial, pero no se copia el PDF ni se crea alias humano PDF.

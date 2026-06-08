@@ -24,6 +24,8 @@ scripts/lib/sandbox-artifact-content-validator.js
 - `pdf_text_present`
 - `pdf_graphics_present`
 - `pdf_image_xobject_present`
+- `pdf_render_check_required`
+- `pdf_structural_only`
 
 Estados principales:
 
@@ -37,6 +39,11 @@ Estados principales:
 - `PDF_CONTENT_STREAMS_MISSING`
 - `PDF_VISUAL_CONTENT_MISSING`
 - `PDF_VISUAL_CONTENT_UNCERTAIN`
+- `PDF_RENDER_CHECK_REQUIRED`
+- `PDF_RENDER_BLANK_PAGE`
+- `PDF_RENDER_FAILED`
+- `PDF_PROVIDER_BLANK_OR_CORRUPT`
+- `PDF_STRUCTURAL_ONLY`
 
 ## Regla Operativa
 
@@ -55,8 +62,8 @@ No se usa OCR, Poppler ni binarios externos. El validador busca contenido visual
 probable dentro de streams PDF:
 
 - texto: `BT`, `ET`, `Tj`, `TJ`, `Tf`
-- graficos: `m`, `l`, `re`, `S`, `f`, `cm`
-- imagenes: uso de XObject con `Do`
+- graficos: operadores de trazado/pintado como `m`, `l`, `re`, `S`, `f`
+- imagenes: XObject/Image se reporta, pero no valida visibilidad por si solo
 - streams `/FlateDecode`: se intenta descomprimir con `zlib`
 
 Desde la fase 7.16K el parser:
@@ -69,10 +76,31 @@ Desde la fase 7.16K el parser:
 - distingue `PDF_VISUAL_CONTENT_MISSING` de
   `PDF_VISUAL_CONTENT_UNCERTAIN`.
 
-Un XObject declarado en recursos no basta; debe aparecer usado en un stream de
-pagina. Esto evita aceptar paginas blancas con recursos no dibujados.
+Desde 7.16L, un XObject/Image tampoco basta aunque aparezca usado con `Do`.
+Si no hay texto ni graficos y solo hay XObject/Image, el PDF queda como
+`PDF_RENDER_CHECK_REQUIRED` y no como `VALID`, salvo que un render-check real
+confirme contenido visible.
 
-## Diagnostico 7.16K
+## Render Check 7.16L
+
+`sandbox.documents.pdf.diagnose --render-check --debug-render` intenta renderizar
+la primera pagina cuando existe una herramienta local disponible, empezando por
+`pdftoppm`. El render se guarda solo en `runtime/pdf-render-diagnostics/`.
+
+Si no hay renderer local, el diagnostico devuelve:
+
+```json
+{
+  "render_check_requested": true,
+  "render_check_available": false,
+  "render_status": "UNAVAILABLE"
+}
+```
+
+En ese caso el sistema no inventa un resultado visual positivo. Si el PDF solo
+tiene XObject/Image, queda bloqueado o se usa fallback local desde XML validado.
+
+## Diagnostico 7.16K/7.16L
 
 Accion no destructiva:
 

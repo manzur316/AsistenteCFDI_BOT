@@ -80,6 +80,19 @@ function draftFiles(draft = {}, options = {}) {
   };
 }
 
+function draftDocumentMetadata(draft = {}, options = {}) {
+  const summary = draft.sandbox_pac_summary || {};
+  const manifest = latestDownloadManifest(draft.draft_id || options.draftId, options.storageRoot || defaultStorageRoot) || {};
+  const source = { ...summary, ...manifest };
+  return {
+    pdf_source: text(source.pdf_source) || (source.pdf_content_valid === true ? "PROVIDER" : null),
+    provider_pdf_content_valid: source.provider_pdf_content_valid === true,
+    provider_pdf_validation_status: text(source.provider_pdf_validation_status),
+    local_rendered_pdf_path: text(source.local_rendered_pdf_path),
+    human_pdf_path: text(source.human_pdf_path),
+  };
+}
+
 function clientFromDraft(draft = {}) {
   return draft.current_client || draft.client || draft.client_snapshot || {};
 }
@@ -184,6 +197,7 @@ function runSandboxDocumentDeliveryDiagnose(options = {}) {
   }
   if (draft && typeof draft === "object") {
     const files = draftFiles(draft, options);
+    const documentMetadata = draftDocumentMetadata(draft, options);
     const validation = validateDeliveryFiles(files);
     const email = primaryEmailFromDraft(draft);
     const emailConfirmed = emailConfirmedFromDraft(draft);
@@ -191,8 +205,12 @@ function runSandboxDocumentDeliveryDiagnose(options = {}) {
     const providerReady = Boolean(email);
     const telegramConfigBlocked = channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL && config.ready !== true;
     const providerBlockedBySync = channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL && providerEmailSyncStatus === "NEEDS_SYNC";
+    const providerBlockedByProviderPdf = channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL
+      && documentMetadata.pdf_source === "LOCAL_RENDERED_FROM_XML"
+      && documentMetadata.provider_pdf_content_valid !== true
+      && String(options.env?.PROVIDER_EMAIL_ALLOW_WITH_PROVIDER_PDF_INVALID || process.env.PROVIDER_EMAIL_ALLOW_WITH_PROVIDER_PDF_INVALID || "0") !== "1";
     const providerReadyToSend = channel !== DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL
-      || (providerReady && emailConfirmed && !providerBlockedBySync);
+      || (providerReady && emailConfirmed && !providerBlockedBySync && !providerBlockedByProviderPdf);
     const status = validation.ok && providerReadyToSend
       ? (telegramConfigBlocked ? DOCUMENT_DELIVERY_STATUSES.NEEDS_CONFIG : "OK")
       : !validation.ok
@@ -201,6 +219,8 @@ function runSandboxDocumentDeliveryDiagnose(options = {}) {
           ? "NEEDS_RECIPIENT"
           : providerBlockedBySync
             ? "NEEDS_PROVIDER_EMAIL_SYNC"
+            : providerBlockedByProviderPdf
+              ? "PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID"
             : "NEEDS_RECIPIENT";
     return {
       status,
@@ -213,6 +233,13 @@ function runSandboxDocumentDeliveryDiagnose(options = {}) {
         xml_content_valid: validation.xml.ok === true,
         pdf_content_valid: validation.pdf.ok === true,
         pdf_visual_content_present: validation.pdf.pdf_visual_content_present === true,
+        pdf_source: documentMetadata.pdf_source,
+        provider_pdf_content_valid: documentMetadata.provider_pdf_content_valid,
+        provider_pdf_validation_status: documentMetadata.provider_pdf_validation_status,
+        telegram_can_send_local_rendered_pdf: channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL
+          ? documentMetadata.pdf_source === "LOCAL_RENDERED_FROM_XML" && validation.pdf.ok === true
+          : null,
+        blocker: providerBlockedByProviderPdf ? "PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID" : null,
         telegram_delivery_ready: channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL ? config.ready === true : null,
         provider_email_ready: providerReady,
         client_email_present: Boolean(email),
@@ -226,9 +253,12 @@ function runSandboxDocumentDeliveryDiagnose(options = {}) {
         ...(channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL ? (config.warnings || []) : []),
         ...(email && !emailConfirmed ? ["CLIENT_EMAIL_NOT_CONFIRMED"] : []),
         ...(providerBlockedBySync ? ["PROVIDER_EMAIL_SYNC_REQUIRED"] : []),
+        ...(providerBlockedByProviderPdf ? ["PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID"] : []),
       ],
       errors: validation.ok
-        ? (telegramConfigBlocked ? ["TELEGRAM_DOCUMENT_DELIVERY_NEEDS_CONFIG"] : [])
+        ? (providerBlockedByProviderPdf
+          ? ["PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID"]
+          : telegramConfigBlocked ? ["TELEGRAM_DOCUMENT_DELIVERY_NEEDS_CONFIG"] : [])
         : ["BLOCKED_INVALID_DOCUMENTS"],
     };
   }
@@ -290,6 +320,7 @@ async function runSandboxDocumentDeliverySend(options = {}) {
   }
   const channel = normalizeChannel(options.channel || options.deliveryChannel);
   const files = options.files || draftFiles(draft, options);
+  const documentMetadata = draftDocumentMetadata(draft, options);
   const validation = validateDeliveryFiles(files);
   if (!validation.ok) {
     return {
@@ -339,6 +370,23 @@ async function runSandboxDocumentDeliverySend(options = {}) {
   });
   const canonicalValidation = validateCanonicalDocumentDeliveryRequest(canonicalRequest);
   if (channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL) {
+    if (documentMetadata.pdf_source === "LOCAL_RENDERED_FROM_XML"
+      && documentMetadata.provider_pdf_content_valid !== true
+      && String(options.env?.PROVIDER_EMAIL_ALLOW_WITH_PROVIDER_PDF_INVALID || process.env.PROVIDER_EMAIL_ALLOW_WITH_PROVIDER_PDF_INVALID || "0") !== "1") {
+      return {
+        status: "PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID",
+        output: {
+          draft_id: text(draft.draft_id || options.draftId),
+          channel,
+          documents_valid: true,
+          pdf_source: documentMetadata.pdf_source,
+          provider_pdf_content_valid: false,
+          blocker: "PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID",
+        },
+        warnings: ["Provider email queda bloqueado porque el PDF del proveedor no fue validado visualmente."],
+        errors: ["PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID"],
+      };
+    }
     return runProviderEmailDelivery({
       ...options,
       draft,
@@ -356,6 +404,9 @@ async function runSandboxDocumentDeliverySend(options = {}) {
       `Fecha: ${new Date().toISOString().slice(0, 10)}`,
       draft.total ? `Total: ${draft.total}` : null,
       "XML/PDF de prueba Factura.com Sandbox",
+      documentMetadata.pdf_source === "LOCAL_RENDERED_FROM_XML"
+        ? "PDF visual generado localmente desde XML validado porque el PDF sandbox del proveedor no renderizo correctamente."
+        : null,
       "Borrador sujeto a revision humana.",
     ].filter(Boolean).join("\n"),
   });

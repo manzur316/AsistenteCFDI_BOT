@@ -136,12 +136,16 @@ check("parse_args_accepts_pdf_diagnose_identity_flags", () => {
     "--pac-invoice-id", "PAC-1",
     "--uuid", "00000000-0000-4000-8000-000000000716",
     "--db-exec-mode", "docker",
+    "--render-check",
+    "--debug-render",
   ]);
   assert.strictEqual(parsed.action, "sandbox.documents.pdf.diagnose");
   assert.strictEqual(parsed.options.cfdiUid, "CFDIUID-1");
   assert.strictEqual(parsed.options.pacInvoiceId, "PAC-1");
   assert.strictEqual(parsed.options.uuid, "00000000-0000-4000-8000-000000000716");
   assert.strictEqual(parsed.options.dbExecMode, "docker");
+  assert.strictEqual(parsed.options.renderCheck, true);
+  assert.strictEqual(parsed.options.debugRender, true);
   return parsed.options.cfdiUid;
 });
 

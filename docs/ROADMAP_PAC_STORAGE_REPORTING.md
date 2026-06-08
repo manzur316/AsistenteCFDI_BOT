@@ -1710,6 +1710,28 @@ Fuera de alcance: produccion, PAC productivo, CSD, SMTP principal, envio
 automatico, email secundario, runtime versionado y cambios a
 `data/concepts.normalized.json`.
 
+## Fase 7.16L - PDF Artifact Reality Fix + Raw Artifact Integrity
+
+La fase 7.16L queda definida en:
+
+```text
+docs/PHASE_7_16L_PDF_ARTIFACT_REALITY_FIX.md
+docs/PDF_LOCAL_RENDERED_FALLBACK.md
+```
+
+Alcance:
+
+- preservar bytes raw de XML/PDF para artifacts finales sin exponerlos en logs;
+- rechazar XML final con `[REDACTED_...]`;
+- evitar que XObject/Image valide PDF sin texto, graficos o render-check;
+- soportar render-check real si hay renderer local y `UNAVAILABLE` seguro si no;
+- generar PDF local sandbox desde XML raw validado cuando provider PDF falle;
+- bloquear Provider Email cuando solo existe PDF local fallback;
+- permitir Telegram Document Channel con PDF local solo si esta configurado.
+
+Fuera de alcance: produccion, PAC productivo, CSD, SMTP principal, envio
+automatico, runtime versionado, OCR y cambios a `data/concepts.normalized.json`.
+
 ## Fase 7.16F - Shared Telegram Bot Identity + Subscription Access Foundation
 
 La fase 7.16F queda definida en

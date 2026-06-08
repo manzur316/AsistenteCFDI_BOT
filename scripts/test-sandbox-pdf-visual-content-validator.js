@@ -46,15 +46,16 @@ check("pdf_pagina_blanca_es_invalido", () => {
   return result.status;
 });
 
-check("pdf_imagen_xobject_es_valido", () => {
+check("pdf_imagen_xobject_requiere_render_check", () => {
   const result = validateSandboxPdfArtifact(pdfWithStream(
     "q 1 0 0 1 10 10 cm /Im1 Do Q",
     "<< /Length 27 >>",
     "/XObject << /Im1 6 0 R >>",
     "6 0 obj\n<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 3 >>\nstream\nabc\nendstream\nendobj\n",
   ));
-  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.ok, false);
   assert.strictEqual(result.pdf_image_xobject_present, true);
+  assert.strictEqual(result.pdf_render_check_required, true);
   return result.status;
 });
 

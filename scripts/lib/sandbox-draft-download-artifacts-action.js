@@ -4,6 +4,7 @@ const path = require("path");
 
 const { PAC_ENVIRONMENTS } = require("./canonical-cfdi-contracts");
 const { FacturaComSandboxAdapter } = require("./factura-com-sandbox-adapter");
+const { renderLocalCfdiPdfFromXml } = require("./document-rendering/local-cfdi-pdf-renderer");
 const {
   SANDBOX_DRAFT_STAMP_STATUS,
   readDraftFromOptions,
@@ -166,11 +167,19 @@ function validationError(status, output, errors, warnings = []) {
   return { status, output, errors, warnings };
 }
 
-function safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated) {
+function safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated, extra = {}) {
   const xmlDownloaded = xmlResult?.xml_downloaded === true && xmlResult?.xml_content_valid === true;
   const pdfDownloaded = pdfResult?.pdf_downloaded === true && pdfResult?.pdf_content_valid === true;
   const xmlValidation = xmlResult?.content_validation || xmlResult?.raw?.validation || null;
   const pdfValidation = pdfResult?.content_validation || pdfResult?.raw?.validation || null;
+  const providerPdfResult = extra.providerPdfResult || pdfResult;
+  const providerPdfValidation = providerPdfResult?.content_validation
+    || providerPdfResult?.raw?.validation
+    || providerPdfResult?.raw?.data?.validation
+    || null;
+  const pdfSource = pdfDownloaded
+    ? (pdfResult?.pdf_source || "PROVIDER")
+    : null;
   const artifactStatus = xmlDownloaded && pdfDownloaded
     ? ARTIFACT_STATUS.DOWNLOADED
     : xmlDownloaded || pdfDownloaded
@@ -193,8 +202,12 @@ function safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated) {
     pdf_provider_available: true,
     xml_downloaded: xmlDownloaded,
     pdf_downloaded: pdfDownloaded,
+    provider_pdf_downloaded: providerPdfResult?.pdf_downloaded === true && providerPdfResult?.pdf_content_valid === true,
+    provider_pdf_content_valid: providerPdfResult?.pdf_content_valid === true,
+    provider_pdf_validation_status: providerPdfResult?.pdf_validation_status || providerPdfValidation?.status || providerPdfResult?.status || null,
     xml_content_valid: xmlResult?.xml_content_valid === true,
     pdf_content_valid: pdfResult?.pdf_content_valid === true,
+    pdf_source: pdfSource,
     xml_validation_status: xmlResult?.xml_validation_status || xmlValidation?.status || null,
     pdf_validation_status: pdfResult?.pdf_validation_status || pdfValidation?.status || null,
     pdf_retryable: pdfResult?.raw?.pdf_retryable === true || pdfResult?.pdf_retryable === true || pdfResult?.status === "PDF_NOT_READY_RETRYABLE",
@@ -210,6 +223,8 @@ function safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated) {
     },
     xml_storage_path: xmlResult?.xml_storage_path || null,
     pdf_storage_path: pdfResult?.pdf_storage_path || null,
+    local_rendered_pdf_path: pdfResult?.local_rendered_pdf_path || null,
+    provider_pdf_storage_path: providerPdfResult?.pdf_storage_path || null,
     xml_sha256: xmlResult?.xml_sha256 || null,
     pdf_sha256: pdfResult?.pdf_sha256 || null,
     xml_size_bytes: xmlResult?.xml_size_bytes || null,
@@ -240,6 +255,63 @@ function copyHumanAlias(sourcePath, invoiceDir, baseName, extension) {
   return target;
 }
 
+function absoluteRuntimePath(relativePath) {
+  const safeRelative = text(relativePath);
+  if (!safeRelative) return null;
+  const absolute = path.resolve(repoRoot, safeRelative);
+  if (!isInside(runtimeRoot, absolute) || !fs.existsSync(absolute)) return null;
+  return absolute;
+}
+
+function localRenderedPdfResult(renderResult, outputPath, providerPdfResult) {
+  const validation = renderResult?.pdf_validation || null;
+  return {
+    ok: renderResult?.ok === true,
+    status: renderResult?.ok === true ? "OK" : "LOCAL_PDF_RENDER_INVALID",
+    pdf_provider_available: providerPdfResult?.pdf_provider_available !== false,
+    pdf_downloaded: renderResult?.ok === true,
+    pdf_content_valid: renderResult?.ok === true,
+    pdf_validation_status: validation?.status || renderResult?.status || null,
+    pdf_storage_path: rel(outputPath),
+    pdf_sha256: sha256File(outputPath),
+    pdf_size_bytes: fileSize(outputPath),
+    pdf_source: "LOCAL_RENDERED_FROM_XML",
+    provider_pdf_content_valid: false,
+    provider_pdf_validation_status: providerPdfResult?.pdf_validation_status
+      || providerPdfResult?.raw?.validation?.status
+      || providerPdfResult?.raw?.data?.validation?.status
+      || providerPdfResult?.status
+      || null,
+    local_rendered_pdf_path: rel(outputPath),
+    content_validation: validation,
+    raw: {
+      validation,
+      pdf_source: "LOCAL_RENDERED_FROM_XML",
+      provider_pdf_validation_status: providerPdfResult?.pdf_validation_status
+        || providerPdfResult?.raw?.validation?.status
+        || providerPdfResult?.raw?.data?.validation?.status
+        || providerPdfResult?.status
+        || null,
+    },
+    normalized_errors: [],
+    normalized_warnings: ["PDF_LOCAL_RENDERED_FROM_XML"],
+  };
+}
+
+function maybeRenderLocalPdfFallback({ xmlResult, pdfResult, identity, bundleDir }) {
+  const xmlPath = absoluteRuntimePath(xmlResult?.xml_storage_path);
+  const providerPdfValid = pdfResult?.pdf_downloaded === true && pdfResult?.pdf_content_valid === true;
+  if (!xmlPath || providerPdfValid) return null;
+  const outputPath = path.join(bundleDir, "downloads", "pdf-local", "cfdi-local-rendered.pdf");
+  const renderResult = renderLocalCfdiPdfFromXml({
+    xmlPath,
+    outputPath,
+    expectedIdentity: identity,
+  });
+  if (renderResult.ok !== true) return null;
+  return localRenderedPdfResult(renderResult, outputPath, pdfResult);
+}
+
 function safeSandboxPacSummaryForOutput(draft, identity, manifest) {
   const source = draft.sandbox_pac_summary || {};
   return {
@@ -254,8 +326,12 @@ function safeSandboxPacSummaryForOutput(draft, identity, manifest) {
     pdf_provider_available: true,
     xml_downloaded: manifest.xml_downloaded,
     pdf_downloaded: manifest.pdf_downloaded,
+    provider_pdf_downloaded: manifest.provider_pdf_downloaded,
+    provider_pdf_content_valid: manifest.provider_pdf_content_valid,
+    provider_pdf_validation_status: manifest.provider_pdf_validation_status,
     xml_content_valid: manifest.xml_content_valid,
     pdf_content_valid: manifest.pdf_content_valid,
+    pdf_source: manifest.pdf_source,
     xml_validation_status: manifest.xml_validation_status,
     pdf_validation_status: manifest.pdf_validation_status,
     pdf_retryable: manifest.pdf_retryable,
@@ -263,6 +339,8 @@ function safeSandboxPacSummaryForOutput(draft, identity, manifest) {
     pdf_page_count_estimate: manifest.pdf_page_count_estimate,
     xml_storage_path: manifest.xml_storage_path,
     pdf_storage_path: manifest.pdf_storage_path,
+    local_rendered_pdf_path: manifest.local_rendered_pdf_path || null,
+    provider_pdf_storage_path: manifest.provider_pdf_storage_path || null,
     human_file_base_name: manifest.human_file_base_name || null,
     human_xml_path: manifest.human_xml_path || null,
     human_pdf_path: manifest.human_pdf_path || null,
@@ -336,15 +414,18 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
     ...adapterContext,
     storageDir: path.join(bundleDir, "downloads", "pdf"),
   });
+  const finalPdfResult = (xmlResult?.xml_downloaded === true && xmlResult?.xml_content_valid === true)
+    ? (maybeRenderLocalPdfFallback({ xmlResult, pdfResult, identity, bundleDir }) || pdfResult)
+    : pdfResult;
 
   const xmlOk = xmlResult?.xml_downloaded === true && xmlResult?.xml_content_valid === true;
-  const pdfOk = pdfResult?.pdf_downloaded === true && pdfResult?.pdf_content_valid === true;
+  const pdfOk = finalPdfResult?.pdf_downloaded === true && finalPdfResult?.pdf_content_valid === true;
   const clientInvoiceDir = storageInvoiceDir(storageRoot, draft, identity, now);
   const copiedXml = xmlOk ? copyIfDownloaded(xmlResult, path.join(clientInvoiceDir, "xml"), "cfdi.xml") : null;
-  const copiedPdf = pdfOk ? copyIfDownloaded(pdfResult, path.join(clientInvoiceDir, "pdf"), "cfdi.pdf") : null;
+  const copiedPdf = pdfOk ? copyIfDownloaded(finalPdfResult, path.join(clientInvoiceDir, "pdf"), finalPdfResult?.pdf_source === "LOCAL_RENDERED_FROM_XML" ? "cfdi-local-rendered.pdf" : "cfdi.pdf") : null;
   const storageUpdated = Boolean(copiedXml || copiedPdf);
 
-  const manifest = safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated);
+  const manifest = safeManifest(draft, identity, xmlResult, finalPdfResult, storageUpdated, { providerPdfResult: pdfResult });
   const humanBaseName = storageUpdated ? humanFileBaseName(draft, identity, now) : null;
   if (copiedXml) {
     manifest.client_storage_xml_path = rel(copiedXml);
@@ -357,7 +438,8 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
     manifest.client_storage_pdf_path = rel(copiedPdf);
     manifest.client_storage_pdf_sha256 = sha256File(copiedPdf);
     manifest.client_storage_pdf_size_bytes = fileSize(copiedPdf);
-    const humanPdf = copyHumanAlias(copiedPdf, clientInvoiceDir, humanBaseName, "pdf");
+    const humanPdfBaseName = manifest.pdf_source === "LOCAL_RENDERED_FROM_XML" ? `${humanBaseName}_LOCAL` : humanBaseName;
+    const humanPdf = copyHumanAlias(copiedPdf, clientInvoiceDir, humanPdfBaseName, "pdf");
     manifest.human_pdf_path = rel(humanPdf);
   }
   if (humanBaseName) manifest.human_file_base_name = humanBaseName;
@@ -396,7 +478,7 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
           : "ERROR";
   const errors = [
     ...(xmlResult?.normalized_errors || []).map((item) => item.code || item.message || "XML_DOWNLOAD_ERROR"),
-    ...(pdfResult?.normalized_errors || []).map((item) => item.code || item.message || "PDF_DOWNLOAD_ERROR"),
+    ...(pdfOk ? [] : (pdfResult?.normalized_errors || []).map((item) => item.code || item.message || "PDF_DOWNLOAD_ERROR")),
   ];
   const client = normalizeClient(draft);
   return {
@@ -415,8 +497,12 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
       pdf_provider_available: true,
       xml_downloaded: manifest.xml_downloaded,
       pdf_downloaded: manifest.pdf_downloaded,
+      provider_pdf_downloaded: manifest.provider_pdf_downloaded,
+      provider_pdf_content_valid: manifest.provider_pdf_content_valid,
+      provider_pdf_validation_status: manifest.provider_pdf_validation_status,
       xml_content_valid: manifest.xml_content_valid,
       pdf_content_valid: manifest.pdf_content_valid,
+      pdf_source: manifest.pdf_source,
       xml_validation_status: manifest.xml_validation_status,
       pdf_validation_status: manifest.pdf_validation_status,
       pdf_retryable: manifest.pdf_retryable,
@@ -429,6 +515,8 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
       download_content_validation: manifest.download_content_validation,
       xml_storage_path: manifest.xml_storage_path,
       pdf_storage_path: manifest.pdf_storage_path,
+      local_rendered_pdf_path: manifest.local_rendered_pdf_path,
+      provider_pdf_storage_path: manifest.provider_pdf_storage_path,
       xml_sha256: manifest.xml_sha256,
       pdf_sha256: manifest.pdf_sha256,
       xml_size_bytes: manifest.xml_size_bytes,
@@ -450,7 +538,7 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
     },
     warnings: [
       ...(xmlResult?.normalized_warnings || []),
-      ...(pdfResult?.normalized_warnings || []),
+      ...(pdfOk ? (finalPdfResult?.normalized_warnings || []) : (pdfResult?.normalized_warnings || [])),
     ],
     errors,
   };

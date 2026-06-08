@@ -151,7 +151,7 @@ function writeJson(filePath, value) {
 }
 
 function artifactBufferFromResponse(rawResponse = {}, kind = "XML") {
-  const direct = rawResponse.rawBuffer || rawResponse.bodyBuffer || rawResponse.buffer;
+  const direct = rawResponse.rawArtifactBuffer || rawResponse.rawBuffer || rawResponse.bodyBuffer || rawResponse.buffer;
   if (Buffer.isBuffer(direct)) return direct;
   const data = rawResponse.data;
   if (Buffer.isBuffer(data)) return data;
@@ -720,6 +720,9 @@ class FacturaComSandboxAdapter {
       });
       if (contentValidation.ok !== true) {
         const diagnosticPath = storageDir ? path.join(storageDir, `${field}-content-validation.json`) : null;
+        const invalidArtifactPath = storageDir && context.keepInvalidArtifactForDiagnostics === true
+          ? path.join(storageDir, artifactType === "PDF" ? "cfdi.invalid.pdf" : "cfdi.invalid.xml")
+          : null;
         if (diagnosticPath) {
           fs.mkdirSync(storageDir, { recursive: true });
           writeJson(diagnosticPath, {
@@ -732,6 +735,10 @@ class FacturaComSandboxAdapter {
             validation: contentValidation,
             requires_human_review: true,
           });
+        }
+        if (invalidArtifactPath && artifactType === "PDF") {
+          fs.mkdirSync(storageDir, { recursive: true });
+          fs.writeFileSync(invalidArtifactPath, buffer);
         }
         return normalizeFacturaComErrorResponse({
           code: `FACTURACOM_SANDBOX_${artifactType}_CONTENT_INVALID`,
@@ -747,8 +754,10 @@ class FacturaComSandboxAdapter {
             ...(artifactType === "PDF" ? {
               pdf_visual_content_present: contentValidation.pdf_visual_content_present === true,
               pdf_page_count_estimate: contentValidation.pdf_page_count_estimate || 0,
+              pdf_render_check_required: contentValidation.pdf_render_check_required === true,
             } : {}),
             validation_diagnostic_path: diagnosticPath ? safeRelative(diagnosticPath) : null,
+            invalid_artifact_path: invalidArtifactPath ? safeRelative(invalidArtifactPath) : null,
           },
         }, { operation, status: "PAC_SANDBOX_ERROR" });
       }

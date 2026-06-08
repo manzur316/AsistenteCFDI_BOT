@@ -162,6 +162,10 @@ function parseArgs(argv) {
       options.createIfMissing = true;
     } else if (key === "--update-provider") {
       options.updateProvider = true;
+    } else if (key === "--render-check") {
+      options.renderCheck = true;
+    } else if (key === "--debug-render") {
+      options.debugRender = true;
     } else if (key === "--allow-legacy-receiver-uid") {
       options.allowLegacyReceiverUid = true;
     } else if (key === "--require-live-sandbox") {

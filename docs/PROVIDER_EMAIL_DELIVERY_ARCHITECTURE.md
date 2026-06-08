@@ -36,6 +36,8 @@ Provider email solo puede ejecutarse si:
 - base URL apunta a sandbox;
 - existe `cfdi_uid`, `pac_invoice_id` o `uuid`;
 - XML/PDF locales existen y estan validados;
+- si el PDF final es local fallback (`pdf_source=LOCAL_RENDERED_FROM_XML`), el
+  provider PDF debe estar validado o la entrega se bloquea por default;
 - cliente tiene email principal;
 - email confirmado o accion explicita `--confirm-recipient`;
 - no hay produccion fiscal real.
@@ -58,6 +60,18 @@ Campos:
 No se agregan `email2`, `email3`, `billing_email` ni otro canal paralelo en esta
 fase. Si hay email local, el mapper de cliente Factura.com lo envia como email
 principal del receptor.
+
+## Provider PDF Invalid 7.16L
+
+Cuando SATBOT genera un PDF local desde XML validado, Provider Email Delivery no
+lo puede adjuntar mediante Factura.com. Por eso el estado seguro es:
+
+```text
+PROVIDER_EMAIL_BLOCKED_PROVIDER_PDF_INVALID
+```
+
+Esta politica evita que Factura.com envie un PDF provider blanco/no validado
+mientras SATBOT solo tiene un PDF local fallback.
 
 ## Acciones
 

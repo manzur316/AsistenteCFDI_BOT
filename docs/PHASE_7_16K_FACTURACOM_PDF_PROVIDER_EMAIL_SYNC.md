@@ -104,3 +104,8 @@ Results:
 Conclusion: Phase 7.16K closes through path A. The PDF was not a provider
 limitation; the validator needed stronger stream/image detection and the
 download pipeline needed to require visual validation before storage/delivery.
+
+7.16L refines this conclusion: the root issue was earlier in the pipeline too.
+The HTTP artifact path was using sanitized `rawText`; preserving non-enumerable
+raw bytes fixed XML redaction and yielded provider PDF bytes with text/graphics
+markers. XObject/Image alone remains insufficient for future validation.

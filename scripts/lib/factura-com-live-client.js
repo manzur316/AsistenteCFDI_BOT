@@ -397,6 +397,7 @@ function collectApiErrorFields(data, env = {}) {
 }
 
 function normalizeFacturaComHttpResponse(response = {}, env = {}) {
+  const { rawBuffer: _rawBuffer, rawArtifactBuffer: _rawArtifactBuffer, ...safeResponse } = response;
   const data = sanitizeFacturaComResponse(response.data, env);
   const httpOk = typeof response.http_ok === "boolean" ? response.http_ok : Boolean(response.ok);
   const apiStatus = extractFacturaComApiStatus(data);
@@ -404,7 +405,7 @@ function normalizeFacturaComHttpResponse(response = {}, env = {}) {
   const apiOk = isFacturaComApiError(data) ? false : (isFacturaComApiSuccess(data) ? true : null);
   const responseHeaders = sanitizeValue(response.responseHeaders || {}, env);
   return {
-    ...response,
+    ...safeResponse,
     http_ok: httpOk,
     api_ok: apiOk,
     ok: httpOk && apiOk !== false,
@@ -434,7 +435,8 @@ async function requestWithFetch({ url, method, headers, body, timeoutMs }) {
     });
     const responseHeaders = normalizeResponseHeaders(response.headers);
     const contentType = response.headers.get("content-type") || "";
-    const rawText = await response.text();
+    const rawBuffer = Buffer.from(await response.arrayBuffer());
+    const rawText = rawBuffer.toString("utf8");
     let data = rawText;
     if (contentType.includes("application/json") || /^[\s\r\n]*[{[]/.test(rawText)) {
       try {
@@ -452,6 +454,7 @@ async function requestWithFetch({ url, method, headers, body, timeoutMs }) {
       location: responseHeaders.location || null,
       data,
       rawText,
+      rawBuffer,
     };
   } finally {
     clearTimeout(timer);
@@ -473,7 +476,8 @@ function requestWithHttps({ url, method, headers, body, timeoutMs }) {
       const chunks = [];
       response.on("data", (chunk) => chunks.push(chunk));
       response.on("end", () => {
-        const rawText = Buffer.concat(chunks).toString("utf8");
+        const rawBuffer = Buffer.concat(chunks);
+        const rawText = rawBuffer.toString("utf8");
         const contentType = response.headers["content-type"] || "";
         const responseHeaders = normalizeResponseHeaders(response.headers);
         let data = rawText;
@@ -493,6 +497,7 @@ function requestWithHttps({ url, method, headers, body, timeoutMs }) {
           location: responseHeaders.location || null,
           data,
           rawText,
+          rawBuffer,
         });
       });
     });
@@ -526,13 +531,21 @@ async function facturaComRequest({ method, path, body, env } = {}) {
     ? await requestWithFetch({ url, method: httpMethod, headers, body, timeoutMs: config.timeoutMs })
     : await requestWithHttps({ url, method: httpMethod, headers, body, timeoutMs: config.timeoutMs });
   const normalized = normalizeFacturaComHttpResponse(response, env);
-
-  return {
+  const output = {
     ...normalized,
     request: sanitizeValue({ method: httpMethod, url, body }, env),
     responseHeaders: normalized.responseHeaders,
     location: normalized.location,
   };
+  if (response.rawBuffer) {
+    Object.defineProperty(output, "rawArtifactBuffer", {
+      value: response.rawBuffer,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+  }
+  return output;
 }
 
 module.exports = {

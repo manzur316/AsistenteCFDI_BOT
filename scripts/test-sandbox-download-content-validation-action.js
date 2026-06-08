@@ -90,14 +90,17 @@ check("placeholder_xml_pdf_no_actualiza_storage_cliente", async () => {
   return result.output.artifact_status;
 });
 
-check("xml_valido_pdf_invalido_es_parcial", async () => {
+check("xml_valido_pdf_invalido_genera_pdf_local", async () => {
   const result = await runWith(validXml(), "CFDI PDF", "DRAFT-PARTIAL-CONTENT");
-  assert.strictEqual(result.status, "PARTIAL_DOWNLOAD");
-  assert.strictEqual(result.output.artifact_status, "PARTIAL_DOWNLOAD");
+  assert.strictEqual(result.status, "OK");
+  assert.strictEqual(result.output.artifact_status, "DOWNLOADED");
   assert.strictEqual(result.output.xml_downloaded, true);
-  assert.strictEqual(result.output.pdf_downloaded, false);
+  assert.strictEqual(result.output.provider_pdf_content_valid, false);
+  assert.strictEqual(result.output.pdf_downloaded, true);
   assert.strictEqual(result.output.xml_content_valid, true);
-  assert.strictEqual(result.output.pdf_content_valid, false);
+  assert.strictEqual(result.output.pdf_content_valid, true);
+  assert.strictEqual(result.output.pdf_source, "LOCAL_RENDERED_FROM_XML");
+  assert.ok(result.output.human_pdf_path.includes("_LOCAL.pdf"));
   return result.status;
 });
 
@@ -107,6 +110,7 @@ check("xml_pdf_validos_actualizan_storage", async () => {
   assert.strictEqual(result.output.artifact_status, "DOWNLOADED");
   assert.strictEqual(result.output.xml_content_valid, true);
   assert.strictEqual(result.output.pdf_content_valid, true);
+  assert.strictEqual(result.output.pdf_source, "PROVIDER");
   assert.strictEqual(result.output.pdf_visual_content_present, true);
   assert.ok(result.output.xml_sha256);
   assert.ok(result.output.pdf_sha256);

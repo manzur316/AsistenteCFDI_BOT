@@ -3,6 +3,7 @@ const zlib = require("zlib");
 
 const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
 const PLACEHOLDER_RE = /^(?:cfdi\s+)?(?:xml|pdf)|ok|success|descarga\s+exitosa$/i;
+const REDACTION_MARKER_RE = /\[REDACTED_[A-Z0-9_ -]*\]/i;
 
 function asBuffer(value) {
   if (Buffer.isBuffer(value)) return value;
@@ -50,6 +51,7 @@ function validateSandboxXmlArtifact(bufferOrText, context = {}) {
       uuid_present: false,
       cfdi_comprobante_present: false,
       timbre_fiscal_present: false,
+      xml_contains_redaction_markers: false,
     };
   }
   if (isPlaceholder(buffer)) {
@@ -58,15 +60,29 @@ function validateSandboxXmlArtifact(bufferOrText, context = {}) {
       uuid_present: false,
       cfdi_comprobante_present: false,
       timbre_fiscal_present: false,
+      xml_contains_redaction_markers: false,
     };
   }
   const text = buffer.toString("utf8");
+  if (REDACTION_MARKER_RE.test(text)) {
+    return {
+      ...baseResult("XML", buffer, {
+        status: "XML_SANITIZED_ARTIFACT_INVALID",
+        errors: ["XML_SANITIZED_ARTIFACT_INVALID"],
+      }),
+      uuid_present: Boolean(text.match(UUID_RE)),
+      cfdi_comprobante_present: /<cfdi:Comprobante\b|<Comprobante\b/i.test(text),
+      timbre_fiscal_present: /TimbreFiscalDigital/i.test(text),
+      xml_contains_redaction_markers: true,
+    };
+  }
   if (!/<\?xml|<[^>]*Comprobante/i.test(text)) {
     return {
       ...baseResult("XML", buffer, { status: "INVALID_XML", errors: ["XML_TEXT_NOT_DETECTED"] }),
       uuid_present: false,
       cfdi_comprobante_present: false,
       timbre_fiscal_present: false,
+      xml_contains_redaction_markers: false,
     };
   }
   const cfdiComprobantePresent = /<cfdi:Comprobante\b|<Comprobante\b/i.test(text) && (/xmlns:cfdi=|xmlns=['"]http:\/\/www\.sat\.gob\.mx\/cfd/i.test(text) || /Version=['"]4\.0['"]/i.test(text));
@@ -90,6 +106,7 @@ function validateSandboxXmlArtifact(bufferOrText, context = {}) {
       uuid_present: Boolean(uuidMatch),
       cfdi_comprobante_present: cfdiComprobantePresent,
       timbre_fiscal_present: timbreFiscalPresent,
+      xml_contains_redaction_markers: false,
     };
   }
   if (!uuidMatch) {
@@ -102,6 +119,7 @@ function validateSandboxXmlArtifact(bufferOrText, context = {}) {
       uuid_present: false,
       cfdi_comprobante_present: true,
       timbre_fiscal_present: true,
+      xml_contains_redaction_markers: false,
     };
   }
   return {
@@ -117,6 +135,7 @@ function validateSandboxXmlArtifact(bufferOrText, context = {}) {
     uuid_present: true,
     cfdi_comprobante_present: true,
     timbre_fiscal_present: true,
+    xml_contains_redaction_markers: false,
   };
 }
 
@@ -136,6 +155,8 @@ function validateSandboxPdfArtifact(buffer, context = {}) {
     pdf_text_present: visual.text_present,
     pdf_graphics_present: visual.graphics_present,
     pdf_image_xobject_present: visual.image_xobject_present,
+    pdf_render_check_required: visual.render_check_required === true,
+    pdf_structural_only: visual.structural_only === true,
   };
   if (body.length === 0) {
     return {
@@ -180,7 +201,11 @@ function validateSandboxPdfArtifact(buffer, context = {}) {
     };
   }
   if (visual.visual_content_present !== true) {
-    const status = visual.visual_content_uncertain ? "PDF_VISUAL_CONTENT_UNCERTAIN" : "PDF_VISUAL_CONTENT_MISSING";
+    const status = visual.render_check_required
+      ? "PDF_RENDER_CHECK_REQUIRED"
+      : visual.visual_content_uncertain
+        ? "PDF_VISUAL_CONTENT_UNCERTAIN"
+        : "PDF_VISUAL_CONTENT_MISSING";
     return {
       ...baseResult("PDF", body, {
         status,
@@ -212,7 +237,7 @@ function countMatches(text, pattern) {
 function inspectVisualMarkers(text) {
   const normalized = String(text || "");
   const textPresent = /\bBT\b[\s\S]{0,2000}\bET\b|\bTj\b|\bTJ\b|'\s*\)|"\s*\)|\bTf\b/.test(normalized);
-  const graphicsPresent = /(?:^|\s)(?:m|l|c|v|y|h|re|S|s|f|F|B|b|n|cm)(?:\s|$)/.test(normalized);
+  const graphicsPresent = /(?:^|\s)(?:m|l|c|v|y|h|re|S|s|f|F|B|b)(?:\s|$)/.test(normalized);
   const imageXobjectPresent = /\/XObject\b|\/Subtype\s*\/Image\b|(?:^|\s)Do(?:\s|$)/.test(normalized);
   return {
     textPresent,
@@ -321,13 +346,19 @@ function inspectPdfVisualContent(buffer) {
   const textPresent = streamMarkers.textPresent;
   const graphicsPresent = streamMarkers.graphicsPresent;
   const imageXobjectPresent = streamMarkers.imageXobjectPresent;
-  const visualContentPresent = textPresent || graphicsPresent || imageXobjectPresent;
-  const visualUncertain = !visualContentPresent && failedCompressedVisualStreams.length > 0 && contentStreamsPresent;
+  const structuralOnly = imageXobjectPresent && !textPresent && !graphicsPresent;
+  const renderCheckRequired = structuralOnly;
+  if (renderCheckRequired) warnings.push("PDF_RENDER_CHECK_REQUIRED");
+  const visualContentPresent = textPresent || graphicsPresent;
+  const visualUncertain = (!visualContentPresent && failedCompressedVisualStreams.length > 0 && contentStreamsPresent)
+    || renderCheckRequired;
   return {
     page_count_estimate: pageCount || (hasPages ? 1 : 0),
     content_streams_present: contentStreamsPresent,
     visual_content_present: visualContentPresent,
     visual_content_uncertain: visualUncertain,
+    render_check_required: renderCheckRequired,
+    structural_only: structuralOnly,
     text_present: textPresent,
     graphics_present: graphicsPresent,
     image_xobject_present: imageXobjectPresent,

@@ -56,6 +56,12 @@ Antes de cualquier envio:
 - se usan aliases humanos seguros cuando existen, no rutas internas
   `cfdi.xml/cfdi.pdf` para el nombre visible del documento.
 
+Desde 7.16L, el canal puede usar un PDF sandbox generado localmente desde XML
+raw validado (`pdf_source=LOCAL_RENDERED_FROM_XML`) porque SATBOT controla los
+adjuntos. El caption debe indicar que el PDF visual fue generado localmente
+cuando el PDF sandbox del proveedor no se valido correctamente. El canal sigue
+deshabilitado por default y no envia nada automaticamente.
+
 ## Estados
 
 - `NEEDS_CONFIG`: canal apagado o incompleto.

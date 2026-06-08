@@ -68,7 +68,7 @@ function env() {
   };
 }
 
-check("blank_pdf_is_not_copied_to_client_storage", async () => {
+check("blank_provider_pdf_is_not_copied_and_local_pdf_is_generated", async () => {
   cleanTemp();
   const result = await runSandboxDraftDownloadArtifacts({
     draft: draft(),
@@ -81,16 +81,18 @@ check("blank_pdf_is_not_copied_to_client_storage", async () => {
         : { ok: true, status: 200, statusText: "OK", contentType: "application/pdf", rawBuffer: blankPdf() },
     },
   });
-  assert.strictEqual(result.status, "PARTIAL_DOWNLOAD");
+  assert.strictEqual(result.status, "OK");
   assert.strictEqual(result.output.xml_downloaded, true);
-  assert.strictEqual(result.output.pdf_downloaded, false);
-  assert.strictEqual(result.output.pdf_content_valid, false);
-  assert.strictEqual(result.output.pdf_validation_status, "PDF_VISUAL_CONTENT_MISSING");
-  assert.strictEqual(result.output.pdf_visual_content_present, false);
+  assert.strictEqual(result.output.provider_pdf_content_valid, false);
+  assert.strictEqual(result.output.provider_pdf_validation_status, "PDF_VISUAL_CONTENT_MISSING");
+  assert.strictEqual(result.output.pdf_downloaded, true);
+  assert.strictEqual(result.output.pdf_content_valid, true);
+  assert.strictEqual(result.output.pdf_source, "LOCAL_RENDERED_FROM_XML");
+  assert.strictEqual(result.output.pdf_visual_content_present, true);
   assert(result.output.human_xml_path, "valid XML should get human alias");
-  assert.strictEqual(result.output.human_pdf_path, null);
+  assert(result.output.human_pdf_path.endsWith("_LOCAL.pdf"));
   const pdfFiles = fs.readdirSync(tempRoot, { recursive: true }).filter((item) => String(item).endsWith("pdf/cfdi.pdf"));
-  assert.strictEqual(pdfFiles.length, 0, "blank PDF copied into client storage");
+  assert.strictEqual(pdfFiles.length, 0, "blank provider PDF copied into client storage");
   return result.output.artifact_status;
 });
 

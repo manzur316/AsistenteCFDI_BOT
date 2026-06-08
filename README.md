@@ -1121,6 +1121,12 @@ no listo, ruteo correcto de Provider Email Delivery, verificacion de
 Validacion local live: PDF sandbox confirmado visualmente y almacenado con
 `human_pdf_path`; provider email diagnose listo con email primario sincronizado.
 
+7.16L corrige integridad raw de XML/PDF sandbox: los artifacts finales ya no
+pueden contener `[REDACTED_]`, XObject/Image no basta para validar PDF, y existe
+fallback local `pdf_source=LOCAL_RENDERED_FROM_XML` desde XML raw validado. Ver
+`docs/PHASE_7_16L_PDF_ARTIFACT_REALITY_FIX.md` y
+`docs/PDF_LOCAL_RENDERED_FALLBACK.md`.
+
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
 los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a

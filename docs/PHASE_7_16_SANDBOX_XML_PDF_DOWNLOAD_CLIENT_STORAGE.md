@@ -71,6 +71,9 @@ Reglas principales:
 - Desde 7.16K, la validacion visual inspecciona streams `/FlateDecode` e
   imagenes XObject antes de marcar PDF como listo. Solo un PDF visualmente
   confirmado puede generar `human_pdf_path` y copiarse al layout por cliente.
+- Desde 7.16L, XObject/Image por si solo no basta; si el PDF provider no es
+  usable y el XML raw es valido, SATBOT puede generar un PDF local sandbox desde
+  XML con `pdf_source=LOCAL_RENDERED_FROM_XML`.
 - Placeholders como `CFDI XML` o `CFDI PDF` se rechazan.
 - Si falla validacion, se guarda solo diagnostico seguro bajo `runtime/`; no se
   escribe artefacto final ni se copia al layout por cliente.

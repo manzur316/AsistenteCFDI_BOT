@@ -114,3 +114,19 @@ pdf_visual_content_present=true
 Si el PDF esta pendiente de generacion puede reportarse
 `PDF_NOT_READY_RETRYABLE`; si esta blanco o no confirmado queda bloqueado como
 `BLOCKED_INVALID_DOCUMENTS`.
+
+## `pdf_source` 7.16L
+
+La entrega documental distingue la fuente del PDF:
+
+- `PROVIDER`: PDF descargado del proveedor y validado localmente.
+- `LOCAL_RENDERED_FROM_XML`: PDF sandbox generado por SATBOT desde XML raw
+  validado porque el provider PDF no fue usable.
+
+Provider Email Delivery queda bloqueado por default cuando
+`pdf_source=LOCAL_RENDERED_FROM_XML` y `provider_pdf_content_valid=false`,
+porque Factura.com enviaria sus propios documentos y SATBOT no puede garantizar
+que el PDF adjunto por el proveedor sea visible.
+
+Telegram Document Channel puede usar el PDF local validado si el canal interno
+esta habilitado y los archivos pasan validacion.
