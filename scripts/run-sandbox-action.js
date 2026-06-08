@@ -159,6 +159,11 @@ function parseArgs(argv) {
       options.dryRun = true;
     } else if (key === "--send-real") {
       options.dryRun = false;
+    } else if (key === "--channel") {
+      options.channel = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--confirm-recipient") {
+      options.confirmRecipient = true;
     }
   }
   return { action, auditContext, options };

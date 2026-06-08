@@ -13,7 +13,7 @@ function validXml() {
 }
 function validPdf() {
   return Buffer.concat([
-    Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+    Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 72 720 Td (CFDI sandbox) Tj ET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", "latin1"),
     Buffer.alloc(1100, "A"),
     Buffer.from("\n%%EOF", "latin1"),
   ]);
@@ -62,6 +62,9 @@ check("pdf_valido", () => {
   const result = validateSandboxPdfArtifact(validPdf());
   assert.strictEqual(result.ok, true);
   assert.strictEqual(result.status, "VALID");
+  assert.strictEqual(result.pdf_visual_content_present, true);
+  assert.strictEqual(result.pdf_text_present, true);
+  assert(result.pdf_page_count_estimate >= 1);
   return result.size_bytes;
 });
 
@@ -83,6 +86,19 @@ check("pdf_muy_pequeno_rechazado", () => {
   const result = validateSandboxPdfArtifact(Buffer.from("%PDF-1.4\n%%EOF"));
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.status, "PDF_TOO_SMALL");
+  return result.status;
+});
+
+check("pdf_blanco_visualmente_rechazado", () => {
+  const blankPdf = Buffer.concat([
+    Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 1 >>\nstream\n \nendstream\nendobj\n", "latin1"),
+    Buffer.alloc(1100, " "),
+    Buffer.from("\n%%EOF", "latin1"),
+  ]);
+  const result = validateSandboxPdfArtifact(blankPdf);
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.status, "PDF_VISUAL_CONTENT_MISSING");
+  assert.strictEqual(result.pdf_visual_content_present, false);
   return result.status;
 });
 

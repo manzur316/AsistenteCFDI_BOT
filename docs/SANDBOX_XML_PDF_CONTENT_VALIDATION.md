@@ -46,7 +46,19 @@ El PDF sandbox debe:
 - iniciar con `%PDF`;
 - contener `%%EOF`;
 - cumplir tamano minimo configurable, default 1024 bytes;
+- contener pagina y streams de contenido;
+- contener contenido visual probable: texto, graficos o imagen/XObject dibujado;
+- reportar `pdf_visual_content_present`, `pdf_page_count_estimate`,
+  `pdf_text_present`, `pdf_graphics_present` y
+  `pdf_image_xobject_present`;
 - reportar solo metadata segura.
+
+Un PDF estructuralmente valido pero visualmente blanco se rechaza con
+`PDF_VISUAL_CONTENT_MISSING`. Ver:
+
+```text
+docs/PDF_VISUAL_CONTENT_VALIDATION.md
+```
 
 ## Integracion con adapter
 
@@ -76,6 +88,26 @@ Si el contenido es invalido:
 Solo copia a storage por cliente/factura si el artefacto fue descargado y
 validado. Placeholders o respuestas incompletas quedan como `DOWNLOAD_ERROR` o
 `PARTIAL_DOWNLOAD`.
+
+Si XML es valido y PDF es visualmente invalido, se permite conservar el XML como
+descarga parcial, pero no se copia el PDF ni se crea alias humano PDF.
+
+Cuando ambos son validos, se mantienen nombres internos:
+
+```text
+xml/cfdi.xml
+pdf/cfdi.pdf
+```
+
+y se crean aliases humanos seguros bajo `exports/`, por ejemplo:
+
+```text
+exports/Real-Bilbao_2026-06-08_F-24_SANDBOX.xml
+exports/Real-Bilbao_2026-06-08_F-24_SANDBOX.pdf
+```
+
+El manifest registra `human_xml_path`, `human_pdf_path` y
+`human_file_base_name` solo para archivos validos.
 
 ## Telegram
 

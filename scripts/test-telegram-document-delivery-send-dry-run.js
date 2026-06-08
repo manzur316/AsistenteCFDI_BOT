@@ -16,7 +16,7 @@ const VALID_XML = `<?xml version="1.0" encoding="UTF-8"?>
 </cfdi:Comprobante>`;
 
 const VALID_PDF = Buffer.concat([
-  Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+  Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 72 720 Td (CFDI sandbox) Tj ET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", "latin1"),
   Buffer.alloc(1100, "A"),
   Buffer.from("\n%%EOF", "latin1"),
 ]);

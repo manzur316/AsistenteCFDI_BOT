@@ -33,6 +33,7 @@ const DOWNLOAD_PATHS = Object.freeze({
   XML: (ref) => `/v4/cfdi40/${encodeURIComponent(ref)}/xml`,
   PDF: (ref) => `/v4/cfdi40/${encodeURIComponent(ref)}/pdf`,
 });
+const EMAIL_PATH = (ref) => `/v4/cfdi40/${encodeURIComponent(ref)}/email`;
 const ARTIFACT_STATUSES = Object.freeze({
   NOT_REQUESTED: "NOT_REQUESTED",
   DOWNLOAD_READY: "DOWNLOAD_READY",
@@ -681,6 +682,10 @@ class FacturaComSandboxAdapter {
             validation: contentValidation,
             [`${field}_content_valid`]: false,
             [`${field}_validation_status`]: contentValidation.status,
+            ...(artifactType === "PDF" ? {
+              pdf_visual_content_present: contentValidation.pdf_visual_content_present === true,
+              pdf_page_count_estimate: contentValidation.pdf_page_count_estimate || 0,
+            } : {}),
             validation_diagnostic_path: diagnosticPath ? safeRelative(diagnosticPath) : null,
           },
         }, { operation, status: "PAC_SANDBOX_ERROR" });
@@ -710,6 +715,10 @@ class FacturaComSandboxAdapter {
           [`${field}_size_bytes`]: buffer.length,
           [`${field}_content_valid`]: true,
           [`${field}_validation_status`]: contentValidation.status,
+          ...(artifactType === "PDF" ? {
+            pdf_visual_content_present: contentValidation.pdf_visual_content_present === true,
+            pdf_page_count_estimate: contentValidation.pdf_page_count_estimate || 0,
+          } : {}),
           content_validation: contentValidation,
           requires_human_review: true,
         });
@@ -728,6 +737,10 @@ class FacturaComSandboxAdapter {
         [`${field}_sha256`]: checksum,
         [`${field}_content_valid`]: true,
         [`${field}_validation_status`]: contentValidation.status,
+        ...(artifactType === "PDF" ? {
+          pdf_visual_content_present: contentValidation.pdf_visual_content_present === true,
+          pdf_page_count_estimate: contentValidation.pdf_page_count_estimate || 0,
+        } : {}),
         content_validation: contentValidation,
         [`${field}_storage_path`]: artifactPath ? safeRelative(artifactPath) : null,
         [`${field}_manifest_path`]: manifestPath ? safeRelative(manifestPath) : null,
@@ -751,6 +764,77 @@ class FacturaComSandboxAdapter {
 
   downloadPdf(invoiceRef = {}, context = {}) {
     return this.downloadArtifact("PDF", invoiceRef, context);
+  }
+
+  async sendInvoiceEmail(invoiceRef = {}, context = {}) {
+    const operation = "sendInvoiceEmail";
+    const blocked = blockIfNotSandbox(invoiceRef.environment || context.environment || PAC_ENVIRONMENTS.SANDBOX);
+    if (blocked) return blocked;
+    if (sandboxMode(this.options, context) !== SANDBOX_MODES.LIVE) {
+      return normalizeFacturaComErrorResponse({
+        code: "FACTURACOM_SANDBOX_EMAIL_LIVE_MODE_REQUIRED",
+        message: "El envio email proveedor sandbox requiere FACTURACOM_SANDBOX_MODE=live.",
+        status: "NEEDS_CONFIG",
+      }, { operation, status: "NEEDS_CONFIG" });
+    }
+    const env = envFrom(context, this.options);
+    try {
+      assertFacturaComSandboxEnv(env);
+    } catch (error) {
+      return this.normalizeConfigError(error, { env, operation });
+    }
+    const ref = invoiceRefValue(invoiceRef);
+    if (!ref) {
+      return normalizeFacturaComErrorResponse({
+        code: "FACTURACOM_SANDBOX_EMAIL_IDENTITY_REQUIRED",
+        message: "Se requiere cfdi_uid, pac_invoice_id o uuid para solicitar envio email sandbox.",
+        status: "NEEDS_RUNTIME",
+      }, { operation, status: "NEEDS_RUNTIME" });
+    }
+    const requestFn = context.requestFn || this.options.requestFn || facturaComRequest;
+    const requestPath = EMAIL_PATH(ref);
+    try {
+      const rawResponse = await requestFn({
+        method: "GET",
+        path: requestPath,
+        env,
+      });
+      const response = normalizeFacturaComHttpResponse(rawResponse, env);
+      if (response.ok !== true || response.api_ok === false) {
+        return normalizeFacturaComErrorResponse({
+          code: "FACTURACOM_SANDBOX_EMAIL_SEND_FAILED",
+          message: response.api_message_summary || response.statusText || "Factura.com sandbox no pudo enviar el email.",
+          status: "PROVIDER_ERROR",
+          data: sanitizeValue({
+            status: response.status,
+            statusText: response.statusText,
+            contentType: response.contentType,
+            request_path: requestPath,
+          }, env),
+        }, { operation, status: "PROVIDER_ERROR" });
+      }
+      return {
+        ok: true,
+        provider: PROVIDER,
+        environment: PAC_ENVIRONMENTS.SANDBOX,
+        operation,
+        delivery_channel: "PROVIDER_EMAIL",
+        status: "SENT",
+        provider_message: safeApiMessagePreview(response.api_message_summary || response.statusText || "Email sandbox enviado por proveedor.", env),
+        recipient_email_present: Boolean(text(context.recipient?.email || context.recipient_email)),
+        raw: sanitizeValue(response, env),
+        normalized_errors: [],
+        normalized_warnings: [],
+        requires_human_review: true,
+      };
+    } catch (error) {
+      return normalizeFacturaComErrorResponse({
+        code: "FACTURACOM_SANDBOX_EMAIL_SEND_FAILED",
+        message: safeApiMessagePreview(error?.message || "Error al solicitar envio email sandbox.", env),
+        status: "PROVIDER_ERROR",
+        data: sanitizeFacturaComError(error, env),
+      }, { operation, status: "PROVIDER_ERROR" });
+    }
   }
 
   getStatus(invoiceRef = {}) {

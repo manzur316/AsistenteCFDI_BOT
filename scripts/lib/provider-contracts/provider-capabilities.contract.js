@@ -44,6 +44,15 @@ function assertCanonicalProviderCapabilities(capabilities) {
   for (const key of CAPABILITY_KEYS) {
     if (typeof capabilities[key] !== "boolean") errors.push(`${key} debe ser boolean`);
   }
+  if (capabilities.document_delivery !== undefined) {
+    if (!isPlainObject(capabilities.document_delivery)) {
+      errors.push("document_delivery debe ser objeto");
+    } else {
+      for (const key of ["provider_email", "telegram_document_channel", "smtp_future_optional"]) {
+        if (typeof capabilities.document_delivery[key] !== "boolean") errors.push(`document_delivery.${key} debe ser boolean`);
+      }
+    }
+  }
   if (capabilities.supports_invoice_stamp !== true) warnings.push("provider sin timbrado directo");
   return result(errors, warnings);
 }
@@ -54,6 +63,13 @@ function buildCapabilities(input = {}) {
     environment: normalizeProviderEnvironment(input.environment),
   };
   for (const key of CAPABILITY_KEYS) base[key] = input[key] === true;
+  if (isPlainObject(input.document_delivery)) {
+    base.document_delivery = {
+      provider_email: input.document_delivery.provider_email === true,
+      telegram_document_channel: input.document_delivery.telegram_document_channel === true,
+      smtp_future_optional: input.document_delivery.smtp_future_optional === true,
+    };
+  }
   return base;
 }
 

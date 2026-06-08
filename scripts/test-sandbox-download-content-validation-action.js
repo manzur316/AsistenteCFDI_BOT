@@ -48,7 +48,11 @@ function validXml() {
 }
 
 function validPdf() {
-  return Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(1100, "A"), Buffer.from("\n%%EOF")]);
+  return Buffer.concat([
+    Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 72 720 Td (CFDI sandbox) Tj ET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", "latin1"),
+    Buffer.alloc(1100, "A"),
+    Buffer.from("\n%%EOF", "latin1"),
+  ]);
 }
 
 async function runWith(xmlBody, pdfBody, id) {
@@ -103,6 +107,7 @@ check("xml_pdf_validos_actualizan_storage", async () => {
   assert.strictEqual(result.output.artifact_status, "DOWNLOADED");
   assert.strictEqual(result.output.xml_content_valid, true);
   assert.strictEqual(result.output.pdf_content_valid, true);
+  assert.strictEqual(result.output.pdf_visual_content_present, true);
   assert.ok(result.output.xml_sha256);
   assert.ok(result.output.pdf_sha256);
   assert.ok(result.output.client_storage_manifest_path);

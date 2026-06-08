@@ -1107,6 +1107,13 @@ default y en dry-run salvo opt-in explicito. Ver
 `docs/SANDBOX_XML_PDF_CONTENT_VALIDATION.md` y
 `docs/TELEGRAM_DOCUMENT_DELIVERY_CHANNEL.md`.
 
+7.16J fortalece esa capa con validacion visual de PDF, aliases humanos seguros
+para XML/PDF bajo `exports/`, contrato canonico de entrega documental y Provider
+Email Delivery sandbox via Factura.com. SMTP queda solo como opcion futura no
+implementada. Ver `docs/PDF_VISUAL_CONTENT_VALIDATION.md`,
+`docs/DOCUMENT_DELIVERY_CANONICAL_CONTRACT.md` y
+`docs/PROVIDER_EMAIL_DELIVERY_ARCHITECTURE.md`.
+
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
 los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a

@@ -113,6 +113,22 @@ check("parse_args_accepts_db_exec_mode_flag", () => {
   return parsed.options.dbExecMode;
 });
 
+check("parse_args_accepts_document_delivery_flags", () => {
+  const parsed = parseArgs([
+    "sandbox.documents.delivery.send",
+    "--draft-id", "DRAFT-1",
+    "--channel", "PROVIDER_EMAIL",
+    "--dry-run",
+    "--confirm-recipient",
+  ]);
+  assert.strictEqual(parsed.action, "sandbox.documents.delivery.send");
+  assert.strictEqual(parsed.options.draftId, "DRAFT-1");
+  assert.strictEqual(parsed.options.channel, "PROVIDER_EMAIL");
+  assert.strictEqual(parsed.options.dryRun, true);
+  assert.strictEqual(parsed.options.confirmRecipient, true);
+  return parsed.options.channel;
+});
+
 check("controlled_missing_draft_exits_zero_with_json", () => {
   const { child, parsed } = runCli(["sandbox.draft.stamp"], { FACTURACOM_SANDBOX_LIVE: "1" });
   assert.strictEqual(child.status, 0);

@@ -142,6 +142,33 @@ docs/TELEGRAM_DOCUMENT_DELIVERY_CHANNEL.md
 El timbrado sandbox live sigue usando `provider_client_links.provider_client_uid`
 y no se abre produccion fiscal real.
 
+## Email principal del cliente
+
+7.16J agrega la base local para un email principal unico:
+
+```text
+sql/015_client_primary_email_foundation.sql
+```
+
+Campos:
+
+- `email`
+- `email_confirmed`
+- `provider_email_sync_status`
+- `provider_email_sync_summary`
+
+El mapper de cliente Factura.com envia `email` si existe. No se agregan
+`email2`, `email3`, `billing_email` ni direcciones alternas. Provider Email
+Delivery depende de este email principal y exige confirmacion humana o accion
+explicita antes de envio real.
+
+Referencias:
+
+```text
+docs/PROVIDER_EMAIL_DELIVERY_ARCHITECTURE.md
+docs/DOCUMENT_DELIVERY_CANONICAL_CONTRACT.md
+```
+
 ## PostgreSQL local con Docker
 
 En entorno local Docker, las acciones del Action Layer que leen PostgreSQL
@@ -171,6 +198,7 @@ proveedor sigue redaccionado en el output seguro.
 - No se guardan secrets en docs/tests.
 - No se versiona runtime.
 - No se envia XML/PDF/ZIP/Excel por Telegram.
+- No se imprime email completo en logs publicos; se usa redaccion.
 
 ## Criterio de salida
 

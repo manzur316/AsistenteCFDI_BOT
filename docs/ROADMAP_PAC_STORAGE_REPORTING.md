@@ -1654,6 +1654,33 @@ Alcance:
 Fuera de alcance: produccion, PAC productivo, timbrado real, envio automatico de
 documentos por Telegram y cambios a `data/concepts.normalized.json`.
 
+## Fase 7.16J - Document Delivery Canonical Contract + PDF Visual Validation
+
+La fase 7.16J queda definida en:
+
+```text
+docs/PDF_VISUAL_CONTENT_VALIDATION.md
+docs/DOCUMENT_DELIVERY_CANONICAL_CONTRACT.md
+docs/PROVIDER_EMAIL_DELIVERY_ARCHITECTURE.md
+```
+
+Alcance:
+
+- detectar PDFs sandbox visualmente blancos antes de marcarlos como validos;
+- conservar nombres internos `cfdi.xml`/`cfdi.pdf` y crear aliases humanos
+  seguros bajo `exports/` solo para documentos validos;
+- agregar contrato neutral de entrega documental;
+- preparar Provider Email Delivery con Factura.com Sandbox usando
+  `GET /v4/cfdi40/{cfdi_uid}/email`;
+- agregar email principal unico de cliente y sincronizarlo con proveedor cuando
+  exista;
+- mantener Telegram Document Channel como canal interno/privado, deshabilitado
+  por default;
+- dejar SMTP como `SMTP_FUTURE_OPTIONAL`, no implementado como flujo principal.
+
+Fuera de alcance: produccion, PAC productivo, CSD, secretos, runtime versionado,
+envio automatico, email secundario y cambios a `data/concepts.normalized.json`.
+
 ## Fase 7.16F - Shared Telegram Bot Identity + Subscription Access Foundation
 
 La fase 7.16F queda definida en

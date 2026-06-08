@@ -80,6 +80,8 @@ function normalizeClient(client = {}) {
     codigo_postal_fiscal: text(source.codigo_postal_fiscal || source.fiscal_zip || source.cp),
     uso_cfdi_default: text(source.uso_cfdi_default || source.uso_cfdi || source.cfdi_use),
     tipo_persona: text(source.tipo_persona || source.person_type),
+    email: text(source.email || source.correo),
+    email_confirmed: source.email_confirmed === true || source.emailConfirmed === true,
     validated_by_human: source.validated_by_human === true,
     fiscal_normalization_summary: source.fiscal_normalization_summary || null,
     fiscal_normalization_report: normalized.normalization_report,

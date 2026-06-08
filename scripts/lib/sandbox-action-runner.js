@@ -59,6 +59,8 @@ const ACTIONS = [
   "sandbox.draft.cancel",
   "sandbox.documents.delivery.diagnose",
   "sandbox.documents.delivery.send",
+  "sandbox.documents.provider-email.diagnose",
+  "sandbox.documents.provider-email.send",
   "sandbox.cfdi.rules.diagnose",
   "sandbox.client.fiscal-normalize.diagnose",
   "sandbox.provider.client.lookup",
@@ -591,6 +593,8 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
   if (action === "sandbox.documents.delivery.diagnose") return runSandboxDocumentDeliveryDiagnose({ ...options, env });
   if (action === "sandbox.documents.delivery.send") return runSandboxDocumentDeliverySend({ ...options, env });
+  if (action === "sandbox.documents.provider-email.diagnose") return runSandboxDocumentDeliveryDiagnose({ ...options, env, channel: "PROVIDER_EMAIL" });
+  if (action === "sandbox.documents.provider-email.send") return runSandboxDocumentDeliverySend({ ...options, env, channel: "PROVIDER_EMAIL" });
   if (action === "sandbox.cfdi.rules.diagnose") return runCfdiRulesDiagnose(options);
   if (action === "sandbox.client.fiscal-normalize.diagnose") return runClientFiscalNormalizeDiagnose(options);
   if (action.startsWith("sandbox.provider.client.")) return runProviderClientAction(action, { ...options, env });

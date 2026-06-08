@@ -66,6 +66,8 @@ Reglas principales:
 - XML debe parecer CFDI 4.0 con `Comprobante`, namespace/Version, Timbre Fiscal
   Digital y UUID.
 - PDF debe iniciar con `%PDF`, contener `%%EOF` y superar tamano minimo.
+- Desde 7.16J, PDF tambien debe tener contenido visual probable. Un PDF que
+  abre en blanco se rechaza con `PDF_VISUAL_CONTENT_MISSING`.
 - Placeholders como `CFDI XML` o `CFDI PDF` se rechazan.
 - Si falla validacion, se guarda solo diagnostico seguro bajo `runtime/`; no se
   escribe artefacto final ni se copia al layout por cliente.
@@ -116,10 +118,16 @@ runtime/storage-sandbox/emitters/<emitter_id>/<yyyy>/<mm>/clients/<client_id>/in
   canonical-summary.json
   xml/cfdi.xml
   pdf/cfdi.pdf
+  exports/<cliente_safe>_<yyyy-MM-dd>_<serie>-<folio>_SANDBOX.xml
+  exports/<cliente_safe>_<yyyy-MM-dd>_<serie>-<folio>_SANDBOX.pdf
 ```
 
 `invoice_identity` usa una identidad tecnica local segura para path. Los archivos
 en `runtime/` no se versionan.
+
+Los nombres internos `cfdi.xml` y `cfdi.pdf` se conservan para el sistema. Los
+aliases humanos bajo `exports/` se crean solo si el artefacto correspondiente es
+valido y no incluyen RFC, UUID ni UID completos.
 
 ## Telegram
 
@@ -148,6 +156,32 @@ Telegram no envia ni imprime:
 - UUID/UID/RFC completos;
 - credenciales, `.env` o CSD.
 
+7.16J prepara un `Telegram Document Channel` separado del chat operativo. Sigue
+deshabilitado por default y solo puede enviar documentos validados a un chat o
+grupo privado configurado explicitamente.
+
+## Entrega documental
+
+7.16J agrega el contrato canonico neutral de entrega documental:
+
+```text
+docs/DOCUMENT_DELIVERY_CANONICAL_CONTRACT.md
+```
+
+Canales:
+
+- `PROVIDER_EMAIL`: canal principal hacia cliente usando el proveedor fiscal.
+- `TELEGRAM_DOCUMENT_CHANNEL`: canal interno/privado.
+- `SMTP_FUTURE_OPTIONAL`: documentado, no implementado como flujo principal.
+
+Provider Email para Factura.com Sandbox usa:
+
+```text
+GET /v4/cfdi40/{cfdi_uid}/email
+```
+
+solo en sandbox live y con documentos locales validados.
+
 ## Base de datos
 
 La migracion aditiva `sql/008_sandbox_pac_summary.sql` agrega:
@@ -174,6 +208,13 @@ Pruebas nuevas:
 - `scripts/test-sandbox-download-content-validation-action.js`
 - `scripts/test-sandbox-download-no-client-storage-for-invalid-content.js`
 - `scripts/test-telegram-download-invalid-artifact-message.js`
+- `scripts/test-sandbox-pdf-visual-content-validator.js`
+- `scripts/test-facturacom-download-rejects-blank-pdf.js`
+- `scripts/test-sandbox-download-no-client-storage-for-blank-pdf.js`
+- `scripts/test-sandbox-download-human-file-names.js`
+- `scripts/test-document-delivery-canonical-contract.js`
+- `scripts/test-sandbox-documents-delivery-action.js`
+- `scripts/test-sandbox-documents-provider-email-action.js`
 
 ## Fuera de alcance
 

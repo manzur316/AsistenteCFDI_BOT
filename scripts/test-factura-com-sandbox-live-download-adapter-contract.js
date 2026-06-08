@@ -52,7 +52,7 @@ const VALID_XML = `<?xml version="1.0" encoding="UTF-8"?>
 </cfdi:Comprobante>`;
 
 const VALID_PDF = Buffer.concat([
-  Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+  Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 72 720 Td (CFDI sandbox) Tj ET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", "latin1"),
   Buffer.alloc(1100, "A"),
   Buffer.from("\n%%EOF", "latin1"),
 ]);
@@ -112,6 +112,7 @@ check("download_pdf_live_writes_file_and_metadata", async () => {
   assert.strictEqual(result.pdf_downloaded, true);
   assert.strictEqual(result.pdf_content_valid, true);
   assert.strictEqual(result.pdf_validation_status, "VALID");
+  assert.strictEqual(result.content_validation.pdf_visual_content_present, true);
   assert(result.pdf_sha256 && result.pdf_sha256.length === 64);
   assert(result.pdf_size_bytes > 0);
   assert(fs.existsSync(path.join(root, result.pdf_storage_path)));

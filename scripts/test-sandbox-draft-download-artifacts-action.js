@@ -67,7 +67,7 @@ function stampedDraft(overrides = {}) {
 function fakeRequestFn({ partial = false } = {}) {
   const validXml = "<?xml version=\"1.0\"?><cfdi:Comprobante xmlns:cfdi=\"http://www.sat.gob.mx/cfd/4\" Version=\"4.0\" Total=\"1160\"><cfdi:Complemento><tfd:TimbreFiscalDigital xmlns:tfd=\"http://www.sat.gob.mx/TimbreFiscalDigital\" UUID=\"00000000-0000-4000-8000-000000000716\" /></cfdi:Complemento></cfdi:Comprobante>";
   const validPdf = Buffer.concat([
-    Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+    Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 72 720 Td (CFDI sandbox) Tj ET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", "latin1"),
     Buffer.alloc(1100, "A"),
     Buffer.from("\n%%EOF", "latin1"),
   ]);
@@ -117,6 +117,7 @@ check("download_action_downloads_xml_pdf_and_preserves_statuses", async () => {
   assert.strictEqual(result.output.pdf_downloaded, true);
   assert.strictEqual(result.output.xml_content_valid, true);
   assert.strictEqual(result.output.pdf_content_valid, true);
+  assert.strictEqual(result.output.pdf_visual_content_present, true);
   assert.strictEqual(result.output.artifact_status, "DOWNLOADED");
   assert(fs.existsSync(path.join(root, result.output.xml_storage_path)));
   assert(fs.existsSync(path.join(root, result.output.pdf_storage_path)));

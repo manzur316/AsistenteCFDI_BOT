@@ -236,6 +236,8 @@ async function runProviderClientSync(options = {}) {
       lookup_status: finalLookup.status,
       matches_count: finalLookup.matches_count,
       provider_client_uid_present: true,
+      provider_email_present: Boolean(canonical.email),
+      provider_email_sync_status: canonical.email ? "SYNCED" : "NOT_PROVIDED",
       safe_matches: finalLookup.safe_matches || [],
     },
   }, options);
@@ -245,6 +247,8 @@ async function runProviderClientSync(options = {}) {
     output: {
       ...safeOutputBase("sandbox.provider.client.sync", { ...normalized, client_id: canonical.local_client_id }),
       sync_status: syncStatus,
+      provider_email_sync_status: canonical.email ? "SYNCED" : "NOT_PROVIDED",
+      client_email_present: Boolean(canonical.email),
       provider_client_link: safeLinkOutput({
         tenant_id: normalized.tenant_id,
         client_id: canonical.local_client_id,

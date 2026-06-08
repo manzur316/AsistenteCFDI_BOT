@@ -1,0 +1,91 @@
+# Document Delivery Canonical Contract
+
+## Objetivo
+
+La entrega documental debe ser neutral al PAC. SATBOT no debe acoplarse a
+Factura.com para decidir si un XML/PDF puede entregarse al cliente o a un canal
+interno.
+
+Modulo:
+
+```text
+scripts/lib/document-delivery/canonical-document-delivery-contract.js
+```
+
+## Canales
+
+```text
+PROVIDER_EMAIL
+TELEGRAM_DOCUMENT_CHANNEL
+SMTP_FUTURE_OPTIONAL
+```
+
+Decisiones de esta fase:
+
+- `PROVIDER_EMAIL` es el canal principal hacia cliente.
+- `TELEGRAM_DOCUMENT_CHANNEL` es canal interno privado, deshabilitado por
+  default.
+- `SMTP_FUTURE_OPTIONAL` existe solo como contrato futuro y valida como
+  `SMTP_NOT_IMPLEMENTED`.
+
+## Estados
+
+```text
+READY
+SENT
+DRY_RUN
+NEEDS_CONFIG
+NEEDS_DOCUMENTS
+NEEDS_RECIPIENT
+BLOCKED_INVALID_DOCUMENTS
+PROVIDER_ERROR
+ERROR
+```
+
+## Request Canonico
+
+El request incluye:
+
+- proveedor y ambiente;
+- `draft_id`, `client_id`, `invoice_ref`;
+- canal;
+- recipient con email redaccionado;
+- documentos con rutas relativas seguras, `sha256`, tamano y banderas de
+  validez;
+- politica de delivery.
+
+Defaults de seguridad:
+
+- `allow_production=false`
+- `require_valid_documents=true`
+- `allow_sandbox=true`
+
+## Result Canonico
+
+El resultado incluye:
+
+- `ok`
+- proveedor y ambiente
+- canal
+- estado
+- recipient presente/redaccionado
+- `documents_valid`
+- mensaje proveedor normalizado
+- evidencia minima
+- errores y warnings normalizados
+
+## Guardrails
+
+El contrato no debe exponer:
+
+- token Telegram;
+- chat_id completo;
+- email completo en salida publica;
+- RFC completo;
+- UUID/UID completos;
+- rutas absolutas;
+- XML/PDF/ZIP/Excel;
+- CSD, `.env` o credenciales PAC.
+
+La entrega se bloquea si los documentos no estan validados. En esta fase no hay
+envio automatico: toda entrega requiere accion/configuracion explicita.

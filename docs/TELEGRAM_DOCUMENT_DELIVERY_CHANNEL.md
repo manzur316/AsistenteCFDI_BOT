@@ -26,6 +26,8 @@ Acciones Action Layer:
 ```text
 sandbox.documents.delivery.diagnose
 sandbox.documents.delivery.send
+sandbox.documents.provider-email.diagnose
+sandbox.documents.provider-email.send
 ```
 
 ## Variables Locales
@@ -45,10 +47,13 @@ Antes de cualquier envio:
 
 - XML/PDF deben existir dentro de `runtime/`;
 - XML/PDF deben pasar validacion de contenido CFDI/PDF;
+- PDF debe pasar validacion visual (`pdf_visual_content_present=true`);
 - placeholders quedan bloqueados;
 - paths absolutos, token y chat_id completo no se imprimen;
 - no se aceptan archivos fuera de `runtime/`;
 - no se adjuntan ZIP, Excel, JSON ni CSV.
+- se usan aliases humanos seguros cuando existen, no rutas internas
+  `cfdi.xml/cfdi.pdf` para el nombre visible del documento.
 
 ## Estados
 
@@ -61,3 +66,15 @@ Antes de cualquier envio:
 
 No versionar `runtime/`, tokens, `.env`, CSD, XML/PDF ni datos reales. Este canal
 no habilita produccion, PAC productivo ni timbrado fiscal real.
+
+## Relacion con Provider Email
+
+Telegram Document Channel es un canal interno/privado para historial documental.
+El canal principal para cliente es Provider Email via PAC sandbox, documentado en:
+
+```text
+docs/PROVIDER_EMAIL_DELIVERY_ARCHITECTURE.md
+docs/DOCUMENT_DELIVERY_CANONICAL_CONTRACT.md
+```
+
+SMTP no es flujo principal y no se implementa en esta fase.

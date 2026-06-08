@@ -76,6 +76,16 @@ function hashIdentity(value) {
   return crypto.createHash("sha256").update(String(value || "missing")).digest("hex").slice(0, 16);
 }
 
+function safeFileSegment(value, fallback = "Documento") {
+  return String(value || fallback)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64) || fallback;
+}
+
 function normalizeClient(draft = {}) {
   const client = draft.current_client || draft.client || draft.client_snapshot || {};
   return {
@@ -159,6 +169,8 @@ function validationError(status, output, errors, warnings = []) {
 function safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated) {
   const xmlDownloaded = xmlResult?.xml_downloaded === true;
   const pdfDownloaded = pdfResult?.pdf_downloaded === true;
+  const xmlValidation = xmlResult?.content_validation || xmlResult?.raw?.validation || null;
+  const pdfValidation = pdfResult?.content_validation || pdfResult?.raw?.validation || null;
   const artifactStatus = xmlDownloaded && pdfDownloaded
     ? ARTIFACT_STATUS.DOWNLOADED
     : xmlDownloaded || pdfDownloaded
@@ -183,11 +195,17 @@ function safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated) {
     pdf_downloaded: pdfDownloaded,
     xml_content_valid: xmlResult?.xml_content_valid === true,
     pdf_content_valid: pdfResult?.pdf_content_valid === true,
-    xml_validation_status: xmlResult?.xml_validation_status || xmlResult?.content_validation?.status || xmlResult?.raw?.validation?.status || null,
-    pdf_validation_status: pdfResult?.pdf_validation_status || pdfResult?.content_validation?.status || pdfResult?.raw?.validation?.status || null,
+    xml_validation_status: xmlResult?.xml_validation_status || xmlValidation?.status || null,
+    pdf_validation_status: pdfResult?.pdf_validation_status || pdfValidation?.status || null,
+    pdf_visual_content_present: pdfValidation?.pdf_visual_content_present === true,
+    pdf_page_count_estimate: Number.isFinite(pdfValidation?.pdf_page_count_estimate) ? pdfValidation.pdf_page_count_estimate : null,
+    pdf_text_present: pdfValidation?.pdf_text_present === true,
+    pdf_graphics_present: pdfValidation?.pdf_graphics_present === true,
+    pdf_image_xobject_present: pdfValidation?.pdf_image_xobject_present === true,
+    pdf_content_streams_present: pdfValidation?.pdf_content_streams_present === true,
     download_content_validation: {
-      xml: xmlResult?.content_validation || xmlResult?.raw?.validation || null,
-      pdf: pdfResult?.content_validation || pdfResult?.raw?.validation || null,
+      xml: xmlValidation,
+      pdf: pdfValidation,
     },
     xml_storage_path: xmlResult?.xml_storage_path || null,
     pdf_storage_path: pdfResult?.pdf_storage_path || null,
@@ -198,6 +216,59 @@ function safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated) {
     artifact_status: artifactStatus,
     storage_updated: storageUpdated === true,
     requires_human_review: true,
+  };
+}
+
+function humanFileBaseName(draft, identity, now) {
+  const client = normalizeClient(draft);
+  const date = (now instanceof Date ? now : new Date()).toISOString().slice(0, 10);
+  const serie = safeFileSegment(identity.serie || draft.serie || draft.sandbox_pac_summary?.serie, "");
+  const folio = safeFileSegment(identity.folio || draft.folio || draft.sandbox_pac_summary?.folio, "");
+  const serieFolio = serie && folio
+    ? `${serie}-${folio}`
+    : serie || folio || `DRAFT-${hashIdentity(draft.draft_id || identity.ref).slice(0, 8)}`;
+  return `${safeFileSegment(client.display_name || client.client_id || "Cliente")}_${date}_${serieFolio}_SANDBOX`;
+}
+
+function copyHumanAlias(sourcePath, invoiceDir, baseName, extension) {
+  if (!sourcePath) return null;
+  const targetDir = path.join(invoiceDir, "exports");
+  fs.mkdirSync(targetDir, { recursive: true });
+  const target = path.join(targetDir, `${baseName}.${extension}`);
+  fs.copyFileSync(sourcePath, target);
+  return target;
+}
+
+function safeSandboxPacSummaryForOutput(draft, identity, manifest) {
+  const source = draft.sandbox_pac_summary || {};
+  return {
+    provider: source.provider || "Factura.com Sandbox",
+    mode: source.mode || source.environment || null,
+    serie: identity.serie || source.serie || null,
+    folio: identity.folio || source.folio || null,
+    cfdi_uid_present: Boolean(identity.cfdi_uid || source.cfdi_uid),
+    uuid_present: Boolean(identity.uuid || source.uuid),
+    pac_invoice_id_present: Boolean(identity.pac_invoice_id || source.pac_invoice_id),
+    xml_provider_available: true,
+    pdf_provider_available: true,
+    xml_downloaded: manifest.xml_downloaded,
+    pdf_downloaded: manifest.pdf_downloaded,
+    xml_content_valid: manifest.xml_content_valid,
+    pdf_content_valid: manifest.pdf_content_valid,
+    xml_validation_status: manifest.xml_validation_status,
+    pdf_validation_status: manifest.pdf_validation_status,
+    pdf_visual_content_present: manifest.pdf_visual_content_present,
+    pdf_page_count_estimate: manifest.pdf_page_count_estimate,
+    xml_storage_path: manifest.xml_storage_path,
+    pdf_storage_path: manifest.pdf_storage_path,
+    human_file_base_name: manifest.human_file_base_name || null,
+    human_xml_path: manifest.human_xml_path || null,
+    human_pdf_path: manifest.human_pdf_path || null,
+    xml_sha256: manifest.xml_sha256,
+    pdf_sha256: manifest.pdf_sha256,
+    xml_size_bytes: manifest.xml_size_bytes,
+    pdf_size_bytes: manifest.pdf_size_bytes,
+    artifact_status: manifest.artifact_status,
   };
 }
 
@@ -272,16 +343,22 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
   const storageUpdated = Boolean(copiedXml || copiedPdf);
 
   const manifest = safeManifest(draft, identity, xmlResult, pdfResult, storageUpdated);
+  const humanBaseName = storageUpdated ? humanFileBaseName(draft, identity, now) : null;
   if (copiedXml) {
     manifest.client_storage_xml_path = rel(copiedXml);
     manifest.client_storage_xml_sha256 = sha256File(copiedXml);
     manifest.client_storage_xml_size_bytes = fileSize(copiedXml);
+    const humanXml = copyHumanAlias(copiedXml, clientInvoiceDir, humanBaseName, "xml");
+    manifest.human_xml_path = rel(humanXml);
   }
   if (copiedPdf) {
     manifest.client_storage_pdf_path = rel(copiedPdf);
     manifest.client_storage_pdf_sha256 = sha256File(copiedPdf);
     manifest.client_storage_pdf_size_bytes = fileSize(copiedPdf);
+    const humanPdf = copyHumanAlias(copiedPdf, clientInvoiceDir, humanBaseName, "pdf");
+    manifest.human_pdf_path = rel(humanPdf);
   }
+  if (humanBaseName) manifest.human_file_base_name = humanBaseName;
   if (storageUpdated) {
     writeJson(path.join(clientInvoiceDir, "manifest.json"), manifest);
     writeJson(path.join(clientInvoiceDir, "canonical-summary.json"), {
@@ -297,6 +374,10 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
       artifact_status: manifest.artifact_status,
       xml_downloaded: manifest.xml_downloaded,
       pdf_downloaded: manifest.pdf_downloaded,
+      xml_content_valid: manifest.xml_content_valid,
+      pdf_content_valid: manifest.pdf_content_valid,
+      pdf_visual_content_present: manifest.pdf_visual_content_present,
+      human_file_base_name: manifest.human_file_base_name || null,
       requires_human_review: true,
     });
   }
@@ -336,6 +417,12 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
       pdf_content_valid: manifest.pdf_content_valid,
       xml_validation_status: manifest.xml_validation_status,
       pdf_validation_status: manifest.pdf_validation_status,
+      pdf_visual_content_present: manifest.pdf_visual_content_present,
+      pdf_page_count_estimate: manifest.pdf_page_count_estimate,
+      pdf_text_present: manifest.pdf_text_present,
+      pdf_graphics_present: manifest.pdf_graphics_present,
+      pdf_image_xobject_present: manifest.pdf_image_xobject_present,
+      pdf_content_streams_present: manifest.pdf_content_streams_present,
       download_content_validation: manifest.download_content_validation,
       xml_storage_path: manifest.xml_storage_path,
       pdf_storage_path: manifest.pdf_storage_path,
@@ -346,32 +433,15 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
       storage_updated: storageUpdated,
       manifest_path: rel(path.join(bundleDir, "sandbox-download-manifest.json")),
       client_storage_manifest_path: storageUpdated ? rel(path.join(clientInvoiceDir, "manifest.json")) : null,
+      human_file_base_name: manifest.human_file_base_name || null,
+      human_xml_path: manifest.human_xml_path || null,
+      human_pdf_path: manifest.human_pdf_path || null,
       pac_identity: {
         cfdi_uid_present: Boolean(identity.cfdi_uid),
         uuid_present: Boolean(identity.uuid),
         pac_invoice_id_present: Boolean(identity.pac_invoice_id),
       },
-      sandbox_pac_summary: {
-        ...(draft.sandbox_pac_summary || {}),
-        cfdi_uid: identity.cfdi_uid || null,
-        uuid: identity.uuid || null,
-        pac_invoice_id: identity.pac_invoice_id || null,
-        xml_provider_available: true,
-        pdf_provider_available: true,
-        xml_downloaded: manifest.xml_downloaded,
-        pdf_downloaded: manifest.pdf_downloaded,
-        xml_content_valid: manifest.xml_content_valid,
-        pdf_content_valid: manifest.pdf_content_valid,
-        xml_validation_status: manifest.xml_validation_status,
-        pdf_validation_status: manifest.pdf_validation_status,
-        xml_storage_path: manifest.xml_storage_path,
-        pdf_storage_path: manifest.pdf_storage_path,
-        xml_sha256: manifest.xml_sha256,
-        pdf_sha256: manifest.pdf_sha256,
-        xml_size_bytes: manifest.xml_size_bytes,
-        pdf_size_bytes: manifest.pdf_size_bytes,
-        artifact_status: manifest.artifact_status,
-      },
+      sandbox_pac_summary: safeSandboxPacSummaryForOutput(draft, identity, manifest),
       sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
       requires_human_review: true,
     },

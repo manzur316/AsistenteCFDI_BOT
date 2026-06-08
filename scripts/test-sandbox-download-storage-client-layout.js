@@ -62,7 +62,7 @@ const VALID_XML = `<?xml version="1.0" encoding="UTF-8"?>
 </cfdi:Comprobante>`;
 
 const VALID_PDF = Buffer.concat([
-  Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+  Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 72 720 Td (CFDI sandbox) Tj ET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", "latin1"),
   Buffer.alloc(1100, "A"),
   Buffer.from("\n%%EOF", "latin1"),
 ]);
@@ -93,7 +93,11 @@ check("client_invoice_storage_layout_is_created", async () => {
   assert.strictEqual(manifest.pdf_downloaded, true);
   assert.strictEqual(manifest.xml_content_valid, true);
   assert.strictEqual(manifest.pdf_content_valid, true);
+  assert.strictEqual(manifest.pdf_visual_content_present, true);
   assert.strictEqual(manifest.artifact_status, "DOWNLOADED");
+  assert(manifest.human_xml_path && manifest.human_xml_path.endsWith("_SANDBOX.xml"), "human XML alias missing");
+  assert(manifest.human_pdf_path && manifest.human_pdf_path.endsWith("_SANDBOX.pdf"), "human PDF alias missing");
+  assert.strictEqual(manifest.human_file_base_name.includes("Cliente-Layout"), true);
   assert(fs.existsSync(path.join(path.dirname(manifestPath), "xml", "cfdi.xml")));
   assert(fs.existsSync(path.join(path.dirname(manifestPath), "pdf", "cfdi.pdf")));
   const raw = fs.readFileSync(manifestPath, "utf8");

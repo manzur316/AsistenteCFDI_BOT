@@ -22,12 +22,10 @@ function printCheck(name, pass, value = "") {
 const checks = [];
 
 function check(name, fn) {
-  try {
-    const value = fn();
-    checks.push({ name, pass: true, value: value === undefined ? "" : String(value) });
-  } catch (error) {
-    checks.push({ name, pass: false, value: error.message });
-  }
+  checks.push(Promise.resolve()
+    .then(fn)
+    .then((value) => ({ name, pass: true, value: value === undefined ? "" : String(value) }))
+    .catch((error) => ({ name, pass: false, value: error.message })));
 }
 
 function runtimeSnapshot() {
@@ -127,10 +125,10 @@ check("produccion_queda_bloqueada", () => {
   return "blocked";
 });
 
-check("no_genera_archivos_xml_pdf_reales", () => {
+check("no_genera_archivos_xml_pdf_reales", async () => {
   const adapter = new FacturaComSandboxAdapter();
-  const xml = adapter.downloadXml({ uuid: "00000000-0000-4000-8000-000000000001" });
-  const pdf = adapter.downloadPdf({ uuid: "00000000-0000-4000-8000-000000000001" });
+  const xml = await adapter.downloadXml({ uuid: "00000000-0000-4000-8000-000000000001" });
+  const pdf = await adapter.downloadPdf({ uuid: "00000000-0000-4000-8000-000000000001" });
   assert.strictEqual(xml.ok, false);
   assert.strictEqual(pdf.ok, false);
   assert(!("content" in xml));
@@ -147,11 +145,13 @@ check("no_escribe_runtime", () => {
   return "no runtime writes";
 });
 
-console.log("Factura.com Sandbox Adapter Mock Tests");
-for (const item of checks) printCheck(item.name, item.pass, item.value);
-const failed = checks.filter((item) => !item.pass);
-console.log(`\nPASS total: ${checks.length - failed.length}/${checks.length}`);
-if (failed.length) {
-  console.log(`FAIL total: ${failed.length}`);
-  process.exit(1);
-}
+Promise.all(checks).then((results) => {
+  console.log("Factura.com Sandbox Adapter Mock Tests");
+  for (const item of results) printCheck(item.name, item.pass, item.value);
+  const failed = results.filter((item) => !item.pass);
+  console.log(`\nPASS total: ${results.length - failed.length}/${results.length}`);
+  if (failed.length) {
+    console.log(`FAIL total: ${failed.length}`);
+    process.exit(1);
+  }
+});

@@ -36,6 +36,11 @@ const REGISTRY = Object.freeze({
       supports_self_invoice: false,
       supports_stripe_app: false,
       supports_partner_clients: true,
+      document_delivery: {
+        provider_email: true,
+        telegram_document_channel: false,
+        smtp_future_optional: false,
+      },
     }),
     [PROVIDER_ENVIRONMENTS.PRODUCTION]: buildCapabilities({
       provider: PROVIDERS.FACTURA_COM,
@@ -64,6 +69,11 @@ const REGISTRY = Object.freeze({
       supports_self_invoice: false,
       supports_stripe_app: false,
       supports_partner_clients: true,
+      document_delivery: {
+        provider_email: true,
+        telegram_document_channel: false,
+        smtp_future_optional: false,
+      },
     }),
   },
   [PROVIDERS.FACTURAPI]: {
@@ -94,6 +104,11 @@ const REGISTRY = Object.freeze({
       supports_self_invoice: true,
       supports_stripe_app: true,
       supports_partner_clients: false,
+      document_delivery: {
+        provider_email: true,
+        telegram_document_channel: false,
+        smtp_future_optional: false,
+      },
     }),
     [PROVIDER_ENVIRONMENTS.LIVE]: buildCapabilities({
       provider: PROVIDERS.FACTURAPI,
@@ -122,6 +137,11 @@ const REGISTRY = Object.freeze({
       supports_self_invoice: true,
       supports_stripe_app: true,
       supports_partner_clients: false,
+      document_delivery: {
+        provider_email: true,
+        telegram_document_channel: false,
+        smtp_future_optional: false,
+      },
     }),
   },
 });

@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const zlib = require("zlib");
 
 const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
 const PLACEHOLDER_RE = /^(?:cfdi\s+)?(?:xml|pdf)|ok|success|descarga\s+exitosa$/i;
@@ -122,53 +123,166 @@ function validateSandboxXmlArtifact(bufferOrText, context = {}) {
 function validateSandboxPdfArtifact(buffer, context = {}) {
   const body = asBuffer(buffer);
   const minBytes = Number(context.pdfMinBytes || context.PDF_MIN_BYTES || 1024);
+  const rawText = body.toString("latin1");
   const pdfMagicPresent = body.subarray(0, 8).toString("latin1").startsWith("%PDF");
-  const pdfEofPresent = body.toString("latin1").includes("%%EOF");
+  const pdfEofPresent = rawText.includes("%%EOF");
+  const visual = inspectPdfVisualContent(body);
+  const basePdfFlags = {
+    pdf_magic_present: pdfMagicPresent,
+    pdf_eof_present: pdfEofPresent,
+    pdf_page_count_estimate: visual.page_count_estimate,
+    pdf_content_streams_present: visual.content_streams_present,
+    pdf_visual_content_present: visual.visual_content_present,
+    pdf_text_present: visual.text_present,
+    pdf_graphics_present: visual.graphics_present,
+    pdf_image_xobject_present: visual.image_xobject_present,
+  };
   if (body.length === 0) {
     return {
       ...baseResult("PDF", body, { status: "INVALID_EMPTY", errors: ["PDF_EMPTY"] }),
-      pdf_magic_present: false,
-      pdf_eof_present: false,
+      ...basePdfFlags,
     };
   }
   if (isPlaceholder(body)) {
     return {
       ...baseResult("PDF", body, { status: "INVALID_PLACEHOLDER", errors: ["PDF_PLACEHOLDER_CONTENT"] }),
-      pdf_magic_present: false,
-      pdf_eof_present: false,
+      ...basePdfFlags,
     };
   }
   if (!pdfMagicPresent) {
     return {
       ...baseResult("PDF", body, { status: "PDF_MAGIC_MISSING", errors: ["PDF_MAGIC_MISSING"] }),
-      pdf_magic_present: false,
-      pdf_eof_present: pdfEofPresent,
+      ...basePdfFlags,
     };
   }
   if (body.length < minBytes) {
     return {
       ...baseResult("PDF", body, { status: "PDF_TOO_SMALL", errors: ["PDF_TOO_SMALL"], safe_summary: { min_bytes: minBytes } }),
-      pdf_magic_present: true,
-      pdf_eof_present: pdfEofPresent,
+      ...basePdfFlags,
     };
   }
   if (!pdfEofPresent) {
     return {
       ...baseResult("PDF", body, { status: "PDF_EOF_MISSING", errors: ["PDF_EOF_MISSING"] }),
-      pdf_magic_present: true,
-      pdf_eof_present: false,
+      ...basePdfFlags,
+    };
+  }
+  if (visual.page_count_estimate < 1) {
+    return {
+      ...baseResult("PDF", body, { status: "PDF_PAGE_TREE_MISSING", errors: ["PDF_PAGE_TREE_MISSING"] }),
+      ...basePdfFlags,
+    };
+  }
+  if (!visual.content_streams_present) {
+    return {
+      ...baseResult("PDF", body, { status: "PDF_CONTENT_STREAMS_MISSING", errors: ["PDF_CONTENT_STREAMS_MISSING"] }),
+      ...basePdfFlags,
+    };
+  }
+  if (visual.visual_content_present !== true) {
+    const status = visual.visual_content_uncertain ? "PDF_VISUAL_CONTENT_UNCERTAIN" : "PDF_VISUAL_CONTENT_MISSING";
+    return {
+      ...baseResult("PDF", body, {
+        status,
+        errors: [status],
+        warnings: visual.warnings,
+      }),
+      ...basePdfFlags,
     };
   }
   return {
     ...baseResult("PDF", body, {
       ok: true,
       status: "VALID",
+      warnings: visual.warnings,
       safe_summary: {
         min_bytes: minBytes,
+        page_count_estimate: visual.page_count_estimate,
       },
     }),
-    pdf_magic_present: true,
-    pdf_eof_present: true,
+    ...basePdfFlags,
+  };
+}
+
+function countMatches(text, pattern) {
+  const matches = text.match(pattern);
+  return matches ? matches.length : 0;
+}
+
+function inspectVisualMarkers(text) {
+  const normalized = String(text || "");
+  const textPresent = /\bBT\b[\s\S]{0,2000}\bET\b|\bTj\b|\bTJ\b|'\s*\)|"\s*\)|\bTf\b/.test(normalized);
+  const graphicsPresent = /(?:^|\s)(?:m|l|c|v|y|h|re|S|s|f|F|B|b|n|cm)(?:\s|$)/.test(normalized);
+  const imageXobjectPresent = /\/XObject\b|\/Subtype\s*\/Image\b|(?:^|\s)Do(?:\s|$)/.test(normalized);
+  return {
+    textPresent,
+    graphicsPresent,
+    imageXobjectPresent,
+    visualPresent: textPresent || graphicsPresent || imageXobjectPresent,
+  };
+}
+
+function decodePdfStreams(buffer) {
+  const raw = buffer.toString("latin1");
+  const streams = [];
+  const streamRegex = /(<<[\s\S]{0,2000}?>>)\s*stream\r?\n?([\s\S]*?)\r?\n?endstream/g;
+  let match = streamRegex.exec(raw);
+  while (match) {
+    const dictionary = match[1] || "";
+    const bodyText = match[2] || "";
+    const bodyBuffer = Buffer.from(bodyText, "latin1");
+    const compressed = /\/FlateDecode\b/i.test(dictionary);
+    let decoded = bodyText;
+    let decodedOk = !compressed;
+    if (compressed) {
+      try {
+        decoded = zlib.inflateSync(bodyBuffer).toString("latin1");
+        decodedOk = true;
+      } catch (_error) {
+        decoded = "";
+      }
+    }
+    streams.push({
+      dictionary,
+      compressed,
+      decoded,
+      decodedOk,
+      markers: inspectVisualMarkers(decodedOk ? decoded : bodyText),
+    });
+    match = streamRegex.exec(raw);
+  }
+  return streams;
+}
+
+function inspectPdfVisualContent(buffer) {
+  const raw = buffer.toString("latin1");
+  const pageCount = Math.max(countMatches(raw, /\/Type\s*\/Page\b/g), countMatches(raw, /\/Page\b/g) - countMatches(raw, /\/Pages\b/g));
+  const hasPages = /\/Type\s*\/Pages\b|\/Pages\b/.test(raw);
+  const streams = decodePdfStreams(buffer);
+  const contentStreamsPresent = streams.length > 0 || /\/Contents\b|\/XObject\b|\/Subtype\s*\/Image\b/i.test(raw);
+  const streamMarkers = streams.reduce((acc, stream) => ({
+    textPresent: acc.textPresent || stream.markers.textPresent,
+    graphicsPresent: acc.graphicsPresent || stream.markers.graphicsPresent,
+    imageXobjectPresent: acc.imageXobjectPresent || stream.markers.imageXobjectPresent,
+    visualPresent: acc.visualPresent || stream.markers.visualPresent,
+  }), { textPresent: false, graphicsPresent: false, imageXobjectPresent: false, visualPresent: false });
+  const failedCompressedVisualStreams = streams.filter((stream) => stream.compressed && !stream.decodedOk && /\/Length\b/.test(stream.dictionary));
+  const warnings = [];
+  if (failedCompressedVisualStreams.length) warnings.push("PDF_FLATE_STREAM_UNREADABLE");
+  const textPresent = streamMarkers.textPresent;
+  const graphicsPresent = streamMarkers.graphicsPresent;
+  const imageXobjectPresent = streamMarkers.imageXobjectPresent;
+  const visualContentPresent = textPresent || graphicsPresent || imageXobjectPresent;
+  const visualUncertain = !visualContentPresent && failedCompressedVisualStreams.length > 0 && contentStreamsPresent;
+  return {
+    page_count_estimate: pageCount || (hasPages ? 1 : 0),
+    content_streams_present: contentStreamsPresent,
+    visual_content_present: visualContentPresent,
+    visual_content_uncertain: visualUncertain,
+    text_present: textPresent,
+    graphics_present: graphicsPresent,
+    image_xobject_present: imageXobjectPresent,
+    warnings,
   };
 }
 
@@ -179,6 +293,7 @@ function validateSandboxArtifactContent({ kind, buffer, contentType, fileName, e
 }
 
 module.exports = {
+  inspectPdfVisualContent,
   validateSandboxArtifactContent,
   validateSandboxPdfArtifact,
   validateSandboxXmlArtifact,
