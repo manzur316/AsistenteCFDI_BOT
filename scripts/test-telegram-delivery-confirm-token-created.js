@@ -3,6 +3,8 @@ const assert = require("assert");
 const {
   allCallbackData,
   baseSource,
+  executeCode,
+  getNodeCode,
   prepareStdout,
   runSummary,
 } = require("./lib/test-telegram-delivery-workflow-harness");
@@ -45,6 +47,20 @@ check("prepare_provider_email_creates_confirm_token", () => {
 
 check("prepare_telegram_channel_creates_confirm_token", () => {
   return assertConfirmToken("TELEGRAM_DOCUMENT_CHANNEL", "DELIVERY_CONFIRM_TELEGRAM_CHANNEL");
+});
+
+check("summary_uses_restore_processing_lock_context_for_chat_scoped_tokens", () => {
+  const code = getNodeCode("Build PAC Sandbox Action Summary");
+  const source = baseSource({ sandbox_delivery_channel: "PROVIDER_EMAIL" });
+  const result = executeCode(code, { stdout: prepareStdout("PROVIDER_EMAIL") }, (nodeName) => (
+    nodeName === "Restore Processing Lock Context" ? [{ json: source }] : []
+  ));
+  const sql = String(result.persistence_sql || "");
+  assert(sql.includes("'6573879494'"), "chat_id from restored context missing");
+  assert(sql.includes("'DELIVERY_CONFIRM_PROVIDER_EMAIL'"), "confirm token missing");
+  assert(sql.includes('"channel":"PROVIDER_EMAIL"'), "channel payload missing");
+  assert.strictEqual(result.should_send_telegram, true);
+  return "Restore Processing Lock Context";
 });
 
 console.log("Telegram Delivery Confirm Token Created Tests");

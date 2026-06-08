@@ -59,6 +59,13 @@ check("workflow_contract_contains_delivery_action_family", () => {
   return "actions";
 });
 
+check("workflow_summary_restores_source_context_before_creating_delivery_tokens", () => {
+  assert(workflowText.includes("sourceFromNode('Restore Processing Lock Context')"), "restore context lookup missing");
+  assert(workflowText.includes("sourceFromNode('Handle Commands And Scoring')"), "handle fallback missing");
+  assert(workflowText.indexOf("sourceFromNode('Restore Processing Lock Context')") < workflowText.indexOf("sourceFromNode('Handle Commands And Scoring')"));
+  return "restored_context_first";
+});
+
 console.log("Telegram Delivery Token DB Contract Tests");
 for (const item of checks) printCheck(item);
 const failed = checks.filter((item) => !item.pass);

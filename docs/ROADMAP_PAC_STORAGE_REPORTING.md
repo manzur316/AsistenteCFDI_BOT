@@ -1774,7 +1774,8 @@ Alcance:
 - V3 SAFE como launcher local recomendado sin versionar scripts locales.
 - 7.17B: tokens `DELIVERY_CONFIRM_*` persistidos despues de `prepare`,
   `DELIVERY_FORCE_*` solo para duplicado `SENT`, y idempotencia canonica sin
-  status/timestamp.
+  status/timestamp. Ver
+  `docs/PHASE_7_17B_TELEGRAM_DELIVERY_CONFIRM_TOKEN_FIX.md`.
 
 Fuera de alcance: produccion fiscal real, PAC productivo, CSD, SMTP principal,
 email2/email3, envio automatico sin confirmacion, runtime versionado y cambios a

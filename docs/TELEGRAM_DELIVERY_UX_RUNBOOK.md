@@ -87,11 +87,15 @@ duplicate is detected, and it uses a fresh `DELIVERY_FORCE_*` token.
 If a delivery confirmation button says the token is missing:
 
 1. Reimport `workflow/cfdi_telegram_local_ingest.n8n.json` in n8n.
-2. Press `Enviar por correo` or `Enviar a canal documentos` again.
-3. Before confirming, query `cfdi_action_tokens` for the draft and confirm that
+2. Confirm the workflow contains the 7.17B context recovery fix in
+   `Build PAC Sandbox Action Summary`: source context must be read from
+   `Restore Processing Lock Context` before the `Handle Commands And Scoring`
+   fallback.
+3. Press `Enviar por correo` or `Enviar a canal documentos` again.
+4. Before confirming, query `cfdi_action_tokens` for the draft and confirm that
    `DELIVERY_CONFIRM_PROVIDER_EMAIL` or `DELIVERY_CONFIRM_TELEGRAM_CHANNEL`
    exists with `used_at IS NULL`.
-4. Confirm once, then verify `used_at` is filled and `document_delivery_ledger`
+5. Confirm once, then verify `used_at` is filled and `document_delivery_ledger`
    has `SENT` if the Action Layer succeeded.
 
 ## Status
