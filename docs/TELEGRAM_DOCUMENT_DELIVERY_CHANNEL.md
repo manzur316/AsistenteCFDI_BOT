@@ -49,6 +49,7 @@ Antes de cualquier envio:
 - XML/PDF deben pasar validacion de contenido CFDI/PDF;
 - PDF debe pasar validacion visual (`pdf_visual_content_present=true`);
 - placeholders quedan bloqueados;
+- si XML es valido pero PDF es invalido, no se envia nada;
 - paths absolutos, token y chat_id completo no se imprimen;
 - no se aceptan archivos fuera de `runtime/`;
 - no se adjuntan ZIP, Excel, JSON ni CSV.
@@ -78,3 +79,14 @@ docs/DOCUMENT_DELIVERY_CANONICAL_CONTRACT.md
 ```
 
 SMTP no es flujo principal y no se implementa en esta fase.
+
+## Diagnostico Separado
+
+Telegram Document Channel se diagnostica con:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.documents.delivery.diagnose --draft-id DRAFT-... --channel TELEGRAM_DOCUMENT_CHANNEL
+```
+
+Provider Email se diagnostica aparte con `--channel PROVIDER_EMAIL`. Esa ruta no
+debe devolver `TELEGRAM_DOCUMENT_DELIVERY_NEEDS_CONFIG`.

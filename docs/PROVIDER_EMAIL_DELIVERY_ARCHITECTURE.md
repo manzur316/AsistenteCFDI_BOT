@@ -64,11 +64,41 @@ principal del receptor.
 ```text
 sandbox.documents.provider-email.diagnose
 sandbox.documents.provider-email.send
+sandbox.provider.client.email.diagnose
 sandbox.documents.delivery.send --channel PROVIDER_EMAIL
 ```
 
 Dry-run valida documentos, recipient y soporte del proveedor sin llamar al
 endpoint de envio.
+
+El diagnostico generico por canal debe respetar el canal solicitado:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.documents.delivery.diagnose --db-exec-mode docker --draft-id DRAFT-... --channel PROVIDER_EMAIL
+```
+
+Ese comando diagnostica Provider Email Delivery, no Telegram. Evalua soporte del
+proveedor, draft timbrado, identidad CFDI, email principal, confirmacion del
+email, estado de sync con proveedor y validez local de XML/PDF.
+
+Para revisar solo el email principal del cliente:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.provider.client.email.diagnose --db-exec-mode docker --client-id CLI-...
+```
+
+La salida redacta el email y reporta `SYNCED`, `NEEDS_SYNC` o `UNKNOWN`. El sync
+de cliente usa un solo campo `cfdi_clients.email`; no se agregan `email2` ni
+`email3`.
+
+## Politica PDF
+
+Provider Email Delivery permanece bloqueado si el PDF local no tiene contenido
+visual validado. Aunque el proveedor tenga endpoint de email, SATBOT no pide al
+proveedor enviar documentos cuando `pdf_content_valid=false` o
+`pdf_visual_content_present!==true`. Si en el futuro se permite un envio por
+proveedor sin PDF local valido, debe existir una politica explicita y apagada
+por default.
 
 ## No SMTP
 

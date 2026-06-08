@@ -129,6 +129,15 @@ function parseArgs(argv) {
     } else if (key === "--provider-client-uid") {
       options.providerClientUid = rest[index + 1] || "";
       index += 1;
+    } else if (key === "--cfdi-uid") {
+      options.cfdiUid = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--uuid") {
+      options.uuid = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--pac-invoice-id") {
+      options.pacInvoiceId = rest[index + 1] || "";
+      index += 1;
     } else if (key === "--db-exec-mode") {
       options.dbExecMode = rest[index + 1] || "";
       index += 1;
@@ -151,6 +160,8 @@ function parseArgs(argv) {
       options.validatedByHuman = true;
     } else if (key === "--create-if-missing") {
       options.createIfMissing = true;
+    } else if (key === "--update-provider") {
+      options.updateProvider = true;
     } else if (key === "--allow-legacy-receiver-uid") {
       options.allowLegacyReceiverUid = true;
     } else if (key === "--require-live-sandbox") {

@@ -89,3 +89,28 @@ El contrato no debe exponer:
 
 La entrega se bloquea si los documentos no estan validados. En esta fase no hay
 envio automatico: toda entrega requiere accion/configuracion explicita.
+
+## Diagnostico Por Canal
+
+`sandbox.documents.delivery.diagnose --channel PROVIDER_EMAIL` debe evaluar el
+canal de email del proveedor: soporte, recipient, estado de sync de email y
+validez XML/PDF. No debe caer al diagnostico de Telegram.
+
+`sandbox.documents.delivery.diagnose --channel TELEGRAM_DOCUMENT_CHANNEL` evalua
+solo configuracion y archivos para el canal privado Telegram.
+
+Canales desconocidos deben devolver error estable
+`DOCUMENT_DELIVERY_CHANNEL_UNKNOWN`.
+
+## Regla PDF 7.16K
+
+Un PDF estructuralmente valido no es suficiente para delivery. Debe cumplir:
+
+```text
+pdf_content_valid=true
+pdf_visual_content_present=true
+```
+
+Si el PDF esta pendiente de generacion puede reportarse
+`PDF_NOT_READY_RETRYABLE`; si esta blanco o no confirmado queda bloqueado como
+`BLOCKED_INVALID_DOCUMENTS`.

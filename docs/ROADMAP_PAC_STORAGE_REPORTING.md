@@ -1681,6 +1681,35 @@ Alcance:
 Fuera de alcance: produccion, PAC productivo, CSD, secretos, runtime versionado,
 envio automatico, email secundario y cambios a `data/concepts.normalized.json`.
 
+## Fase 7.16K - Factura.com PDF Root Cause + Provider Email Sync
+
+La fase 7.16K queda definida en:
+
+```text
+docs/PHASE_7_16K_FACTURACOM_PDF_PROVIDER_EMAIL_SYNC.md
+```
+
+Alcance:
+
+- agregar `sandbox.documents.pdf.diagnose` para probar `cfdi_uid`,
+  `pac_invoice_id` y `uuid` sin guardar PDF final;
+- mejorar parsing de streams PDF `/FlateDecode`;
+- distinguir PDF no listo (`PDF_NOT_READY_RETRYABLE`) de PDF blanco/no visual;
+- corregir `sandbox.documents.delivery.diagnose --channel PROVIDER_EMAIL`;
+- garantizar que delivery respete `--db-exec-mode docker`;
+- diagnosticar y sincronizar un solo email principal de cliente;
+- bloquear Provider Email y Telegram Document Channel si el PDF local es
+  invalido.
+
+Evidencia 2026-06-08: Factura.com Sandbox live devolvio PDF visualmente valido
+para `cfdi_uid`, `pac_invoice_id` y `uuid`; `sandbox.draft.download-artifacts`
+genero `human_xml_path` y `human_pdf_path` bajo runtime; Provider Email Diagnose
+quedo `ready=true` con `provider_email_sync_status=SYNCED`.
+
+Fuera de alcance: produccion, PAC productivo, CSD, SMTP principal, envio
+automatico, email secundario, runtime versionado y cambios a
+`data/concepts.normalized.json`.
+
 ## Fase 7.16F - Shared Telegram Bot Identity + Subscription Access Foundation
 
 La fase 7.16F queda definida en

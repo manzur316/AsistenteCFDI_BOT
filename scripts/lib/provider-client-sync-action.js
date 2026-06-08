@@ -12,7 +12,9 @@ const {
   loadProviderClientLink,
   safeLinkOutput,
   saveProviderClientLink,
+  sqlQuote,
 } = require("./provider-client-link-store");
+const { runPsqlJson } = require("./local-db-psql-runner");
 
 function text(value) {
   const cleaned = String(value ?? "").trim();
@@ -28,7 +30,81 @@ function normalizeOptions(options = {}) {
     provider_client_uid: text(options.providerClientUid || options.provider_client_uid),
     rfc: normalizeRfc(options.rfc),
     create_if_missing: options.createIfMissing === true || options.create_if_missing === true,
+    update_provider: options.updateProvider === true || options.update_provider === true,
   };
+}
+
+function redactEmail(value) {
+  const email = text(value);
+  if (!email || !email.includes("@")) return null;
+  const [local, domain] = email.split("@");
+  return `${local.slice(0, 1) || "*"}***@${domain.toLowerCase()}`;
+}
+
+function sqlJson(value) {
+  return `${sqlQuote(JSON.stringify(value || {}))}::jsonb`;
+}
+
+function buildClientSelectSql(clientId) {
+  return [
+    "SELECT COALESCE((",
+    "SELECT jsonb_build_object(",
+    "'client_id', client_id,",
+    "'display_name', display_name,",
+    "'razon_social', razon_social,",
+    "'rfc', rfc,",
+    "'tipo_persona', tipo_persona,",
+    "'regimen_fiscal', regimen_fiscal,",
+    "'codigo_postal_fiscal', codigo_postal_fiscal,",
+    "'uso_cfdi_default', uso_cfdi_default,",
+    "'validated_by_human', validated_by_human,",
+    "'email', email,",
+    "'email_confirmed', email_confirmed,",
+    "'provider_email_sync_status', provider_email_sync_status,",
+    "'provider_email_sync_summary', provider_email_sync_summary",
+    ") FROM cfdi_clients",
+    `WHERE client_id = ${sqlQuote(clientId)}`,
+    "LIMIT 1), '{}'::jsonb)::text;",
+  ].join(" ");
+}
+
+function loadLocalClientFromPostgres(clientId, options = {}) {
+  const safeClientId = text(clientId);
+  if (!safeClientId) return null;
+  return runPsqlJson(buildClientSelectSql(safeClientId), options);
+}
+
+function buildClientEmailSyncStatusUpdateSql(clientId, status, summary = {}) {
+  return [
+    "UPDATE cfdi_clients SET",
+    `provider_email_sync_status = ${sqlQuote(status)},`,
+    `provider_email_sync_summary = ${sqlJson(summary)},`,
+    "updated_at = now()",
+    `WHERE client_id = ${sqlQuote(clientId)}`,
+    "RETURNING jsonb_build_object(",
+    "'client_id', client_id,",
+    "'provider_email_sync_status', provider_email_sync_status,",
+    "'provider_email_sync_summary', provider_email_sync_summary",
+    ")::text;",
+  ].join(" ");
+}
+
+function updateClientEmailSyncStatus(clientId, status, summary = {}, options = {}) {
+  if (!text(clientId)) return null;
+  return runPsqlJson(buildClientEmailSyncStatusUpdateSql(clientId, status, summary), options);
+}
+
+function clientInputFromOptions(options = {}, normalized = normalizeOptions(options)) {
+  if (options.client && typeof options.client === "object") return options.client;
+  if (normalized.client_id && !options.rfc && !options.legalName && !options.legal_name) {
+    try {
+      const loaded = (options.clientStore?.load || loadLocalClientFromPostgres)(normalized.client_id, options);
+      if (loaded && Object.keys(loaded).length) return loaded;
+    } catch (_error) {
+      return null;
+    }
+  }
+  return null;
 }
 
 function normalizeLocalClient(options = {}) {
@@ -151,7 +227,8 @@ async function runProviderClientLink(options = {}) {
 
 async function runProviderClientSync(options = {}) {
   const normalized = normalizeOptions(options);
-  const canonical = normalizeLocalClient(options);
+  const loadedClient = clientInputFromOptions(options, normalized);
+  const canonical = normalizeLocalClient(loadedClient ? { ...options, client: loadedClient } : options);
   const validation = validateFacturaComClientCreateInput(canonical, options);
   if (!validation.ok) {
     return {
@@ -189,6 +266,7 @@ async function runProviderClientSync(options = {}) {
 
   let finalLookup = lookup;
   let syncStatus = "LINKED";
+  let providerUpdate = null;
   if (lookup.status === "NOT_FOUND") {
     if (!normalized.create_if_missing) {
       return {
@@ -223,6 +301,48 @@ async function runProviderClientSync(options = {}) {
     };
   }
 
+  if (lookup.status === "OK" && normalized.update_provider) {
+    if (typeof adapter.updateClient !== "function") {
+      return {
+        status: "ERROR",
+        output: {
+          ...safeOutputBase("sandbox.provider.client.sync", { ...normalized, client_id: canonical.local_client_id }),
+          sync_status: "UPDATE_PROVIDER_UNSUPPORTED",
+          provider_client_uid_present: true,
+        },
+        warnings: [],
+        errors: ["PROVIDER_CLIENT_UPDATE_UNSUPPORTED"],
+      };
+    }
+    providerUpdate = await adapter.updateClient(finalLookup.provider_client_uid, canonical, {
+      env: options.env || process.env,
+      requestFn: options.requestFn,
+    });
+    if (providerUpdate.status !== "UPDATED" && providerUpdate.status !== "OK") {
+      return {
+        status: "ERROR",
+        output: {
+          ...safeOutputBase("sandbox.provider.client.sync", { ...normalized, client_id: canonical.local_client_id }),
+          sync_status: providerUpdate.status || "UPDATE_FAILED",
+          provider_client_uid_present: true,
+          provider_email_present: Boolean(canonical.email),
+        },
+        warnings: providerUpdate.warnings || [],
+        errors: providerUpdate.errors && providerUpdate.errors.length
+          ? providerUpdate.errors
+          : ["PROVIDER_CLIENT_UPDATE_FAILED"],
+      };
+    }
+    finalLookup = {
+      ...finalLookup,
+      ...providerUpdate,
+      provider_client_uid: providerUpdate.provider_client_uid || finalLookup.provider_client_uid,
+      matches_count: providerUpdate.matches_count || finalLookup.matches_count,
+      safe_matches: providerUpdate.safe_matches || finalLookup.safe_matches,
+    };
+    syncStatus = "UPDATED";
+  }
+
   const saved = await (options.linkStore?.save || saveProviderClientLink)({
     tenant_id: normalized.tenant_id,
     client_id: canonical.local_client_id,
@@ -238,9 +358,30 @@ async function runProviderClientSync(options = {}) {
       provider_client_uid_present: true,
       provider_email_present: Boolean(canonical.email),
       provider_email_sync_status: canonical.email ? "SYNCED" : "NOT_PROVIDED",
+      provider_update_attempted: Boolean(providerUpdate),
+      provider_update_status: providerUpdate?.status || null,
       safe_matches: finalLookup.safe_matches || [],
     },
   }, options);
+  let clientEmailSyncUpdate = null;
+  if (normalized.update_provider && canonical.local_client_id) {
+    try {
+      clientEmailSyncUpdate = (options.clientStore?.updateEmailSyncStatus || updateClientEmailSyncStatus)(
+        canonical.local_client_id,
+        canonical.email ? "SYNCED" : "NOT_PROVIDED",
+        {
+          provider: normalized.provider,
+          environment: normalized.environment,
+          provider_client_uid_present: true,
+          provider_email_present: Boolean(canonical.email),
+          synced_at: new Date().toISOString(),
+        },
+        options,
+      );
+    } catch (_error) {
+      clientEmailSyncUpdate = null;
+    }
+  }
 
   return {
     status: "OK",
@@ -249,6 +390,9 @@ async function runProviderClientSync(options = {}) {
       sync_status: syncStatus,
       provider_email_sync_status: canonical.email ? "SYNCED" : "NOT_PROVIDED",
       client_email_present: Boolean(canonical.email),
+      client_email_confirmed: loadedClient?.email_confirmed === true || options.emailConfirmed === true,
+      client_email_redacted: redactEmail(canonical.email),
+      client_email_sync_local_update_status: clientEmailSyncUpdate ? "UPDATED" : normalized.update_provider ? "UNKNOWN" : "NOT_REQUESTED",
       provider_client_link: safeLinkOutput({
         tenant_id: normalized.tenant_id,
         client_id: canonical.local_client_id,
@@ -285,9 +429,57 @@ async function runProviderClientDiagnose(options = {}) {
   };
 }
 
+async function runProviderClientEmailDiagnose(options = {}) {
+  const normalized = normalizeOptions(options);
+  const localClient = clientInputFromOptions(options, normalized);
+  const link = normalized.client_id
+    ? await (options.linkStore?.load || loadProviderClientLink)(normalized, options)
+    : null;
+  const linkSummary = link?.provider_response_sanitized && typeof link.provider_response_sanitized === "object"
+    ? link.provider_response_sanitized
+    : {};
+  const email = text(localClient?.email || options.email);
+  const localSyncStatus = text(localClient?.provider_email_sync_status);
+  const providerEmailPresent = linkSummary.provider_email_present === true
+    ? true
+    : linkSummary.provider_email_present === false
+      ? false
+      : null;
+  const providerEmailSyncStatus = localSyncStatus
+    || text(linkSummary.provider_email_sync_status)
+    || (email && link?.provider_client_uid ? "UNKNOWN" : "NEEDS_SYNC");
+  const ready = Boolean(email) && localClient?.email_confirmed === true && Boolean(link?.provider_client_uid) && providerEmailSyncStatus !== "NEEDS_SYNC";
+  return {
+    status: ready ? "OK" : "NEEDS_SOURCE",
+    output: {
+      ...safeOutputBase("sandbox.provider.client.email.diagnose", normalized),
+      client_id: normalized.client_id || text(localClient?.client_id),
+      local_email_present: Boolean(email),
+      local_email_confirmed: localClient?.email_confirmed === true,
+      provider_client_link_found: Boolean(link && link.provider_client_uid),
+      provider_email_sync_status: providerEmailSyncStatus || "UNKNOWN",
+      provider_email_present: providerEmailPresent,
+      safe_email_redacted: redactEmail(email),
+      ready,
+    },
+    warnings: [
+      ...(!email ? ["CLIENT_PRIMARY_EMAIL_REQUIRED"] : []),
+      ...(email && localClient?.email_confirmed !== true ? ["CLIENT_PRIMARY_EMAIL_NOT_CONFIRMED"] : []),
+      ...(!link?.provider_client_uid ? ["PROVIDER_CLIENT_LINK_REQUIRED"] : []),
+      ...(providerEmailSyncStatus === "NEEDS_SYNC" ? ["PROVIDER_EMAIL_SYNC_REQUIRED"] : []),
+    ],
+    errors: [],
+  };
+}
+
 module.exports = {
   runProviderClientDiagnose,
+  runProviderClientEmailDiagnose,
   runProviderClientLink,
   runProviderClientLookup,
   runProviderClientSync,
+  buildClientEmailSyncStatusUpdateSql,
+  buildClientSelectSql,
+  loadLocalClientFromPostgres,
+  updateClientEmailSyncStatus,
 };

@@ -162,6 +162,12 @@ El mapper de cliente Factura.com envia `email` si existe. No se agregan
 Delivery depende de este email principal y exige confirmacion humana o accion
 explicita antes de envio real.
 
+Desde 7.16K, `sandbox.provider.client.sync --update-provider` tambien actualiza
+clientes sandbox ya existentes con ese email primario unico antes de marcar
+`provider_email_sync_status=SYNCED` en `cfdi_clients`. Si no se solicita
+`--update-provider`, la accion conserva el comportamiento de lookup/link sin
+mutar el cliente del proveedor.
+
 Referencias:
 
 ```text

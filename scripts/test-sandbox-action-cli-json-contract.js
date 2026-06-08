@@ -129,6 +129,33 @@ check("parse_args_accepts_document_delivery_flags", () => {
   return parsed.options.channel;
 });
 
+check("parse_args_accepts_pdf_diagnose_identity_flags", () => {
+  const parsed = parseArgs([
+    "sandbox.documents.pdf.diagnose",
+    "--cfdi-uid", "CFDIUID-1",
+    "--pac-invoice-id", "PAC-1",
+    "--uuid", "00000000-0000-4000-8000-000000000716",
+    "--db-exec-mode", "docker",
+  ]);
+  assert.strictEqual(parsed.action, "sandbox.documents.pdf.diagnose");
+  assert.strictEqual(parsed.options.cfdiUid, "CFDIUID-1");
+  assert.strictEqual(parsed.options.pacInvoiceId, "PAC-1");
+  assert.strictEqual(parsed.options.uuid, "00000000-0000-4000-8000-000000000716");
+  assert.strictEqual(parsed.options.dbExecMode, "docker");
+  return parsed.options.cfdiUid;
+});
+
+check("parse_args_accepts_provider_email_sync_update_flag", () => {
+  const parsed = parseArgs([
+    "sandbox.provider.client.sync",
+    "--client-id", "CLIENT-1",
+    "--update-provider",
+  ]);
+  assert.strictEqual(parsed.options.clientId, "CLIENT-1");
+  assert.strictEqual(parsed.options.updateProvider, true);
+  return "update-provider";
+});
+
 check("controlled_missing_draft_exits_zero_with_json", () => {
   const { child, parsed } = runCli(["sandbox.draft.stamp"], { FACTURACOM_SANDBOX_LIVE: "1" });
   assert.strictEqual(child.status, 0);

@@ -162,6 +162,29 @@ function artifactBufferFromResponse(rawResponse = {}, kind = "XML") {
   return null;
 }
 
+function numberFromEnv(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function looksPdfNotReady(response = {}, artifactType = "PDF") {
+  if (artifactType !== "PDF") return false;
+  const status = Number(response.status || 0);
+  const message = [
+    response.api_message_summary,
+    response.statusText,
+    response.message,
+    response.data?.message,
+    response.data?.Mensaje,
+  ].filter(Boolean).join(" ");
+  return [202, 404, 409, 423, 425, 429, 503].includes(status)
+    && /pdf|documento|archivo|generando|procesando|pendiente|not\s*ready|processing|pending|try\s*again|aun\s+no/i.test(message);
+}
+
 function invoiceRefValue(invoiceRef = {}) {
   const candidates = [
     invoiceRef.cfdi_uid,
@@ -621,14 +644,49 @@ class FacturaComSandboxAdapter {
 
     const requestFn = context.requestFn || this.options.requestFn || facturaComRequest;
     const requestPath = DOWNLOAD_PATHS[artifactType](ref);
+    const retryCount = artifactType === "PDF"
+      ? numberFromEnv(context.pdfRetryCount ?? env.FACTURACOM_SANDBOX_PDF_RETRY_COUNT, 0)
+      : 0;
+    const retryDelayMs = artifactType === "PDF"
+      ? numberFromEnv(context.pdfRetryDelayMs ?? env.FACTURACOM_SANDBOX_PDF_RETRY_DELAY_MS, 1500)
+      : 0;
+    const attempts = [];
     try {
-      const rawResponse = await requestFn({
-        method: "GET",
-        path: requestPath,
-        env,
-      });
-      const response = normalizeFacturaComHttpResponse(rawResponse, env);
+      let rawResponse = null;
+      let response = null;
+      for (let attempt = 0; attempt <= retryCount; attempt += 1) {
+        rawResponse = await requestFn({
+          method: "GET",
+          path: requestPath,
+          env,
+        });
+        response = normalizeFacturaComHttpResponse(rawResponse, env);
+        attempts.push({
+          attempt: attempt + 1,
+          status: response.status || null,
+          contentType: response.contentType || rawResponse?.headers?.["content-type"] || null,
+          not_ready: looksPdfNotReady(response, artifactType),
+        });
+        if (!looksPdfNotReady(response, artifactType)) break;
+        if (attempt < retryCount && retryDelayMs > 0) await sleep(retryDelayMs);
+      }
       if (response.ok !== true || response.api_ok === false) {
+        if (looksPdfNotReady(response, artifactType)) {
+          return normalizeFacturaComErrorResponse({
+            code: "FACTURACOM_SANDBOX_PDF_NOT_READY_RETRYABLE",
+            message: "Factura.com Sandbox aun no tiene listo el PDF.",
+            status: "PDF_NOT_READY_RETRYABLE",
+            data: sanitizeValue({
+              status: response.status,
+              statusText: response.statusText,
+              contentType: response.contentType,
+              request_path: requestPath,
+              attempts,
+              pdf_retryable: true,
+              pdf_validation_status: "PDF_NOT_READY_RETRYABLE",
+            }, env),
+          }, { operation, status: "PDF_NOT_READY_RETRYABLE" });
+        }
         return normalizeFacturaComErrorResponse({
           code: `FACTURACOM_SANDBOX_${artifactType}_DOWNLOAD_FAILED`,
           message: response.api_message_summary || response.statusText || `No se pudo descargar ${artifactType} sandbox.`,
@@ -638,6 +696,7 @@ class FacturaComSandboxAdapter {
             statusText: response.statusText,
             contentType: response.contentType,
             request_path: requestPath,
+            attempts,
           }, env),
         }, { operation, status: "PAC_SANDBOX_ERROR" });
       }
@@ -682,6 +741,9 @@ class FacturaComSandboxAdapter {
             validation: contentValidation,
             [`${field}_content_valid`]: false,
             [`${field}_validation_status`]: contentValidation.status,
+            ...(artifactType === "PDF" ? {
+              pdf_retryable: false,
+            } : {}),
             ...(artifactType === "PDF" ? {
               pdf_visual_content_present: contentValidation.pdf_visual_content_present === true,
               pdf_page_count_estimate: contentValidation.pdf_page_count_estimate || 0,
@@ -745,7 +807,8 @@ class FacturaComSandboxAdapter {
         [`${field}_storage_path`]: artifactPath ? safeRelative(artifactPath) : null,
         [`${field}_manifest_path`]: manifestPath ? safeRelative(manifestPath) : null,
         normalized_errors: [],
-        normalized_warnings: [],
+        normalized_warnings: attempts.length > 1 ? [`${artifactType}_DOWNLOAD_ATTEMPTS:${attempts.length}`] : [],
+        download_attempts: attempts,
         requires_human_review: true,
       };
     } catch (error) {

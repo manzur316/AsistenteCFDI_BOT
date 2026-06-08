@@ -68,6 +68,9 @@ Reglas principales:
 - PDF debe iniciar con `%PDF`, contener `%%EOF` y superar tamano minimo.
 - Desde 7.16J, PDF tambien debe tener contenido visual probable. Un PDF que
   abre en blanco se rechaza con `PDF_VISUAL_CONTENT_MISSING`.
+- Desde 7.16K, la validacion visual inspecciona streams `/FlateDecode` e
+  imagenes XObject antes de marcar PDF como listo. Solo un PDF visualmente
+  confirmado puede generar `human_pdf_path` y copiarse al layout por cliente.
 - Placeholders como `CFDI XML` o `CFDI PDF` se rechazan.
 - Si falla validacion, se guarda solo diagnostico seguro bajo `runtime/`; no se
   escribe artefacto final ni se copia al layout por cliente.

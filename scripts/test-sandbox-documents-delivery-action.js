@@ -125,6 +125,68 @@ check("send_dry_run_uses_human_files_without_sending", async () => {
   return result.output.delivery.status;
 });
 
+check("diagnose_hydrates_files_from_latest_download_manifest", () => {
+  const files = writeFiles();
+  const draftId = "DRAFT-MANIFEST-HYDRATE-716";
+  const manifestDir = path.join(tempRoot, "draft-stamps", draftId, "2026-06-08T15-00-00-000Z");
+  fs.mkdirSync(manifestDir, { recursive: true });
+  fs.writeFileSync(path.join(manifestDir, "sandbox-download-manifest.json"), JSON.stringify({
+    draft_id: draftId,
+    human_xml_path: files.xml,
+    human_pdf_path: files.pdf,
+  }, null, 2));
+  const result = runSandboxDocumentDeliveryDiagnose({
+    draft: {
+      draft_id: draftId,
+      client_id: "CLI-REAL-BILBAO",
+      current_client: {
+        client_id: "CLI-REAL-BILBAO",
+        email: "cliente.real@example.com",
+        email_confirmed: true,
+        provider_email_sync_status: "SYNCED",
+      },
+      sandbox_pac_summary: {},
+    },
+    storageRoot: tempRoot,
+    channel: "PROVIDER_EMAIL",
+  });
+  assert.strictEqual(result.status, "OK");
+  assert.strictEqual(result.output.documents_valid, true);
+  assert.strictEqual(result.output.pdf_content_valid, true);
+  return result.status;
+});
+
+check("diagnose_merges_db_xml_with_manifest_pdf_when_db_pdf_missing", () => {
+  const files = writeFiles();
+  const draftId = "DRAFT-MANIFEST-MERGE-716";
+  const manifestDir = path.join(tempRoot, "draft-stamps", draftId, "2026-06-08T15-10-00-000Z");
+  fs.mkdirSync(manifestDir, { recursive: true });
+  fs.writeFileSync(path.join(manifestDir, "sandbox-download-manifest.json"), JSON.stringify({
+    draft_id: draftId,
+    human_xml_path: files.xml,
+    human_pdf_path: files.pdf,
+  }, null, 2));
+  const result = runSandboxDocumentDeliveryDiagnose({
+    draft: {
+      draft_id: draftId,
+      client_id: "CLI-REAL-BILBAO",
+      current_client: {
+        client_id: "CLI-REAL-BILBAO",
+        email: "cliente.real@example.com",
+        email_confirmed: true,
+        provider_email_sync_status: "SYNCED",
+      },
+      sandbox_pac_summary: { human_xml_path: files.xml, human_pdf_path: "" },
+    },
+    storageRoot: tempRoot,
+    channel: "PROVIDER_EMAIL",
+  });
+  assert.strictEqual(result.status, "OK");
+  assert.strictEqual(result.output.xml_content_valid, true);
+  assert.strictEqual(result.output.pdf_content_valid, true);
+  return result.status;
+});
+
 Promise.all(checks).then((results) => {
   console.log("Sandbox Documents Delivery Action Tests");
   for (const item of results) printCheck(item.name, item.pass, item.value);

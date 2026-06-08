@@ -96,6 +96,10 @@ async function readDraftFromOptions(options = {}) {
     return loadDraftFromPostgres(text(options.draftId), {
       ...(options.dbConfig || {}),
       env: options.env || process.env,
+      dbExecMode: options.dbExecMode,
+      execMode: options.execMode,
+      pgDockerContainer: options.pgDockerContainer,
+      execFileSync: options.execFileSync,
     });
   }
   if (options.draftJsonBase64) return base64UrlDecodeJson(options.draftJsonBase64);

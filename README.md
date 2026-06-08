@@ -1114,6 +1114,13 @@ implementada. Ver `docs/PDF_VISUAL_CONTENT_VALIDATION.md`,
 `docs/DOCUMENT_DELIVERY_CANONICAL_CONTRACT.md` y
 `docs/PROVIDER_EMAIL_DELIVERY_ARCHITECTURE.md`.
 
+7.16K agrega diagnostico no destructivo de PDF sandbox, retry acotado para PDF
+no listo, ruteo correcto de Provider Email Delivery, verificacion de
+`--db-exec-mode docker` y diagnostico/sync de email principal del cliente. Ver
+`docs/PHASE_7_16K_FACTURACOM_PDF_PROVIDER_EMAIL_SYNC.md`.
+Validacion local live: PDF sandbox confirmado visualmente y almacenado con
+`human_pdf_path`; provider email diagnose listo con email primario sincronizado.
+
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
 los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a

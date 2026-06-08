@@ -222,32 +222,79 @@ function inspectVisualMarkers(text) {
   };
 }
 
+function cleanPdfStreamBytes(buffer) {
+  let start = 0;
+  let end = buffer.length;
+  if (buffer[start] === 0x0d && buffer[start + 1] === 0x0a) start += 2;
+  else if (buffer[start] === 0x0a || buffer[start] === 0x0d) start += 1;
+  if (buffer[end - 2] === 0x0d && buffer[end - 1] === 0x0a) end -= 2;
+  else if (buffer[end - 1] === 0x0a || buffer[end - 1] === 0x0d) end -= 1;
+  return buffer.subarray(start, Math.max(start, end));
+}
+
+function hasFlateDecode(dictionary) {
+  return /\/Filter\s*(?:\[[^\]]*)?\/FlateDecode\b/i.test(String(dictionary || ""))
+    || /\/FlateDecode\b/i.test(String(dictionary || ""));
+}
+
+function tryDecodeFlate(buffer) {
+  const attempts = [
+    ["inflateSync", () => zlib.inflateSync(buffer)],
+    ["inflateRawSync", () => zlib.inflateRawSync(buffer)],
+  ];
+  const errors = [];
+  for (const [method, fn] of attempts) {
+    try {
+      return { ok: true, method, buffer: fn(buffer), errors };
+    } catch (error) {
+      errors.push(`${method}:${error.code || error.message}`);
+    }
+  }
+  return { ok: false, method: null, buffer: Buffer.alloc(0), errors };
+}
+
 function decodePdfStreams(buffer) {
   const raw = buffer.toString("latin1");
   const streams = [];
-  const streamRegex = /(<<[\s\S]{0,2000}?>>)\s*stream\r?\n?([\s\S]*?)\r?\n?endstream/g;
+  const streamRegex = /(<<[\s\S]{0,4000}?>>)\s*stream([\s\S]*?)endstream/g;
   let match = streamRegex.exec(raw);
   while (match) {
     const dictionary = match[1] || "";
-    const bodyText = match[2] || "";
-    const bodyBuffer = Buffer.from(bodyText, "latin1");
-    const compressed = /\/FlateDecode\b/i.test(dictionary);
-    let decoded = bodyText;
+    const rawBodyBuffer = cleanPdfStreamBytes(Buffer.from(match[2] || "", "latin1"));
+    const compressed = hasFlateDecode(dictionary);
+    const dictionaryMarkers = inspectVisualMarkers(dictionary);
+    let decoded = rawBodyBuffer.toString("latin1");
     let decodedOk = !compressed;
+    let decodedMethod = compressed ? null : "identity";
+    let decodeErrors = [];
     if (compressed) {
-      try {
-        decoded = zlib.inflateSync(bodyBuffer).toString("latin1");
-        decodedOk = true;
-      } catch (_error) {
+      const decodedAttempt = tryDecodeFlate(rawBodyBuffer);
+      decodedOk = decodedAttempt.ok;
+      decodedMethod = decodedAttempt.method;
+      decodeErrors = decodedAttempt.errors;
+      if (decodedAttempt.ok) {
+        decoded = decodedAttempt.buffer.toString("latin1");
+      } else {
         decoded = "";
       }
     }
+    const bodyMarkers = inspectVisualMarkers(decodedOk ? decoded : rawBodyBuffer.toString("latin1"));
     streams.push({
       dictionary,
       compressed,
+      raw_size_bytes: rawBodyBuffer.length,
+      decoded_size_bytes: decodedOk ? Buffer.byteLength(decoded, "latin1") : 0,
+      decoded_empty: decodedOk && decoded.trim().length === 0,
       decoded,
       decodedOk,
-      markers: inspectVisualMarkers(decodedOk ? decoded : bodyText),
+      decodedMethod,
+      decodeErrors,
+      markers: {
+        textPresent: bodyMarkers.textPresent || dictionaryMarkers.textPresent,
+        graphicsPresent: bodyMarkers.graphicsPresent || dictionaryMarkers.graphicsPresent,
+        imageXobjectPresent: bodyMarkers.imageXobjectPresent || dictionaryMarkers.imageXobjectPresent,
+        visualPresent: bodyMarkers.visualPresent || dictionaryMarkers.visualPresent,
+      },
     });
     match = streamRegex.exec(raw);
   }
@@ -267,8 +314,10 @@ function inspectPdfVisualContent(buffer) {
     visualPresent: acc.visualPresent || stream.markers.visualPresent,
   }), { textPresent: false, graphicsPresent: false, imageXobjectPresent: false, visualPresent: false });
   const failedCompressedVisualStreams = streams.filter((stream) => stream.compressed && !stream.decodedOk && /\/Length\b/.test(stream.dictionary));
+  const emptyDecodedStreams = streams.filter((stream) => stream.decodedOk && stream.decoded_empty);
   const warnings = [];
   if (failedCompressedVisualStreams.length) warnings.push("PDF_FLATE_STREAM_UNREADABLE");
+  if (emptyDecodedStreams.length && streams.length === emptyDecodedStreams.length) warnings.push("PDF_CONTENT_STREAMS_EMPTY");
   const textPresent = streamMarkers.textPresent;
   const graphicsPresent = streamMarkers.graphicsPresent;
   const imageXobjectPresent = streamMarkers.imageXobjectPresent;
@@ -282,6 +331,10 @@ function inspectPdfVisualContent(buffer) {
     text_present: textPresent,
     graphics_present: graphicsPresent,
     image_xobject_present: imageXobjectPresent,
+    stream_count: streams.length,
+    flate_stream_count: streams.filter((stream) => stream.compressed).length,
+    flate_decode_error_count: failedCompressedVisualStreams.length,
+    empty_decoded_stream_count: emptyDecodedStreams.length,
     warnings,
   };
 }

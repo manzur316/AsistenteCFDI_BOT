@@ -59,8 +59,51 @@ probable dentro de streams PDF:
 - imagenes: uso de XObject con `Do`
 - streams `/FlateDecode`: se intenta descomprimir con `zlib`
 
+Desde la fase 7.16K el parser:
+
+- extrae todos los bloques `stream`/`endstream`;
+- limpia CR/LF al inicio y fin del stream;
+- detecta `/FlateDecode`, `/Filter /FlateDecode` y `/Filter [/FlateDecode]`;
+- intenta `zlib.inflateSync` y `zlib.inflateRawSync`;
+- registra errores por stream como warning seguro;
+- distingue `PDF_VISUAL_CONTENT_MISSING` de
+  `PDF_VISUAL_CONTENT_UNCERTAIN`.
+
 Un XObject declarado en recursos no basta; debe aparecer usado en un stream de
 pagina. Esto evita aceptar paginas blancas con recursos no dibujados.
+
+## Diagnostico 7.16K
+
+Accion no destructiva:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.documents.pdf.diagnose --db-exec-mode docker --draft-id DRAFT-...
+```
+
+Tambien permite refs directas:
+
+```powershell
+node scripts/run-sandbox-action.js sandbox.documents.pdf.diagnose --cfdi-uid ... --pac-invoice-id ... --uuid ...
+```
+
+El diagnostico prueba `cfdi_uid`, `pac_invoice_id` y `uuid` sin guardar PDF como
+documento final. La salida muestra metadata segura: tipo de referencia, tamano,
+hash, magic/eof, paginas, streams, validacion visual, retryable y una hipotesis
+de causa raiz. No imprime PDF completo, XML completo, UUID/UID completos,
+credenciales ni rutas absolutas.
+
+Si el proveedor responde que el PDF aun no esta listo, el adapter puede usar
+retry acotado:
+
+```text
+FACTURACOM_SANDBOX_PDF_RETRY_COUNT=3
+FACTURACOM_SANDBOX_PDF_RETRY_DELAY_MS=1500
+```
+
+Cuando el PDF sigue pendiente, el estado seguro es
+`PDF_NOT_READY_RETRYABLE`. Cuando el PDF es estructural pero blanco/no visual,
+queda bloqueado como `PDF_VISUAL_CONTENT_MISSING` o
+`PDF_VISUAL_CONTENT_UNCERTAIN`.
 
 ## Seguridad
 

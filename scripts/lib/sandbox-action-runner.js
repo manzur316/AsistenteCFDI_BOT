@@ -12,6 +12,7 @@ const { analyzeAudit } = require("../analyze-sandbox-action-audit");
 const { runSandboxDraftCancel } = require("./sandbox-draft-cancel-action");
 const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-artifacts-action");
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
+const { runSandboxPdfDiagnose } = require("./sandbox-pdf-diagnose-action");
 const {
   runSandboxDocumentDeliveryDiagnose,
   runSandboxDocumentDeliverySend,
@@ -20,6 +21,7 @@ const { runSatCfdiRulesDiagnose } = require("./sat-cfdi-rules-diagnose-action");
 const { runClientFiscalNormalizeDiagnose } = require("./client-fiscal-normalize-diagnose-action");
 const {
   runProviderClientDiagnose,
+  runProviderClientEmailDiagnose,
   runProviderClientLink,
   runProviderClientLookup,
   runProviderClientSync,
@@ -57,6 +59,7 @@ const ACTIONS = [
   "sandbox.draft.stamp",
   "sandbox.draft.download-artifacts",
   "sandbox.draft.cancel",
+  "sandbox.documents.pdf.diagnose",
   "sandbox.documents.delivery.diagnose",
   "sandbox.documents.delivery.send",
   "sandbox.documents.provider-email.diagnose",
@@ -67,6 +70,7 @@ const ACTIONS = [
   "sandbox.provider.client.sync",
   "sandbox.provider.client.link",
   "sandbox.provider.client.diagnose",
+  "sandbox.provider.client.email.diagnose",
 ];
 
 function isInside(parent, child) {
@@ -519,6 +523,7 @@ async function runProviderClientAction(action, options = {}) {
   if (action === "sandbox.provider.client.sync") return runProviderClientSync(options);
   if (action === "sandbox.provider.client.link") return runProviderClientLink(options);
   if (action === "sandbox.provider.client.diagnose") return runProviderClientDiagnose(options);
+  if (action === "sandbox.provider.client.email.diagnose") return runProviderClientEmailDiagnose(options);
   return { status: "ERROR", output: {}, warnings: [], errors: ["UNKNOWN_PROVIDER_CLIENT_ACTION"] };
 }
 
@@ -591,6 +596,10 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.draft.stamp") return runDraftStamp(paths, env, options);
   if (action === "sandbox.draft.download-artifacts") return runDraftDownloadArtifacts(paths, env, options);
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
+  if (action === "sandbox.documents.pdf.diagnose") {
+    const result = await runSandboxPdfDiagnose({ ...options, env });
+    return stableStep("sandbox.documents.pdf.diagnose", result.status, result.output, result.warnings, result.errors);
+  }
   if (action === "sandbox.documents.delivery.diagnose") return runSandboxDocumentDeliveryDiagnose({ ...options, env });
   if (action === "sandbox.documents.delivery.send") return runSandboxDocumentDeliverySend({ ...options, env });
   if (action === "sandbox.documents.provider-email.diagnose") return runSandboxDocumentDeliveryDiagnose({ ...options, env, channel: "PROVIDER_EMAIL" });

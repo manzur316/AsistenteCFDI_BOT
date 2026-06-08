@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+
 const {
   readDraftFromOptions,
 } = require("./sandbox-draft-stamp-action");
@@ -17,17 +20,63 @@ const {
   sendSandboxInvoiceDocumentsToTelegram,
   validateDeliveryFiles,
 } = require("./telegram-document-delivery-channel");
+const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
+
+const repoRoot = path.resolve(__dirname, "../..");
+const runtimeRoot = path.join(repoRoot, "runtime");
+const defaultStorageRoot = path.join(runtimeRoot, "storage-sandbox");
 
 function text(value) {
   const cleaned = String(value ?? "").trim();
   return cleaned || null;
 }
 
-function draftFiles(draft = {}) {
+function isInside(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function safeId(value, fallback = "draft") {
+  return String(value || fallback)
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 96) || fallback;
+}
+
+function latestDownloadManifest(draftId, storageRoot = defaultStorageRoot) {
+  const safeDraftId = text(draftId);
+  if (!safeDraftId) return null;
+  const root = path.resolve(storageRoot, "draft-stamps", safeId(safeDraftId));
+  if (!isInside(runtimeRoot, root) || !fs.existsSync(root)) return null;
+  const manifestPaths = fs.readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(root, entry.name, "sandbox-download-manifest.json"))
+    .filter((filePath) => fs.existsSync(filePath))
+    .sort();
+  const latest = manifestPaths[manifestPaths.length - 1];
+  if (!latest) return null;
+  try {
+    return JSON.parse(fs.readFileSync(latest, "utf8"));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function draftFiles(draft = {}, options = {}) {
   const summary = draft.sandbox_pac_summary || {};
-  return {
+  const direct = {
     xml: text(summary.human_xml_path || draft.human_xml_path || summary.client_storage_xml_path || draft.client_storage_xml_path || summary.xml_storage_path),
     pdf: text(summary.human_pdf_path || draft.human_pdf_path || summary.client_storage_pdf_path || draft.client_storage_pdf_path || summary.pdf_storage_path),
+  };
+  const manifest = latestDownloadManifest(draft.draft_id || options.draftId, options.storageRoot || defaultStorageRoot) || {};
+  const manifestFiles = {
+    xml: text(manifest.human_xml_path || manifest.client_storage_xml_path || manifest.xml_storage_path),
+    pdf: text(manifest.human_pdf_path || manifest.client_storage_pdf_path || manifest.pdf_storage_path),
+  };
+  return {
+    xml: manifestFiles.xml || direct.xml,
+    pdf: manifestFiles.pdf || direct.pdf,
   };
 }
 
@@ -50,38 +99,150 @@ function safeClientName(draft = {}) {
   return text(client.display_name || client.razon_social || draft.client_id) || "Cliente";
 }
 
+function requestedChannel(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  const known = Object.values(DOCUMENT_DELIVERY_CHANNELS).includes(raw);
+  return {
+    raw,
+    known,
+    channel: known ? raw : null,
+  };
+}
+
+function providerEmailSyncStatusFromDraft(draft = {}) {
+  const client = clientFromDraft(draft);
+  const link = draft.provider_client_link && typeof draft.provider_client_link === "object" ? draft.provider_client_link : {};
+  const linkSummary = link.provider_response_sanitized && typeof link.provider_response_sanitized === "object"
+    ? link.provider_response_sanitized
+    : {};
+  const raw = text(client.provider_email_sync_status || draft.provider_email_sync_status || linkSummary.provider_email_sync_status || link.sync_status);
+  if (!raw) return "UNKNOWN";
+  const normalized = raw.toUpperCase();
+  if (normalized === "SYNCED" || normalized === "CREATED" || normalized === "LINKED") return "SYNCED";
+  if (normalized === "NEEDS_SYNC" || normalized === "PENDING" || normalized === "STALE") return "NEEDS_SYNC";
+  if (normalized === "NOT_PROVIDED") return "UNKNOWN";
+  if (normalized === "MANUAL_LINKED") return "UNKNOWN";
+  return normalized;
+}
+
+function loadDraftForDiagnose(options = {}) {
+  if (options.draft && typeof options.draft === "object") return options.draft;
+  const draftId = text(options.draftId);
+  if (!draftId) return null;
+  if (typeof options.draftLoader === "function") {
+    const loaded = options.draftLoader(draftId, options);
+    if (loaded && typeof loaded.then === "function") {
+      throw new Error("ASYNC_DRAFT_LOADER_NOT_SUPPORTED_FOR_DIAGNOSE");
+    }
+    return loaded;
+  }
+  return loadDraftFromPostgres(draftId, {
+    ...(options.dbConfig || {}),
+    env: options.env || process.env,
+    dbExecMode: options.dbExecMode,
+    execMode: options.execMode,
+    pgDockerContainer: options.pgDockerContainer,
+    execFileSync: options.execFileSync,
+  });
+}
+
 function runSandboxDocumentDeliveryDiagnose(options = {}) {
-  const config = diagnoseDocumentDeliveryConfig(options.env || process.env);
-  const channel = normalizeChannel(options.channel || options.deliveryChannel);
-  if (options.draft && typeof options.draft === "object") {
-    const files = draftFiles(options.draft);
-    const validation = validateDeliveryFiles(files);
-    const email = primaryEmailFromDraft(options.draft);
-    const emailConfirmed = emailConfirmedFromDraft(options.draft);
-    const providerReady = Boolean(email);
+  const requested = requestedChannel(options.channel || options.deliveryChannel || DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL);
+  if (!requested.known) {
     return {
-      status: validation.ok && (channel !== DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL || providerReady) ? "OK" : validation.ok ? "NEEDS_RECIPIENT" : "BLOCKED_INVALID_DOCUMENTS",
+      status: DOCUMENT_DELIVERY_STATUSES.ERROR,
       output: {
-        draft_id: text(options.draft.draft_id),
-        client_id: text(options.draft.client_id || clientFromDraft(options.draft).client_id),
+        channel: requested.raw || null,
+        error_class: "DOCUMENT_DELIVERY_CHANNEL_UNKNOWN",
+        ready: false,
+      },
+      warnings: [],
+      errors: ["DOCUMENT_DELIVERY_CHANNEL_UNKNOWN"],
+    };
+  }
+  const channel = normalizeChannel(requested.channel);
+  const config = channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL
+    ? diagnoseDocumentDeliveryConfig(options.env || process.env)
+    : { ready: true, warnings: [] };
+  let draft = options.draft && typeof options.draft === "object" ? options.draft : null;
+  if (!draft && text(options.draftId)) {
+    try {
+      draft = loadDraftForDiagnose(options);
+    } catch (error) {
+      return {
+        status: "NEEDS_RUNTIME",
+        output: {
+          draft_id: text(options.draftId),
+          channel,
+          error_class: "DRAFT_DB_LOAD_FAILED",
+          ready: false,
+        },
+        warnings: [],
+        errors: ["DRAFT_DB_LOAD_FAILED"],
+      };
+    }
+  }
+  if (draft && typeof draft === "object") {
+    const files = draftFiles(draft, options);
+    const validation = validateDeliveryFiles(files);
+    const email = primaryEmailFromDraft(draft);
+    const emailConfirmed = emailConfirmedFromDraft(draft);
+    const providerEmailSyncStatus = providerEmailSyncStatusFromDraft(draft);
+    const providerReady = Boolean(email);
+    const telegramConfigBlocked = channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL && config.ready !== true;
+    const providerBlockedBySync = channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL && providerEmailSyncStatus === "NEEDS_SYNC";
+    const providerReadyToSend = channel !== DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL
+      || (providerReady && emailConfirmed && !providerBlockedBySync);
+    const status = validation.ok && providerReadyToSend
+      ? (telegramConfigBlocked ? DOCUMENT_DELIVERY_STATUSES.NEEDS_CONFIG : "OK")
+      : !validation.ok
+        ? "BLOCKED_INVALID_DOCUMENTS"
+        : channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL && !providerReady
+          ? "NEEDS_RECIPIENT"
+          : providerBlockedBySync
+            ? "NEEDS_PROVIDER_EMAIL_SYNC"
+            : "NEEDS_RECIPIENT";
+    return {
+      status,
+      output: {
+        draft_id: text(draft.draft_id),
+        client_id: text(draft.client_id || clientFromDraft(draft).client_id),
         channel,
+        ready: status === "OK",
         documents_valid: validation.ok,
         xml_content_valid: validation.xml.ok === true,
         pdf_content_valid: validation.pdf.ok === true,
         pdf_visual_content_present: validation.pdf.pdf_visual_content_present === true,
-        telegram_delivery_ready: config.ready === true,
+        telegram_delivery_ready: channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL ? config.ready === true : null,
         provider_email_ready: providerReady,
         client_email_present: Boolean(email),
         client_email_confirmed: emailConfirmed,
         client_email_redacted: redactEmail(email),
         provider_email_delivery_supported: true,
+        provider_email_sync_status: providerEmailSyncStatus,
         dry_run: options.dryRun !== false,
       },
       warnings: [
-        ...(config.warnings || []),
+        ...(channel === DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL ? (config.warnings || []) : []),
         ...(email && !emailConfirmed ? ["CLIENT_EMAIL_NOT_CONFIRMED"] : []),
+        ...(providerBlockedBySync ? ["PROVIDER_EMAIL_SYNC_REQUIRED"] : []),
       ],
-      errors: validation.ok ? [] : ["BLOCKED_INVALID_DOCUMENTS"],
+      errors: validation.ok
+        ? (telegramConfigBlocked ? ["TELEGRAM_DOCUMENT_DELIVERY_NEEDS_CONFIG"] : [])
+        : ["BLOCKED_INVALID_DOCUMENTS"],
+    };
+  }
+  if (channel === DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL) {
+    return {
+      status: "NEEDS_RUNTIME",
+      output: {
+        draft_id: text(options.draftId),
+        channel,
+        provider_email_delivery_supported: true,
+        ready: false,
+      },
+      warnings: ["Provider email diagnose requiere draft_id o draft context."],
+      errors: ["DRAFT_CONTEXT_MISSING"],
     };
   }
   return {
@@ -128,7 +289,7 @@ async function runSandboxDocumentDeliverySend(options = {}) {
     };
   }
   const channel = normalizeChannel(options.channel || options.deliveryChannel);
-  const files = options.files || draftFiles(draft);
+  const files = options.files || draftFiles(draft, options);
   const validation = validateDeliveryFiles(files);
   if (!validation.ok) {
     return {
@@ -224,6 +385,7 @@ async function runProviderEmailDelivery(options = {}) {
   const dryRun = options.dryRun !== false;
   const email = primaryEmailFromDraft(draft);
   const emailConfirmed = emailConfirmedFromDraft(draft);
+  const providerEmailSyncStatus = providerEmailSyncStatusFromDraft(draft);
   if (!email) {
     return {
       status: DOCUMENT_DELIVERY_STATUSES.NEEDS_RECIPIENT,
@@ -249,6 +411,21 @@ async function runProviderEmailDelivery(options = {}) {
       },
       warnings: ["Email principal no confirmado para envio real."],
       errors: ["CLIENT_PRIMARY_EMAIL_NOT_CONFIRMED"],
+    };
+  }
+  if (providerEmailSyncStatus === "NEEDS_SYNC" && dryRun !== true) {
+    return {
+      status: "NEEDS_PROVIDER_EMAIL_SYNC",
+      output: {
+        draft_id: text(draft.draft_id || options.draftId),
+        channel: DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL,
+        client_email_present: true,
+        client_email_redacted: redactEmail(email),
+        client_email_confirmed: emailConfirmed,
+        provider_email_sync_status: providerEmailSyncStatus,
+      },
+      warnings: ["Email principal local pendiente de sincronizar con proveedor."],
+      errors: ["PROVIDER_EMAIL_SYNC_REQUIRED"],
     };
   }
   if (!validation.ok && !validation.errors.every((error) => error === "RECIPIENT_EMAIL_REQUIRED")) {
@@ -281,9 +458,13 @@ async function runProviderEmailDelivery(options = {}) {
           normalized_warnings: emailConfirmed ? [] : ["CLIENT_EMAIL_NOT_CONFIRMED_DRY_RUN_ONLY"],
         }),
         provider_email_delivery_supported: true,
+        provider_email_sync_status: providerEmailSyncStatus,
         endpoint: "/v4/cfdi40/{cfdi_uid}/email",
       },
-      warnings: emailConfirmed ? [] : ["CLIENT_EMAIL_NOT_CONFIRMED_DRY_RUN_ONLY"],
+      warnings: [
+        ...(emailConfirmed ? [] : ["CLIENT_EMAIL_NOT_CONFIRMED_DRY_RUN_ONLY"]),
+        ...(providerEmailSyncStatus === "NEEDS_SYNC" ? ["PROVIDER_EMAIL_SYNC_REQUIRED_DRY_RUN_ONLY"] : []),
+      ],
       errors: [],
     };
   }
