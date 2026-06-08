@@ -155,6 +155,10 @@ function parseArgs(argv) {
       options.allowLegacyReceiverUid = true;
     } else if (key === "--require-live-sandbox") {
       options.requireLiveSandbox = true;
+    } else if (key === "--dry-run") {
+      options.dryRun = true;
+    } else if (key === "--send-real") {
+      options.dryRun = false;
     }
   }
   return { action, auditContext, options };

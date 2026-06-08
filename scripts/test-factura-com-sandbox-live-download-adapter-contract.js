@@ -44,6 +44,19 @@ function assertSafeJson(value) {
   assert(!/[A-Za-z]:[\\/]/.test(raw), "absolute path leaked");
 }
 
+const VALID_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" SubTotal="1000.00" Total="1160.00">
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" UUID="00000000-0000-4000-8000-000000000716" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>`;
+
+const VALID_PDF = Buffer.concat([
+  Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+  Buffer.alloc(1100, "A"),
+  Buffer.from("\n%%EOF", "latin1"),
+]);
+
 check("download_xml_live_writes_file_and_metadata", async () => {
   cleanTemp();
   const adapter = new FacturaComSandboxAdapter({ env: env() });
@@ -58,8 +71,8 @@ check("download_xml_live_writes_file_and_metadata", async () => {
         status: 200,
         statusText: "OK",
         contentType: "application/xml",
-        rawText: "<?xml version=\"1.0\"?><cfdi:Comprobante Total=\"1160\"/>",
-        data: "<?xml version=\"1.0\"?><cfdi:Comprobante Total=\"1160\"/>",
+        rawText: VALID_XML,
+        data: VALID_XML,
       };
     },
   });
@@ -68,6 +81,8 @@ check("download_xml_live_writes_file_and_metadata", async () => {
   assert.strictEqual(result.artifact_status, "DOWNLOADED");
   assert.strictEqual(result.xml_provider_available, true);
   assert.strictEqual(result.xml_downloaded, true);
+  assert.strictEqual(result.xml_content_valid, true);
+  assert.strictEqual(result.xml_validation_status, "VALID");
   assert(result.xml_sha256 && result.xml_sha256.length === 64);
   assert(result.xml_size_bytes > 0);
   assert(result.xml_storage_path.endsWith("cfdi.xml"));
@@ -89,12 +104,14 @@ check("download_pdf_live_writes_file_and_metadata", async () => {
         status: 200,
         statusText: "OK",
         contentType: "application/pdf",
-        rawBuffer: Buffer.from("%PDF-1.4 sandbox pdf", "utf8"),
+        rawBuffer: VALID_PDF,
       };
     },
   });
   assert.strictEqual(result.ok, true);
   assert.strictEqual(result.pdf_downloaded, true);
+  assert.strictEqual(result.pdf_content_valid, true);
+  assert.strictEqual(result.pdf_validation_status, "VALID");
   assert(result.pdf_sha256 && result.pdf_sha256.length === 64);
   assert(result.pdf_size_bytes > 0);
   assert(fs.existsSync(path.join(root, result.pdf_storage_path)));

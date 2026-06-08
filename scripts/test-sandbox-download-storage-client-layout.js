@@ -54,11 +54,24 @@ function env() {
   };
 }
 
+const VALID_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" SubTotal="1000.00" Total="1160.00">
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" UUID="00000000-0000-4000-8000-000000000716" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>`;
+
+const VALID_PDF = Buffer.concat([
+  Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+  Buffer.alloc(1100, "A"),
+  Buffer.from("\n%%EOF", "latin1"),
+]);
+
 function requestFn(request) {
   if (request.path.endsWith("/xml")) {
-    return Promise.resolve({ ok: true, status: 200, statusText: "OK", rawText: "<cfdi:Comprobante/>", data: "<cfdi:Comprobante/>" });
+    return Promise.resolve({ ok: true, status: 200, statusText: "OK", rawText: VALID_XML, data: VALID_XML });
   }
-  return Promise.resolve({ ok: true, status: 200, statusText: "OK", rawBuffer: Buffer.from("%PDF-1.4") });
+  return Promise.resolve({ ok: true, status: 200, statusText: "OK", rawBuffer: VALID_PDF });
 }
 
 check("client_invoice_storage_layout_is_created", async () => {
@@ -78,6 +91,8 @@ check("client_invoice_storage_layout_is_created", async () => {
   assert(manifestPath.includes(path.join("emitters", "EMITTER-DEMO", "2026", "06", "clients", "CLIENT-LAYOUT", "invoices")));
   assert.strictEqual(manifest.xml_downloaded, true);
   assert.strictEqual(manifest.pdf_downloaded, true);
+  assert.strictEqual(manifest.xml_content_valid, true);
+  assert.strictEqual(manifest.pdf_content_valid, true);
   assert.strictEqual(manifest.artifact_status, "DOWNLOADED");
   assert(fs.existsSync(path.join(path.dirname(manifestPath), "xml", "cfdi.xml")));
   assert(fs.existsSync(path.join(path.dirname(manifestPath), "pdf", "cfdi.pdf")));

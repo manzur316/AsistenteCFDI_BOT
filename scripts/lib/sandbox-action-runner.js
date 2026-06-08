@@ -12,6 +12,10 @@ const { analyzeAudit } = require("../analyze-sandbox-action-audit");
 const { runSandboxDraftCancel } = require("./sandbox-draft-cancel-action");
 const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-artifacts-action");
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
+const {
+  runSandboxDocumentDeliveryDiagnose,
+  runSandboxDocumentDeliverySend,
+} = require("./sandbox-document-delivery-action");
 const { runSatCfdiRulesDiagnose } = require("./sat-cfdi-rules-diagnose-action");
 const { runClientFiscalNormalizeDiagnose } = require("./client-fiscal-normalize-diagnose-action");
 const {
@@ -53,6 +57,8 @@ const ACTIONS = [
   "sandbox.draft.stamp",
   "sandbox.draft.download-artifacts",
   "sandbox.draft.cancel",
+  "sandbox.documents.delivery.diagnose",
+  "sandbox.documents.delivery.send",
   "sandbox.cfdi.rules.diagnose",
   "sandbox.client.fiscal-normalize.diagnose",
   "sandbox.provider.client.lookup",
@@ -583,6 +589,8 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.draft.stamp") return runDraftStamp(paths, env, options);
   if (action === "sandbox.draft.download-artifacts") return runDraftDownloadArtifacts(paths, env, options);
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
+  if (action === "sandbox.documents.delivery.diagnose") return runSandboxDocumentDeliveryDiagnose({ ...options, env });
+  if (action === "sandbox.documents.delivery.send") return runSandboxDocumentDeliverySend({ ...options, env });
   if (action === "sandbox.cfdi.rules.diagnose") return runCfdiRulesDiagnose(options);
   if (action === "sandbox.client.fiscal-normalize.diagnose") return runClientFiscalNormalizeDiagnose(options);
   if (action.startsWith("sandbox.provider.client.")) return runProviderClientAction(action, { ...options, env });

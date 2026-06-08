@@ -21,6 +21,7 @@ const {
   normalizeFacturaComErrorResponse,
   normalizeFacturaComSuccessResponse,
 } = require("./factura-com-payload-mapper");
+const { validateSandboxArtifactContent } = require("./sandbox-artifact-content-validator");
 
 const ADAPTER_NAME = "FacturaComSandboxAdapter";
 const SANDBOX_MODES = Object.freeze({
@@ -649,6 +650,42 @@ class FacturaComSandboxAdapter {
         }, { operation, status: "PAC_SANDBOX_ERROR" });
       }
 
+      const contentValidation = validateSandboxArtifactContent({
+        kind: artifactType,
+        buffer,
+        contentType: response.contentType || rawResponse?.headers?.["content-type"],
+        fileName: artifactType === "PDF" ? "cfdi.pdf" : "cfdi.xml",
+        expectedIdentity: invoiceRef,
+        pdfMinBytes: context.pdfMinBytes || env.FACTURACOM_SANDBOX_PDF_MIN_BYTES,
+      });
+      if (contentValidation.ok !== true) {
+        const diagnosticPath = storageDir ? path.join(storageDir, `${field}-content-validation.json`) : null;
+        if (diagnosticPath) {
+          fs.mkdirSync(storageDir, { recursive: true });
+          writeJson(diagnosticPath, {
+            schema_version: "facturacom_sandbox_artifact_content_validation.v1",
+            generated_at: new Date().toISOString(),
+            provider: PROVIDER,
+            environment: PAC_ENVIRONMENTS.SANDBOX,
+            operation,
+            artifact_type: artifactType,
+            validation: contentValidation,
+            requires_human_review: true,
+          });
+        }
+        return normalizeFacturaComErrorResponse({
+          code: `FACTURACOM_SANDBOX_${artifactType}_CONTENT_INVALID`,
+          message: `Factura.com Sandbox devolvio ${artifactType}, pero el contenido no parece un CFDI ${artifactType} valido.`,
+          status: "PAC_SANDBOX_ERROR",
+          data: {
+            validation: contentValidation,
+            [`${field}_content_valid`]: false,
+            [`${field}_validation_status`]: contentValidation.status,
+            validation_diagnostic_path: diagnosticPath ? safeRelative(diagnosticPath) : null,
+          },
+        }, { operation, status: "PAC_SANDBOX_ERROR" });
+      }
+
       let artifactPath = null;
       let manifestPath = null;
       const fileName = artifactType === "PDF" ? "cfdi.pdf" : "cfdi.xml";
@@ -671,6 +708,9 @@ class FacturaComSandboxAdapter {
           [`${field}_storage_path`]: safeRelative(artifactPath),
           [`${field}_sha256`]: checksum,
           [`${field}_size_bytes`]: buffer.length,
+          [`${field}_content_valid`]: true,
+          [`${field}_validation_status`]: contentValidation.status,
+          content_validation: contentValidation,
           requires_human_review: true,
         });
       }
@@ -686,6 +726,9 @@ class FacturaComSandboxAdapter {
         [`${field}_downloaded`]: true,
         [`${field}_size_bytes`]: buffer.length,
         [`${field}_sha256`]: checksum,
+        [`${field}_content_valid`]: true,
+        [`${field}_validation_status`]: contentValidation.status,
+        content_validation: contentValidation,
         [`${field}_storage_path`]: artifactPath ? safeRelative(artifactPath) : null,
         [`${field}_manifest_path`]: manifestPath ? safeRelative(manifestPath) : null,
         normalized_errors: [],

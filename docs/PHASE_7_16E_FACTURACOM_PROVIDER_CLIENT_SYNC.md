@@ -125,6 +125,23 @@ node scripts/run-sandbox-action.js sandbox.client.fiscal-normalize.diagnose --db
 El diagnostico no muta la base y no expone RFC completo. Formatos incompletos
 como `G1` siguen bloqueados. Detalle: `docs/SAT_FIELD_NORMALIZATION_GUARD.md`.
 
+## Relacion con descargas XML/PDF sandbox
+
+La fase 7.16I agrega validacion de contenido para XML/PDF descargados desde
+Factura.com Sandbox. Esto no cambia el vinculo `provider_client_links`, pero
+evita que respuestas placeholder del proveedor o de mocks se guarden como
+artefactos finales.
+
+Referencia:
+
+```text
+docs/SANDBOX_XML_PDF_CONTENT_VALIDATION.md
+docs/TELEGRAM_DOCUMENT_DELIVERY_CHANNEL.md
+```
+
+El timbrado sandbox live sigue usando `provider_client_links.provider_client_uid`
+y no se abre produccion fiscal real.
+
 ## PostgreSQL local con Docker
 
 En entorno local Docker, las acciones del Action Layer que leen PostgreSQL

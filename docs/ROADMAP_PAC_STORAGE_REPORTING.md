@@ -1631,6 +1631,29 @@ Alcance:
 - mapper y adapter cliente Factura.com Sandbox quedan bajo host sandbox;
 - produccion, PAC real productivo, workflows y catalogo activo no cambian.
 
+## Fase 7.16I - Sandbox XML/PDF Content Validation + Delivery Prep
+
+La fase 7.16I queda definida en:
+
+```text
+docs/SANDBOX_XML_PDF_CONTENT_VALIDATION.md
+docs/TELEGRAM_DOCUMENT_DELIVERY_CHANNEL.md
+```
+
+Alcance:
+
+- validar contenido antes de escribir `cfdi.xml`/`cfdi.pdf`;
+- rechazar placeholders como `CFDI XML` o `CFDI PDF`;
+- mantener `xml_downloaded/pdf_downloaded=false` cuando el contenido no sea
+  valido;
+- no copiar artifacts invalidos a storage por cliente/factura;
+- mejorar el mensaje Telegram para `Descarga sandbox no valida`;
+- preparar diagnostico/dry-run de entrega documental por Telegram, deshabilitado
+  por default.
+
+Fuera de alcance: produccion, PAC productivo, timbrado real, envio automatico de
+documentos por Telegram y cambios a `data/concepts.normalized.json`.
+
 ## Fase 7.16F - Shared Telegram Bot Identity + Subscription Access Foundation
 
 La fase 7.16F queda definida en

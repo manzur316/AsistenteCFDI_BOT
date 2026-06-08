@@ -19,6 +19,10 @@ por Telegram.
   `runtime/`, nunca ruta absoluta ni mensaje Telegram.
 - `xml_sha256` / `pdf_sha256`: checksum local.
 - `xml_size_bytes` / `pdf_size_bytes`: tamano local.
+- `xml_content_valid` / `pdf_content_valid`: el contenido paso validacion
+  minima de CFDI XML o PDF real.
+- `xml_validation_status` / `pdf_validation_status`: estado seguro de
+  validacion de contenido.
 - `artifact_status`: `NOT_REQUESTED`, `DOWNLOAD_READY`, `DOWNLOADED`,
   `PARTIAL_DOWNLOAD`, `DOWNLOAD_ERROR`, `NEEDS_CONFIG` o `NEEDS_RUNTIME`.
 
@@ -45,6 +49,26 @@ Los endpoints se toman del smoke/documentacion existente:
 - `GET /v4/cfdi40/{cfdi_ref}/pdf`
 
 Produccion `https://api.factura.com` queda bloqueada.
+
+## Validacion de contenido
+
+Desde 7.16I, una respuesta no vacia del proveedor ya no basta. El adapter valida
+el contenido antes de escribir `cfdi.xml` o `cfdi.pdf`.
+
+Documento:
+
+```text
+docs/SANDBOX_XML_PDF_CONTENT_VALIDATION.md
+```
+
+Reglas principales:
+
+- XML debe parecer CFDI 4.0 con `Comprobante`, namespace/Version, Timbre Fiscal
+  Digital y UUID.
+- PDF debe iniciar con `%PDF`, contener `%%EOF` y superar tamano minimo.
+- Placeholders como `CFDI XML` o `CFDI PDF` se rechazan.
+- Si falla validacion, se guarda solo diagnostico seguro bajo `runtime/`; no se
+  escribe artefacto final ni se copia al layout por cliente.
 
 ## Action Layer
 
@@ -110,6 +134,8 @@ Estado pago: PENDIENTE
 Proveedor: Factura.com Sandbox
 XML descargado: si/no
 PDF descargado: si/no
+XML valido: si/no
+PDF valido: si/no
 Storage local: actualizado/no actualizado
 No se envian documentos por Telegram.
 Borrador sujeto a revision humana. No sustituye contador.
@@ -143,6 +169,11 @@ Pruebas nuevas:
 - `scripts/test-sandbox-download-storage-client-layout.js`
 - `scripts/test-telegram-sandbox-download-summary-security.js`
 - `scripts/test-sandbox-download-artifact-semantics.js`
+- `scripts/test-sandbox-artifact-content-validator.js`
+- `scripts/test-facturacom-download-rejects-placeholder-artifacts.js`
+- `scripts/test-sandbox-download-content-validation-action.js`
+- `scripts/test-sandbox-download-no-client-storage-for-invalid-content.js`
+- `scripts/test-telegram-download-invalid-artifact-message.js`
 
 ## Fuera de alcance
 

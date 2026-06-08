@@ -65,6 +65,12 @@ function stampedDraft(overrides = {}) {
 }
 
 function fakeRequestFn({ partial = false } = {}) {
+  const validXml = "<?xml version=\"1.0\"?><cfdi:Comprobante xmlns:cfdi=\"http://www.sat.gob.mx/cfd/4\" Version=\"4.0\" Total=\"1160\"><cfdi:Complemento><tfd:TimbreFiscalDigital xmlns:tfd=\"http://www.sat.gob.mx/TimbreFiscalDigital\" UUID=\"00000000-0000-4000-8000-000000000716\" /></cfdi:Complemento></cfdi:Comprobante>";
+  const validPdf = Buffer.concat([
+    Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n", "latin1"),
+    Buffer.alloc(1100, "A"),
+    Buffer.from("\n%%EOF", "latin1"),
+  ]);
   return async (request) => {
     if (request.path.endsWith("/xml")) {
       return {
@@ -72,8 +78,8 @@ function fakeRequestFn({ partial = false } = {}) {
         status: 200,
         statusText: "OK",
         contentType: "application/xml",
-        rawText: "<?xml version=\"1.0\"?><cfdi:Comprobante Total=\"1160\"/>",
-        data: "<?xml version=\"1.0\"?><cfdi:Comprobante Total=\"1160\"/>",
+        rawText: validXml,
+        data: validXml,
       };
     }
     if (partial && request.path.endsWith("/pdf")) {
@@ -84,7 +90,7 @@ function fakeRequestFn({ partial = false } = {}) {
       status: 200,
       statusText: "OK",
       contentType: "application/pdf",
-      rawBuffer: Buffer.from("%PDF-1.4 sandbox", "utf8"),
+      rawBuffer: validPdf,
     };
   };
 }
@@ -109,6 +115,8 @@ check("download_action_downloads_xml_pdf_and_preserves_statuses", async () => {
   assert.strictEqual(result.output.payment_status, "PENDIENTE");
   assert.strictEqual(result.output.xml_downloaded, true);
   assert.strictEqual(result.output.pdf_downloaded, true);
+  assert.strictEqual(result.output.xml_content_valid, true);
+  assert.strictEqual(result.output.pdf_content_valid, true);
   assert.strictEqual(result.output.artifact_status, "DOWNLOADED");
   assert(fs.existsSync(path.join(root, result.output.xml_storage_path)));
   assert(fs.existsSync(path.join(root, result.output.pdf_storage_path)));
@@ -128,6 +136,8 @@ check("download_action_partial_download_is_stable", async () => {
   assert.strictEqual(result.status, "PARTIAL_DOWNLOAD");
   assert.strictEqual(result.output.xml_downloaded, true);
   assert.strictEqual(result.output.pdf_downloaded, false);
+  assert.strictEqual(result.output.xml_content_valid, true);
+  assert.strictEqual(result.output.pdf_content_valid, false);
   assert.strictEqual(result.output.artifact_status, "PARTIAL_DOWNLOAD");
   return result.status;
 });

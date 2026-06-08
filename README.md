@@ -1099,6 +1099,14 @@ En entorno local Docker, las acciones del Action Layer que consultan
 PostgreSQL pueden usar `CFDI_DB_EXEC_MODE=docker` con el contenedor
 `cfdi-postgres` para evitar password TCP contra `127.0.0.1:5432`.
 
+7.16I agrega validacion de contenido XML/PDF sandbox antes de marcar descargas
+como validas o copiarlas a storage por cliente. Placeholders como `CFDI XML` o
+`CFDI PDF` quedan en error seguro, no como `*_downloaded=true`. Tambien deja
+preparado un canal privado de entrega documental por Telegram, deshabilitado por
+default y en dry-run salvo opt-in explicito. Ver
+`docs/SANDBOX_XML_PDF_CONTENT_VALIDATION.md` y
+`docs/TELEGRAM_DOCUMENT_DELIVERY_CHANNEL.md`.
+
 7.16F agrega foundation para un bot Telegram compartido:
 `telegram_user_id` es identidad de canal, `tenant_id` conserva la suscripcion y
 los entitlements resuelven acciones permitidas. Una suscripcion vencida pasa a
