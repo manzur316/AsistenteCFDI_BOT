@@ -1079,6 +1079,15 @@ SaaS sin cambios operativos visibles: `docs/ADR_0002_SATBOT_PRODUCT_MODES_AND_AP
 `docs/APPROVAL_POLICY_ARCHITECTURE.md` y
 `docs/CHANNEL_ADAPTERS_TELEGRAM_WHATSAPP_ROADMAP.md`.
 
+7.16E agrega Factura.com Sandbox Provider Client Sync:
+`sandbox.provider.client.lookup`, `sandbox.provider.client.sync`,
+`sandbox.provider.client.link` y `sandbox.provider.client.diagnose`. El
+timbrado sandbox live normal usa `provider_client_links.provider_client_uid`;
+`FACTURACOM_SANDBOX_RECEIVER_UID` queda solo como fallback legacy/test con
+bandera explicita. Ver
+`docs/PHASE_7_16E_FACTURACOM_PROVIDER_CLIENT_SYNC.md` y
+`docs/PROVIDER_CLIENT_LINK_ARCHITECTURE.md`.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

@@ -145,7 +145,16 @@ check("require_live_sandbox_success_uses_live_and_download_ready", async () => {
   cleanTemp();
   let networkCalls = 0;
   const result = await runSandboxDraftStamp({
-    draft: approvedDraft({ draft_id: "DRAFT-LIVE-SUCCESS-716B" }),
+    draft: approvedDraft({
+      draft_id: "DRAFT-LIVE-SUCCESS-716B",
+      provider_client_link: {
+        provider_client_link_id: "PCL-REQUIRE-LIVE",
+        provider_client_uid: "CLIENTUID716B-LINK",
+        provider: "factura_com",
+        environment: "SANDBOX",
+        sync_status: "LINKED",
+      },
+    }),
     env: liveEnv(),
     storageRoot: tempRoot,
     requireLiveSandbox: true,

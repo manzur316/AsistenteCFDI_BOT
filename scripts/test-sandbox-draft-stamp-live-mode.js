@@ -73,6 +73,13 @@ function approvedDraft(overrides = {}) {
       uso_cfdi_default: "G03",
       validated_by_human: true,
     },
+    provider_client_link: {
+      provider_client_link_id: "PCL-LIVE-MODE-715",
+      provider_client_uid: "CLIENTUID715-LINK",
+      provider: "factura_com",
+      environment: "SANDBOX",
+      sync_status: "LINKED",
+    },
     concept: {
       id: "PROD-CCTV-001",
       concepto_factura: "VENTA DE CAMARA DE VIDEOVIGILANCIA",

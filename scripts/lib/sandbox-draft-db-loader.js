@@ -65,8 +65,30 @@ function buildDraftByIdQuery(draftId) {
     "FROM cfdi_draft_line_items li",
     "WHERE li.draft_id = d.draft_id",
     "), '[]'::jsonb) AS line_items",
+    ", COALESCE(pcl.provider_client_link, '{}'::jsonb) AS provider_client_link",
     "FROM cfdi_drafts d",
     "LEFT JOIN cfdi_clients c ON c.client_id = d.client_id",
+    "LEFT JOIN LATERAL (",
+    "SELECT jsonb_build_object(",
+    "'provider_client_link_id', provider_client_link_id,",
+    "'tenant_id', tenant_id,",
+    "'client_id', client_id,",
+    "'provider', provider,",
+    "'environment', environment,",
+    "'provider_client_uid', provider_client_uid,",
+    "'provider_client_uid_present', provider_client_uid IS NOT NULL,",
+    "'sync_status', sync_status,",
+    "'provider_response_sanitized', provider_response_sanitized,",
+    "'last_sync_at', last_sync_at",
+    ") AS provider_client_link",
+    "FROM provider_client_links",
+    "WHERE tenant_id = COALESCE(to_jsonb(d)->>'tenant_id', 'TENANT_PERSONAL_DEFAULT')",
+    "AND client_id = d.client_id",
+    "AND provider = 'factura_com'",
+    "AND environment = 'SANDBOX'",
+    "ORDER BY last_sync_at DESC NULLS LAST, created_at DESC",
+    "LIMIT 1",
+    ") pcl ON true",
     `WHERE d.draft_id = ${safeDraftId}`,
     ")",
     "SELECT jsonb_build_object(",
@@ -86,6 +108,7 @@ function buildDraftByIdQuery(draftId) {
     "'current_client', d.current_client,",
     "'historical_client_snapshot', d.historical_client_snapshot,",
     "'client_snapshot', d.merged_client_snapshot,",
+    "'provider_client_link', d.provider_client_link,",
     "'concept', d.concept,",
     "'top_3', d.top_3,",
     "'telegram_message', d.telegram_message,",
@@ -119,6 +142,9 @@ function normalizeDraftRow(row) {
   const currentClient = row.current_client && typeof row.current_client === "object" ? row.current_client : clientSnapshot;
   const historicalClientSnapshot = row.historical_client_snapshot && typeof row.historical_client_snapshot === "object" ? row.historical_client_snapshot : {};
   const lineItems = Array.isArray(row.line_items) ? row.line_items : [];
+  const providerClientLink = row.provider_client_link && typeof row.provider_client_link === "object"
+    ? row.provider_client_link
+    : {};
   const firstLine = lineItems[0] || {};
   const concept = row.concept && typeof row.concept === "object" && Object.keys(row.concept).length
     ? row.concept
@@ -145,6 +171,7 @@ function normalizeDraftRow(row) {
     historical_client_snapshot: historicalClientSnapshot,
     client_snapshot: clientSnapshot,
     client: currentClient,
+    provider_client_link: providerClientLink,
     concept,
     line_items: lineItems,
     amount: row.amount ?? row.subtotal ?? firstLine.subtotal ?? firstLine.unit_price ?? null,

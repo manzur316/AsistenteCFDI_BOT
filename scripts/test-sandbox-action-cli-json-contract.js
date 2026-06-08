@@ -76,6 +76,29 @@ check("parse_args_accepts_draft_id", () => {
   return parsed.options.draftId;
 });
 
+check("parse_args_accepts_provider_client_sync_flags", () => {
+  const parsed = parseArgs([
+    "sandbox.provider.client.sync",
+    "--client-id", "CLIENT-1",
+    "--provider-client-uid", "CLIENTUID-1",
+    "--rfc", "ABC010203AB1",
+    "--legal-name", "Cliente Demo",
+    "--fiscal-zip", "77500",
+    "--fiscal-regime", "601",
+    "--cfdi-use", "G03",
+    "--validated-by-human",
+    "--create-if-missing",
+    "--allow-legacy-receiver-uid",
+  ]);
+  assert.strictEqual(parsed.action, "sandbox.provider.client.sync");
+  assert.strictEqual(parsed.options.clientId, "CLIENT-1");
+  assert.strictEqual(parsed.options.providerClientUid, "CLIENTUID-1");
+  assert.strictEqual(parsed.options.createIfMissing, true);
+  assert.strictEqual(parsed.options.validatedByHuman, true);
+  assert.strictEqual(parsed.options.allowLegacyReceiverUid, true);
+  return parsed.options.clientId;
+});
+
 check("controlled_missing_draft_exits_zero_with_json", () => {
   const { child, parsed } = runCli(["sandbox.draft.stamp"], { FACTURACOM_SANDBOX_LIVE: "1" });
   assert.strictEqual(child.status, 0);

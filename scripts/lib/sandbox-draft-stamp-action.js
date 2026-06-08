@@ -14,6 +14,7 @@ const {
   safeFacturaComSandboxConfig,
 } = require("./facturacom-sandbox-config-resolver");
 const { loadDraftFromPostgres } = require("./sandbox-draft-db-loader");
+const { safeLinkOutput } = require("./provider-client-link-store");
 
 const SANDBOX_DRAFT_STAMP_STATUS = Object.freeze({
   STAMPING: "SANDBOX_TIMBRANDO",
@@ -126,7 +127,11 @@ function requireLiveSandboxErrors(env = {}, options = {}) {
     localEnvPath: options.localEnvPath,
     loadLocalEnv: options.loadLocalEnv,
   });
-  return Array.isArray(config.errors) ? config.errors : [];
+  const errors = Array.isArray(config.errors) ? config.errors : [];
+  if (text(options.providerClientUid)) {
+    return errors.filter((error) => error !== "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED");
+  }
+  return errors;
 }
 
 function validateDraftForSandboxStamp(draft, env = {}, options = {}) {
@@ -138,6 +143,9 @@ function validateDraftForSandboxStamp(draft, env = {}, options = {}) {
 
   if (options.requireLiveSandbox === true) {
     errors.push(...requireLiveSandboxErrors(env, options));
+    if (!text(options.providerClientUid) && options.allowLegacyReceiverUid !== true) {
+      errors.push("PROVIDER_CLIENT_LINK_MISSING");
+    }
   }
 
   const productionUrl = [
@@ -177,7 +185,8 @@ function validateDraftForSandboxStamp(draft, env = {}, options = {}) {
   if (blockers.length) errors.push("draft_has_blockers");
 
   const needsConfig = errors.some((item) => String(item).startsWith("FACTURACOM_SANDBOX_") || item === "PRODUCTION_BLOCKED");
-  const status = needsConfig ? "NEEDS_CONFIG" : "ERROR";
+  const needsRuntime = errors.includes("PROVIDER_CLIENT_LINK_MISSING");
+  const status = needsConfig ? "NEEDS_CONFIG" : needsRuntime ? "NEEDS_RUNTIME" : "ERROR";
   return { ok: errors.length === 0, status: errors.length ? status : "OK", errors, warnings, client, concept };
 }
 
@@ -207,6 +216,7 @@ function stableValidationCode(code) {
     FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED: "FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED",
     FACTURACOM_SANDBOX_PLUGIN_REQUIRED: "FACTURACOM_SANDBOX_PLUGIN_REQUIRED",
     FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED: "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED",
+    PROVIDER_CLIENT_LINK_MISSING: "PROVIDER_CLIENT_LINK_MISSING",
     FACTURACOM_SANDBOX_SERIE_REQUIRED: "FACTURACOM_SANDBOX_SERIE_REQUIRED",
     FACTURACOM_SANDBOX_PRODUCTION_URL_BLOCKED: "FACTURACOM_SANDBOX_PRODUCTION_URL_BLOCKED",
     PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
@@ -302,6 +312,62 @@ function draftErrorContext(draft = {}, options = {}) {
     client_id: text(client.client_id || safeDraft.client_id),
     client_display_name: text(client.display_name || client.razon_social || client.client_id || safeDraft.client_id),
     total: number(safeDraft.total),
+  };
+}
+
+function resolveProviderClientLink(draft = {}, options = {}) {
+  const link = options.providerClientLink && typeof options.providerClientLink === "object"
+    ? options.providerClientLink
+    : draft.provider_client_link && typeof draft.provider_client_link === "object"
+      ? draft.provider_client_link
+      : {};
+  const optionUid = text(options.providerClientUid || options.provider_client_uid);
+  const linkUid = text(link.provider_client_uid || link.provider_client_id);
+  const providerClientUid = optionUid || linkUid;
+  const source = optionUid
+    ? "explicit_option"
+    : linkUid
+      ? "provider_client_links"
+      : options.allowLegacyReceiverUid === true
+        ? "legacy_env"
+        : "missing";
+  return {
+    provider_client_uid: providerClientUid,
+    source,
+    link,
+    safe_link: providerClientUid
+      ? safeLinkOutput({ ...link, provider_client_uid: providerClientUid, sync_status: link.sync_status || "LINKED" })
+      : null,
+  };
+}
+
+function effectiveProviderConfigForLinkedClient(config, providerClientUid) {
+  if (!config || !text(providerClientUid)) return config;
+  const errors = Array.isArray(config.errors)
+    ? config.errors.filter((error) => error !== "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED")
+    : [];
+  const missing = Array.isArray(config.missing)
+    ? config.missing.filter((error) => error !== "FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED")
+    : [];
+  return {
+    ...config,
+    ok: errors.length === 0,
+    status: errors.length === 0 ? "OK" : "NEEDS_CONFIG",
+    errors,
+    missing,
+    receiver_uid_present: true,
+    safe_diagnostics: {
+      ...(config.safe_diagnostics || {}),
+      receiver_uid_present: true,
+      values: {
+        ...((config.safe_diagnostics || {}).values || {}),
+        "Receiver UID": "provider_client_links",
+      },
+    },
+    resolved_env: {
+      ...(config.resolved_env || {}),
+      FACTURACOM_SANDBOX_RECEIVER_UID: "",
+    },
   };
 }
 
@@ -419,13 +485,18 @@ async function runSandboxDraftStamp(options = {}) {
   }
 
   const requestedEnv = options.env || process.env;
-  const pacProviderConfig = options.requireLiveSandbox === true
+  const providerClientLink = resolveProviderClientLink(draft || {}, options);
+  const rawPacProviderConfig = options.requireLiveSandbox === true
     ? resolveFacturaComSandboxConfig({
       env: requestedEnv,
       localEnvPath: options.localEnvPath,
       loadLocalEnv: options.loadLocalEnv,
     })
     : null;
+  const pacProviderConfig = effectiveProviderConfigForLinkedClient(
+    rawPacProviderConfig,
+    providerClientLink.provider_client_uid,
+  );
   const effectiveEnv = pacProviderConfig?.ok === true
     ? { ...requestedEnv, ...pacProviderConfig.resolved_env }
     : requestedEnv;
@@ -433,6 +504,8 @@ async function runSandboxDraftStamp(options = {}) {
   const validation = validateDraftForSandboxStamp(draft, effectiveEnv, {
     requireLiveSandbox: options.requireLiveSandbox === true,
     pacProviderConfig,
+    providerClientUid: providerClientLink.provider_client_uid,
+    allowLegacyReceiverUid: options.allowLegacyReceiverUid === true,
   });
   if (!validation.ok) {
     const validationCodes = stableValidationCodes(validation.errors);
@@ -445,12 +518,20 @@ async function runSandboxDraftStamp(options = {}) {
             ? "FACTURACOM_SANDBOX_MODE_REQUIRED"
             : validation.errors.includes("FACTURACOM_SANDBOX_LIVE_REQUIRED")
               ? "FACTURACOM_SANDBOX_LIVE_REQUIRED"
+              : validation.errors.includes("PROVIDER_CLIENT_LINK_MISSING")
+                ? "PROVIDER_CLIENT_LINK_MISSING"
             : "DRAFT_VALIDATION_ERROR",
         ...draftErrorContext(draft, options),
         validation_errors: validation.errors,
         validation_error_codes: validationCodes,
         provider: "Factura.com Sandbox",
         pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
+        provider_client_link_status: providerClientLink.provider_client_uid ? "FOUND" : "MISSING",
+        provider_client_uid_source: providerClientLink.source,
+        provider_client_link: providerClientLink.safe_link,
+        next_action: validation.errors.includes("PROVIDER_CLIENT_LINK_MISSING")
+          ? "Ejecuta sandbox.provider.client.sync o sandbox.provider.client.link antes de timbrar sandbox live."
+          : null,
         sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
       },
       warnings: validation.warnings,
@@ -521,6 +602,11 @@ async function runSandboxDraftStamp(options = {}) {
   const adapter = options.adapter || new FacturaComSandboxAdapter({ env: adapterEnv });
   const pacResult = await adapter.stampSandbox(pacRequest, {
     ...(options.adapterContext || {}),
+    provider_client_uid: providerClientLink.provider_client_uid,
+    factura_com: {
+      ...((options.adapterContext || {}).factura_com || {}),
+      receptor_uid: providerClientLink.provider_client_uid || undefined,
+    },
     env: adapterEnv,
     requireLiveSandbox: options.requireLiveSandbox === true,
   });
@@ -537,6 +623,9 @@ async function runSandboxDraftStamp(options = {}) {
         ...draftErrorContext(draft, options),
         provider: "Factura.com Sandbox",
         pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
+        provider_client_link_status: providerClientLink.provider_client_uid ? "FOUND" : "MISSING",
+        provider_client_uid_source: providerClientLink.source,
+        provider_client_link: providerClientLink.safe_link,
         pac_status: pacResult.status || "PAC_ERROR",
         normalized_errors: normalizedErrors,
       },
@@ -560,6 +649,9 @@ async function runSandboxDraftStamp(options = {}) {
       draft_id: draft.draft_id,
       provider: "Factura.com Sandbox",
       pac_provider_config: pacProviderConfig ? safeFacturaComSandboxConfig(pacProviderConfig) : null,
+      provider_client_link_status: providerClientLink.provider_client_uid ? "FOUND" : "MISSING",
+      provider_client_uid_source: providerClientLink.source,
+      provider_client_link: providerClientLink.safe_link,
       invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
       draft_status: text(draft.status),
       payment_status: text(draft.payment_status) === "NO_APLICA" || !text(draft.payment_status) ? "PENDIENTE" : text(draft.payment_status),
@@ -648,6 +740,7 @@ module.exports = {
   canonicalInputFromDraft,
   hasSandboxStamp,
   hasSandboxStampInProgress,
+  resolveProviderClientLink,
   runSandboxDraftStamp,
   readDraftFromOptions,
   validateDraftForSandboxStamp,

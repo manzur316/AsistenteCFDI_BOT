@@ -14,6 +14,12 @@ const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-a
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
 const { runSatCfdiRulesDiagnose } = require("./sat-cfdi-rules-diagnose-action");
 const {
+  runProviderClientDiagnose,
+  runProviderClientLink,
+  runProviderClientLookup,
+  runProviderClientSync,
+} = require("./provider-client-sync-action");
+const {
   resolveFacturaComSandboxConfig,
   safeFacturaComSandboxConfig,
 } = require("./facturacom-sandbox-config-resolver");
@@ -47,6 +53,10 @@ const ACTIONS = [
   "sandbox.draft.download-artifacts",
   "sandbox.draft.cancel",
   "sandbox.cfdi.rules.diagnose",
+  "sandbox.provider.client.lookup",
+  "sandbox.provider.client.sync",
+  "sandbox.provider.client.link",
+  "sandbox.provider.client.diagnose",
 ];
 
 function isInside(parent, child) {
@@ -494,6 +504,14 @@ function runCfdiRulesDiagnose(options = {}) {
   return stableStep("sandbox.cfdi.rules.diagnose", status, output, warnings, []);
 }
 
+async function runProviderClientAction(action, options = {}) {
+  if (action === "sandbox.provider.client.lookup") return runProviderClientLookup(options);
+  if (action === "sandbox.provider.client.sync") return runProviderClientSync(options);
+  if (action === "sandbox.provider.client.link") return runProviderClientLink(options);
+  if (action === "sandbox.provider.client.diagnose") return runProviderClientDiagnose(options);
+  return { status: "ERROR", output: {}, warnings: [], errors: ["UNKNOWN_PROVIDER_CLIENT_ACTION"] };
+}
+
 function finalStatusFromSteps(steps) {
   if (steps.some((step) => step.status === "PACKAGE_SAFETY_ERROR")) return "PACKAGE_SAFETY_ERROR";
   if (steps.some((step) => step.status === "ERROR")) return "ERROR";
@@ -564,6 +582,7 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.draft.download-artifacts") return runDraftDownloadArtifacts(paths, env, options);
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
   if (action === "sandbox.cfdi.rules.diagnose") return runCfdiRulesDiagnose(options);
+  if (action.startsWith("sandbox.provider.client.")) return runProviderClientAction(action, { ...options, env });
   return stableStep(action, "ERROR", {}, [], ["UNHANDLED_ACTION"]);
 }
 

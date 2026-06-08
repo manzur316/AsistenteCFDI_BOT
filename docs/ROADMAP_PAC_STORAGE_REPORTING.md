@@ -1602,4 +1602,23 @@ Alcance:
 - ledger neutral `usage_credits`;
 - no cambia workflows, Telegram operativo, PAC productivo ni catalogo activo.
 
+## Fase 7.16E - Factura.com Sandbox Provider Client Sync
+
+La fase 7.16E queda definida en
+`docs/PHASE_7_16E_FACTURACOM_PROVIDER_CLIENT_SYNC.md` y
+`docs/PROVIDER_CLIENT_LINK_ARCHITECTURE.md`.
+
+Alcance:
+
+- cliente local se vincula a Factura.com Sandbox con `provider_client_links`;
+- `sandbox.draft.stamp --require-live-sandbox` usa
+  `provider_client_links.provider_client_uid` como ruta normal;
+- `FACTURACOM_SANDBOX_RECEIVER_UID` queda solo como fallback legacy/test con
+  bandera explicita;
+- acciones allowlisted: `sandbox.provider.client.lookup`,
+  `sandbox.provider.client.sync`, `sandbox.provider.client.link` y
+  `sandbox.provider.client.diagnose`;
+- mapper y adapter cliente Factura.com Sandbox quedan bajo host sandbox;
+- produccion, PAC real productivo, workflows y catalogo activo no cambian.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.

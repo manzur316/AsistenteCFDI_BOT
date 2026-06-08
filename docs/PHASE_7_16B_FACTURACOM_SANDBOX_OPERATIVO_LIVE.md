@@ -54,10 +54,12 @@ Variables privadas requeridas en configuracion local no versionada:
 - `FACTURACOM_API_KEY`
 - `FACTURACOM_SECRET_KEY`
 - `FACTURACOM_PLUGIN`
-- `FACTURACOM_SANDBOX_RECEIVER_UID`
 - `FACTURACOM_SANDBOX_SERIE`
 
-Las credenciales y UIDs se mantienen solo en configuracion local no versionada.
+Desde 7.16E, `FACTURACOM_SANDBOX_RECEIVER_UID` ya no es la ruta normal de
+timbrado sandbox live. El receptor se resuelve desde
+`provider_client_links.provider_client_uid`. El UID global queda solo como
+fallback legacy/test con bandera explicita.
 
 ## Resolucion canonica de configuracion
 
@@ -140,7 +142,7 @@ FACTURACOM_SANDBOX_BASE_URL_REQUIRED
 FACTURACOM_SANDBOX_API_KEY_REQUIRED
 FACTURACOM_SANDBOX_SECRET_KEY_REQUIRED
 FACTURACOM_SANDBOX_PLUGIN_REQUIRED
-FACTURACOM_SANDBOX_RECEIVER_UID_REQUIRED
+PROVIDER_CLIENT_LINK_MISSING
 FACTURACOM_SANDBOX_SERIE_REQUIRED
 FACTURACOM_SANDBOX_PRODUCTION_URL_BLOCKED
 ```
@@ -164,7 +166,7 @@ Configuracion detectada:
 - API key: presente/faltante
 - Secret key: presente/faltante
 - Plugin: presente/faltante
-- Receiver UID: presente/faltante
+- Provider Client Link: presente/faltante
 - Serie: presente/faltante
 
 Fuente config: process.env / .env.pac.sandbox.local / mixed / missing
@@ -185,23 +187,12 @@ Resultado PAC: live sandbox
 - No se exponen RFC, UUID, UID, rutas absolutas ni secrets en Telegram.
 - No se adjuntan XML/PDF/ZIP/Excel por Telegram.
 - `data/concepts.normalized.json` y fuentes SAT no cambian.
-- `FACTURACOM_SANDBOX_RECEIVER_UID` es global y temporal para prueba operativa
-  con un cliente fijo.
+- `FACTURACOM_SANDBOX_RECEIVER_UID` queda como fallback legacy/test explicito.
 
 ## Deuda siguiente
 
-No se implementa sincronizacion completa cliente local -> Factura.com Sandbox.
-La siguiente mejora de datos debe modelar una tabla similar a:
-
-```text
-cfdi_client_provider_links
-- client_id
-- provider
-- environment
-- provider_client_uid
-- sync_status
-- synced_at
-```
+La sincronizacion completa cliente local -> Factura.com Sandbox se implementa
+en 7.16E con `provider_client_links`.
 
 ## Criterio de salida
 

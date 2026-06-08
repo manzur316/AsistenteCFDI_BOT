@@ -120,6 +120,36 @@ function parseArgs(argv) {
     } else if (key === "--idempotency-key") {
       options.idempotencyKey = rest[index + 1] || "";
       index += 1;
+    } else if (key === "--client-id") {
+      options.clientId = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--tenant-id") {
+      options.tenantId = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--provider-client-uid") {
+      options.providerClientUid = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--rfc") {
+      options.rfc = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--legal-name") {
+      options.legalName = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--fiscal-zip") {
+      options.fiscalZip = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--fiscal-regime") {
+      options.fiscalRegime = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--cfdi-use") {
+      options.cfdiUse = rest[index + 1] || "";
+      index += 1;
+    } else if (key === "--validated-by-human") {
+      options.validatedByHuman = true;
+    } else if (key === "--create-if-missing") {
+      options.createIfMissing = true;
+    } else if (key === "--allow-legacy-receiver-uid") {
+      options.allowLegacyReceiverUid = true;
     } else if (key === "--require-live-sandbox") {
       options.requireLiveSandbox = true;
     }

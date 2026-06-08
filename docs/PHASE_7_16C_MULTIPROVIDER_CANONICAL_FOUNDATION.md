@@ -137,7 +137,16 @@ de operar un tenant SaaS.
 
 ### Fase C - Provider Client Sync
 
-Sincronizar cliente local con provider y crear Provider Client Link.
+Implementada en 7.16E para Factura.com Sandbox:
+
+- `scripts/lib/factura-com-provider-client-mapper.js`
+- `scripts/lib/factura-com-sandbox-client-adapter.js`
+- `scripts/lib/provider-client-sync-action.js`
+- `sql/012_provider_client_sync_foundation.sql`
+
+El timbrado sandbox live normal usa `provider_client_links.provider_client_uid`.
+`FACTURACOM_SANDBOX_RECEIVER_UID` queda solo como fallback legacy/test con
+bandera explicita.
 
 ### Fase D - Factura.com Adapter Cleanup under Contracts
 

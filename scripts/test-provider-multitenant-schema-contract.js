@@ -4,6 +4,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const sqlPath = path.join(root, "sql", "009_provider_multitenant_foundation.sql");
+const syncSqlPath = path.join(root, "sql", "012_provider_client_sync_foundation.sql");
 const checks = [];
 
 function check(name, fn) {
@@ -24,8 +25,13 @@ function sql() {
   return fs.readFileSync(sqlPath, "utf8");
 }
 
+function syncSql() {
+  return fs.readFileSync(syncSqlPath, "utf8");
+}
+
 check("migration_exists", () => {
   assert(fs.existsSync(sqlPath));
+  assert(fs.existsSync(syncSqlPath));
   return path.relative(root, sqlPath).replace(/\\/g, "/");
 });
 
@@ -78,6 +84,14 @@ check("default_personal_tenant_seeded", () => {
   assert(text.includes("TENANT_PERSONAL_DEFAULT"));
   assert(/ON CONFLICT\s*\(tenant_id\)\s*DO NOTHING/i.test(text));
   return "TENANT_PERSONAL_DEFAULT";
+});
+
+check("provider_client_sync_unique_link_index_exists", () => {
+  const text = syncSql();
+  assert(/CREATE\s+UNIQUE\s+INDEX\s+IF\s+NOT\s+EXISTS\s+idx_provider_client_links_unique_local/i.test(text));
+  assert(text.includes("tenant_id, client_id, provider, environment"));
+  assert(!/\bDROP\s+TABLE\b|\bTRUNCATE\b|\bDELETE\s+FROM\b/i.test(text));
+  return "unique local link";
 });
 
 console.log("Provider Multitenant Schema Contract Tests");
