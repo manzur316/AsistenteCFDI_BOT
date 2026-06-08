@@ -1073,6 +1073,12 @@ Fase B agrega foundation de fuentes SAT, catalogo CFDI 4.0, Rule Engine
 advisory, Tenant Fiscal Profile y Fiscal Activity Rules. Sigue bloqueado
 produccion/PAC real/timbrado productivo; todo requiere revision humana.
 
+7.16D asienta los modos de producto SATBOT, politicas de aprobacion y roadmap
+SaaS sin cambios operativos visibles: `docs/ADR_0002_SATBOT_PRODUCT_MODES_AND_APPROVALS.md`,
+`docs/ROADMAP_SAAS_PRODUCT_MODES_APPROVALS.md`,
+`docs/APPROVAL_POLICY_ARCHITECTURE.md` y
+`docs/CHANNEL_ADAPTERS_TELEGRAM_WHATSAPP_ROADMAP.md`.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
 
 El roadmap formal de transicion desde Telegram + Factura.com Sandbox hacia

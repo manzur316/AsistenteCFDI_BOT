@@ -46,6 +46,11 @@ Cada tenant/emisor podra configurar:
 `TENANT_PERSONAL_DEFAULT` se mantiene como tenant semilla sin romper la operacion
 actual.
 
+La fase 7.16D documenta como este perfil fiscal se usara en modos de producto
+futuros: `DIRECT_BUSINESS_MODE` para uso propio y `ACCOUNTING_FIRM_MODE` para
+despachos que administran varios emisores. Esa fase no cambia este foundation ni
+vuelve obligatorio el perfil en Telegram todavia.
+
 ## Rule Engine CFDI 4.0
 
 El engine evalua drafts/documentos canonicos y devuelve:

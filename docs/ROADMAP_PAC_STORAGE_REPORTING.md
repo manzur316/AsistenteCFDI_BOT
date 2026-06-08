@@ -1582,4 +1582,24 @@ Alcance:
 - no se modifica `data/concepts.normalized.json`;
 - no se abre produccion fiscal real.
 
+## Fase 7.16D - SATBOT Product Modes, Approval Policy & SaaS Roadmap
+
+La fase 7.16D queda definida en
+`docs/ADR_0002_SATBOT_PRODUCT_MODES_AND_APPROVALS.md`,
+`docs/ROADMAP_SAAS_PRODUCT_MODES_APPROVALS.md`,
+`docs/APPROVAL_POLICY_ARCHITECTURE.md` y
+`docs/CHANNEL_ADAPTERS_TELEGRAM_WHATSAPP_ROADMAP.md`.
+
+Alcance:
+
+- modos `DIRECT_BUSINESS_MODE` y `ACCOUNTING_FIRM_MODE`;
+- actores Cliente SATBOT, Emisor fiscal, Receptor CFDI, Operador y Contador;
+- politicas `SELF_APPROVAL`, `DELEGATED_ACCOUNTANT` y
+  `CLIENT_APPROVAL_REQUIRED`;
+- override `SEND_TO_CLIENT_APPROVAL`;
+- diseno futuro de approval links, snapshot congelada y revocacion;
+- Telegram/WhatsApp/Web como Channel Adapters;
+- ledger neutral `usage_credits`;
+- no cambia workflows, Telegram operativo, PAC productivo ni catalogo activo.
+
 Siguiente fase recomendada: `7.17 Monthly Fiscal Sandbox Summary / IVA ISR Estimate`.
