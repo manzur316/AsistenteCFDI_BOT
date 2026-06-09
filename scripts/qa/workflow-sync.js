@@ -58,6 +58,12 @@ function pruneObject(value) {
   return value;
 }
 
+function workflowNodeNames(workflow) {
+  return (Array.isArray(workflow?.nodes) ? workflow.nodes : [])
+    .map((node) => String(node?.name || "").trim())
+    .filter(Boolean);
+}
+
 function sanitizeWorkflowForHash(workflow) {
   const raw = workflow || {};
   const sanitized = pruneObject({
@@ -66,6 +72,17 @@ function sanitizeWorkflowForHash(workflow) {
     settings: raw.settings || {},
   });
   return sanitized;
+}
+
+function buildChangedFieldsSummary(repoWorkflow, n8nWorkflow) {
+  const repo = sanitizeWorkflowForHash(repoWorkflow);
+  const n8n = sanitizeWorkflowForHash(n8nWorkflow || {});
+  const summary = [];
+  if (String(repoWorkflow?.name || "") !== String(n8nWorkflow?.name || "")) summary.push("name");
+  if (stableStringify(repo.nodes) !== stableStringify(n8n.nodes)) summary.push("nodes");
+  if (stableStringify(repo.connections) !== stableStringify(n8n.connections)) summary.push("connections");
+  if (stableStringify(repo.settings) !== stableStringify(n8n.settings)) summary.push("settings");
+  return summary;
 }
 
 function hashWorkflow(workflow) {
@@ -130,18 +147,37 @@ function workflowSyncCheck({ repoWorkflow, n8nWorkflow }) {
   };
 }
 
-function buildWorkflowUpdatePayload(repoWorkflow, _n8nWorkflow, options = {}) {
+function buildWorkflowUpdatePayload(repoWorkflow) {
   const source = repoWorkflow || {};
-  const clone = {
+  return {
     name: source.name || null,
     nodes: Array.isArray(source.nodes) ? source.nodes : [],
     connections: source.connections || {},
     settings: source.settings || {},
   };
-  if (Object.prototype.hasOwnProperty.call(options, "active")) {
-    clone.active = Boolean(options.active);
-  }
-  return sanitizeReport(clone);
+}
+
+function buildWorkflowDiffReport({
+  repoWorkflow = {},
+  n8nWorkflow = {},
+  beforeUpdate = null,
+  afterUpdate = null,
+  backup = null,
+} = {}) {
+  const repoNodes = workflowNodeNames(repoWorkflow);
+  const n8nNodes = workflowNodeNames(n8nWorkflow);
+  const repoSet = new Set(repoNodes);
+  const n8nSet = new Set(n8nNodes);
+  return sanitizeReport({
+    before_update: beforeUpdate,
+    after_update: afterUpdate,
+    backup,
+    repo_node_count: repoNodes.length,
+    n8n_node_count: n8nNodes.length,
+    missing_nodes: repoNodes.filter((name) => !n8nSet.has(name)),
+    extra_nodes: n8nNodes.filter((name) => !repoSet.has(name)),
+    changed_fields_summary: buildChangedFieldsSummary(repoWorkflow, n8nWorkflow),
+  });
 }
 
 function extractWorkflowBackup(workflow) {
@@ -159,6 +195,8 @@ module.exports = {
   analyzeWorkflowVersion,
   buildWorkflowUpdatePayload,
   extractWorkflowBackup,
+  buildChangedFieldsSummary,
+  buildWorkflowDiffReport,
   extractWebhookPath,
   findActiveWorkflow,
   pickTargetWorkflow,

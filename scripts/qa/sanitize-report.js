@@ -6,7 +6,8 @@ const GENERIC_TOKEN_RE = /\bcfdi:[A-Za-z0-9_-]{12,40}\b/g;
 const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const RFC_RE = /\b[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}\b/gi;
 const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
-const FACTURA_COM_TOKEN_RE = /\b(F-?[A-Z]{1,}[A-Z0-9_-]*|FACTURACOM[_-]?[A-Z0-9_-]+)\b/i;
+const FACTURA_COM_TOKEN_RE = /\b(?:F-[A-Z0-9_-]{12,}|FACTURACOM[_-][A-Z0-9_-]{10,})\b/gi;
+const FACTURA_COM_KEY_LABEL_RE = /\bfactura\.?com\s+api\s+key\b/gi;
 const XML_CONTENT_RE = /<\?xml[\s\S]*?(?:<\/cfdi:Comprobante>|<\/Comprobante>|$)/gi;
 const PDF_HEADER_RE = /%PDF-[\s\S]*/g;
 
@@ -47,13 +48,21 @@ function sanitizeString(value, key = "") {
     .replace(TELEGRAM_TOKEN_RE, "[REDACTED_TELEGRAM_BOT_TOKEN]")
     .replace(GENERIC_TOKEN_RE, "cfdi:[REDACTED_ACTION_TOKEN]")
     .replace(FACTURA_COM_TOKEN_RE, "[REDACTED_FACTURACOM_TOKEN]")
+    .replace(FACTURA_COM_KEY_LABEL_RE, "[REDACTED_FACTURACOM_TOKEN]")
     .replace(EMAIL_RE, (email) => maskEmail(email))
     .replace(RFC_RE, "[REDACTED_RFC]")
     .replace(UUID_RE, "[REDACTED_UUID]")
     .replace(XML_CONTENT_RE, "[REDACTED_XML_CONTENT]")
     .replace(PDF_HEADER_RE, "[REDACTED_PDF_CONTENT]");
   const repoRoot = path.resolve(__dirname, "../..").replace(/\\/g, "/");
-  return text.replace(/[A-Za-z]:[\\/][^"'<>\\r\\n]+/g, (absolutePath) => {
+  const windowsPath = text
+    .replace(/[A-Za-z]:\\[^"'<>\\r\\n]+/g, (absolutePath) => {
+      const normalized = absolutePath.replace(/\\/g, "/");
+      if (normalized.startsWith(repoRoot) && normalized.includes("/runtime/")) return normalized.slice(repoRoot.length + 1);
+      if (normalized.startsWith(repoRoot)) return normalized.slice(repoRoot.length + 1);
+      return "[REDACTED_ABSOLUTE_PATH]";
+    });
+  return windowsPath.replace(/[A-Za-z]:\/(?!\/)[^"'<>\\r\\n]+/g, (absolutePath) => {
     const normalized = absolutePath.replace(/\\/g, "/");
     if (normalized.startsWith(repoRoot) && normalized.includes("/runtime/")) return normalized.slice(repoRoot.length + 1);
     if (normalized.startsWith(repoRoot)) return normalized.slice(repoRoot.length + 1);

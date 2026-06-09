@@ -6,6 +6,7 @@ const { analyzeExecution, assertActiveWorkflowHasDispatchNodes, assertReplyMarku
 const {
   analyzeWorkflowVersion,
   buildWorkflowUpdatePayload,
+  buildWorkflowDiffReport,
   extractWebhookPath,
   extractWorkflowBackup,
   findActiveWorkflow,
@@ -424,6 +425,11 @@ async function runWorkflowSyncCheckScenario({ workflowPath, n8nClient, args }) {
     repoWorkflow,
     n8nWorkflow: n8nWorkflow || {},
   });
+  const comparison = buildWorkflowDiffReport({
+    repoWorkflow,
+    n8nWorkflow: n8nWorkflow || {},
+    afterUpdate: diff,
+  });
   return {
     pass: Boolean(diff.workflow_in_sync),
     scenario: "workflow-sync-check",
@@ -439,6 +445,12 @@ async function runWorkflowSyncCheckScenario({ workflowPath, n8nClient, args }) {
     expected_workflow_name: EXPECTED_WORKFLOW_NAME,
     requires_import: diff.requires_import,
     workflow_path: path.relative(process.cwd(), resolvedPath),
+    repo_node_count: comparison.repo_node_count,
+    n8n_node_count: comparison.n8n_node_count,
+    missing_nodes: comparison.missing_nodes,
+    extra_nodes: comparison.extra_nodes,
+    changed_fields_summary: comparison.changed_fields_summary,
+    workflow_diff: comparison,
     send_real_allowed: false,
     send_real_executed: false,
     failures: diff.workflow_in_sync ? [] : ["workflow_diff_detected"],
@@ -468,6 +480,13 @@ async function runWorkflowSyncScenario({ workflowPath, n8nClient, args }) {
   const updatedWorkflow = await n8nClient.updateWorkflow({ workflowId: target.id, workflow: payload });
   const refreshed = await n8nClient.getWorkflow({ workflowId: target.id });
   const sync = workflowSyncCheck({ repoWorkflow, n8nWorkflow: refreshed || updatedWorkflow || target });
+  const workflowDiff = buildWorkflowDiffReport({
+    repoWorkflow,
+    n8nWorkflow: refreshed || updatedWorkflow || target,
+    beforeUpdate: previous,
+    afterUpdate: sync,
+    backup,
+  });
   return {
     pass: sync.workflow_in_sync === true,
     scenario: "workflow-sync",
@@ -486,11 +505,12 @@ async function runWorkflowSyncScenario({ workflowPath, n8nClient, args }) {
     workflow_active: refreshed?.active === true || target.active === true,
     send_real_allowed: false,
     send_real_executed: false,
-    workflow_diff: {
-      before_update: previous,
-      after_update: sync,
-      backup,
-    },
+    repo_node_count: workflowDiff.repo_node_count,
+    n8n_node_count: workflowDiff.n8n_node_count,
+    missing_nodes: workflowDiff.missing_nodes,
+    extra_nodes: workflowDiff.extra_nodes,
+    changed_fields_summary: workflowDiff.changed_fields_summary,
+    workflow_diff: workflowDiff,
     failures: sync.workflow_in_sync ? [] : ["workflow_diff_detected"],
   };
 }
