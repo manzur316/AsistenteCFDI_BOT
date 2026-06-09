@@ -68,6 +68,7 @@ const result = runSandboxDocumentDeliveryStatus({
 });
 
 assert.strictEqual(result.status, "OK");
+assert.strictEqual(result.output.artifact_status, "DOWNLOADED");
 assert.strictEqual(result.output.documents_valid, true);
 assert.strictEqual(result.output.xml_content_valid, true);
 assert.strictEqual(result.output.pdf_content_valid, true);
@@ -76,6 +77,32 @@ assert.strictEqual(result.output.telegram_document_channel.ready, true);
 assert(!JSON.stringify(result).includes("TEST_TOKEN_NOT_REAL"));
 assert(!JSON.stringify(result).includes("123456789"));
 
+const inconsistentResult = runSandboxDocumentDeliveryStatus({
+  draft: {
+    ...draft,
+    draft_id: "DRAFT-DELIVERY-STATUS-INCONSISTENT-717",
+    sandbox_pac_summary: {
+      ...draft.sandbox_pac_summary,
+      artifact_status: "NOT_REQUESTED",
+    },
+  },
+  channel: "PROVIDER_EMAIL",
+  env: {
+    TELEGRAM_DOCUMENT_DELIVERY_ENABLED: "1",
+    TELEGRAM_DOCUMENT_DELIVERY_CHAT_ID: "123456789",
+    TELEGRAM_BOT_TOKEN: "TEST_TOKEN_NOT_REAL",
+  },
+  execFileSync: () => "[]\n",
+});
+
+assert.strictEqual(inconsistentResult.status, "OK");
+assert.strictEqual(inconsistentResult.output.documents_valid, true);
+assert.strictEqual(inconsistentResult.output.persisted_artifact_status, "NOT_REQUESTED");
+assert.strictEqual(inconsistentResult.output.artifact_status, "DOWNLOADED");
+assert.strictEqual(inconsistentResult.output.artifact_status_inferred_from_documents, true);
+assert(inconsistentResult.warnings.includes("ARTIFACT_STATUS_INFERRED_FROM_VALID_DOCUMENTS"));
+
 console.log("Sandbox Documents Delivery Status Action Tests");
 console.log(" - status_reports_consolidated_delivery_state: PASS (OK)");
-console.log("\nPASS total: 1/1");
+console.log(" - no_documents_valid_with_not_requested: PASS (DOWNLOADED)");
+console.log("\nPASS total: 2/2");

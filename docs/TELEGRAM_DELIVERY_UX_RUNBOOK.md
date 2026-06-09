@@ -30,6 +30,24 @@ If documents are not downloaded yet, the safe action remains:
 
 - `Descargar XML/PDF sandbox`
 
+## Download Contract
+
+`Descargar XML/PDF sandbox` only downloads and validates XML/PDF into local
+sandbox storage. It does not send documents automatically.
+
+After a successful download, the bot must show a visible completion message and
+fresh delivery buttons only when all are true:
+
+- `status=OK`
+- `persistence_status=UPDATED`
+- `artifact_status=DOWNLOADED`
+- `xml_content_valid=true`
+- `pdf_content_valid=true`
+
+If XML/PDF were downloaded but persistence did not update local DB, the bot
+must not create delivery buttons. The user-facing message should say that
+local state was not confirmed and delivery was not enabled.
+
 ## Provider Email
 
 The bot first runs:
@@ -135,6 +153,17 @@ It reports:
 - storage presence;
 - provider email last status;
 - Telegram document channel last status.
+
+The status response must never show:
+
+```text
+documents_valid=true
+artifact_status=NOT_REQUESTED
+```
+
+If valid files are present while the stored artifact status is stale, the
+public status reports `artifact_status=DOWNLOADED` and includes
+`artifact_status_inferred_from_documents=true` for diagnosis.
 
 ## No-Go
 

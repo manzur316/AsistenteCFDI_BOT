@@ -477,6 +477,9 @@ function runSandboxDocumentDeliveryStatus(options = {}) {
   const telegramRows = deliveryRowsByChannel(ledgerRows, DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL);
   const providerDiagnose = runSandboxDocumentDeliveryDiagnose({ ...options, draft, channel: DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL });
   const telegramDiagnose = runSandboxDocumentDeliveryDiagnose({ ...options, draft, channel: DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL });
+  const persistedArtifactStatus = text(draft.sandbox_pac_summary?.artifact_status);
+  const artifactStatus = validation.ok === true ? "DOWNLOADED" : persistedArtifactStatus;
+  const artifactStatusInferred = validation.ok === true && persistedArtifactStatus !== "DOWNLOADED";
   return {
     status: "OK",
     output: {
@@ -484,7 +487,9 @@ function runSandboxDocumentDeliveryStatus(options = {}) {
       client_id: text(draft.client_id || clientFromDraft(draft).client_id),
       invoice_status: invoiceStatusFromDraft(draft),
       payment_status: paymentStatusFromDraft(draft),
-      artifact_status: text(draft.sandbox_pac_summary?.artifact_status),
+      artifact_status: artifactStatus,
+      persisted_artifact_status: persistedArtifactStatus,
+      artifact_status_inferred_from_documents: artifactStatusInferred,
       documents_valid: validation.ok === true,
       xml_content_valid: validation.xml.ok === true,
       pdf_content_valid: validation.pdf.ok === true,
@@ -509,7 +514,7 @@ function runSandboxDocumentDeliveryStatus(options = {}) {
         telegram_document_channel_count: telegramRows.length,
       },
     },
-    warnings: [],
+    warnings: artifactStatusInferred ? ["ARTIFACT_STATUS_INFERRED_FROM_VALID_DOCUMENTS"] : [],
     errors: [],
   };
 }

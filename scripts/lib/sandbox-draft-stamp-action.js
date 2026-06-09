@@ -20,6 +20,7 @@ const {
   buildProviderClientReadiness,
   summarizeProviderClientReadiness,
 } = require("./provider-client/provider-client-readiness-contract");
+const { persistSandboxStampResult } = require("./sandbox-draft-stamp-persistence");
 
 const SANDBOX_DRAFT_STAMP_STATUS = Object.freeze({
   STAMPING: "SANDBOX_TIMBRANDO",
@@ -729,9 +730,63 @@ async function runSandboxDraftStamp(options = {}) {
     pacRequest,
     pacResult,
   });
+  const paymentStatus = text(draft.payment_status) === "NO_APLICA" || !text(draft.payment_status)
+    ? "PENDIENTE"
+    : text(draft.payment_status);
+  const sandboxPacSummary = {
+    provider: "Factura.com Sandbox",
+    environment: PAC_ENVIRONMENTS.SANDBOX,
+    mode: pacResult.live_mode === true ? "live" : "mock",
+    invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
+    payment_status: paymentStatus,
+    cfdi_uid: text(pacResult.cfdi_uid),
+    uuid: text(pacResult.uuid),
+    pac_invoice_id: text(pacResult.pac_invoice_id),
+    serie: text(pacResult.serie),
+    folio: text(pacResult.folio),
+    cfdi_uid_present: Boolean(pacResult.cfdi_uid),
+    uuid_present: Boolean(pacResult.uuid),
+    pac_invoice_id_present: Boolean(pacResult.pac_invoice_id),
+    xml_provider_available: pacResult.xml_provider_available === true || pacResult.xml_available === true,
+    pdf_provider_available: pacResult.pdf_provider_available === true || pacResult.pdf_available === true,
+    xml_downloaded: false,
+    pdf_downloaded: false,
+    xml_storage_path: null,
+    pdf_storage_path: null,
+    xml_sha256: null,
+    pdf_sha256: null,
+    xml_size_bytes: null,
+    pdf_size_bytes: null,
+    artifact_status: pacResult.artifact_status || ((pacResult.xml_provider_available === true || pacResult.xml_available === true || pacResult.pdf_provider_available === true || pacResult.pdf_available === true) ? "DOWNLOAD_READY" : "NOT_REQUESTED"),
+    manifest_path: manifestFiles?.manifestPath || null,
+  };
+  const persistence = await persistSandboxStampResult({
+    draftId: draft.draft_id,
+    invoiceStatus: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
+    paymentStatus,
+    pacResult,
+    sandboxPacSummary,
+    providerClientLink: {
+      provider_client_uid: providerClientLink.provider_client_uid,
+      source: providerClientLink.source,
+      provider_client_link_status: providerClientLink.provider_client_uid ? "FOUND" : "MISSING",
+      legacy_receiver_uid_used: legacyFallbackRequested === true,
+    },
+    manifestPath: manifestFiles?.manifestPath || null,
+    now: options.now || new Date(),
+    env: options.env || process.env,
+    dbConfig: options.dbConfig,
+    dbExecMode: options.dbExecMode,
+    execMode: options.execMode,
+    pgDockerContainer: options.pgDockerContainer,
+    dockerContainer: options.dockerContainer,
+    execFileSync: options.execFileSync,
+  });
+  const persistenceStatus = persistence.persistence_status || "SKIPPED";
+  const persistFailed = persistence.ok !== true && persistenceStatus === "FAILED";
 
   return {
-    status: "OK",
+    status: persistFailed ? "NEEDS_RUNTIME" : "OK",
     output: {
       draft_id: draft.draft_id,
       provider: "Factura.com Sandbox",
@@ -790,28 +845,11 @@ async function runSandboxDraftStamp(options = {}) {
         environment: PAC_ENVIRONMENTS.SANDBOX,
         mode: pacResult.live_mode === true ? "live" : "mock",
         invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
-        payment_status: text(draft.payment_status) === "NO_APLICA" || !text(draft.payment_status) ? "PENDIENTE" : text(draft.payment_status),
-        cfdi_uid: text(pacResult.cfdi_uid),
-        uuid: text(pacResult.uuid),
-        pac_invoice_id: text(pacResult.pac_invoice_id),
-        serie: text(pacResult.serie),
-        folio: text(pacResult.folio),
-        cfdi_uid_present: Boolean(pacResult.cfdi_uid),
-        uuid_present: Boolean(pacResult.uuid),
-        pac_invoice_id_present: Boolean(pacResult.pac_invoice_id),
-        xml_provider_available: pacResult.xml_provider_available === true || pacResult.xml_available === true,
-        pdf_provider_available: pacResult.pdf_provider_available === true || pacResult.pdf_available === true,
-        xml_downloaded: false,
-        pdf_downloaded: false,
-        xml_storage_path: null,
-        pdf_storage_path: null,
-        xml_sha256: null,
-        pdf_sha256: null,
-        xml_size_bytes: null,
-        pdf_size_bytes: null,
-        artifact_status: pacResult.artifact_status || ((pacResult.xml_provider_available === true || pacResult.xml_available === true || pacResult.pdf_provider_available === true || pacResult.pdf_available === true) ? "DOWNLOAD_READY" : "NOT_REQUESTED"),
-        manifest_path: manifestFiles?.manifestPath || null,
+        ...sandboxPacSummary,
       },
+      persistence_status: persistenceStatus,
+      persistence_error: persistFailed ? persistence.error : null,
+      persistence_row: persistence.ok ? persistence.row : null,
       timeline_event: {
         event_type: "DRAFT_SANDBOX_STAMPED",
         draft_id: draft.draft_id,
@@ -823,8 +861,9 @@ async function runSandboxDraftStamp(options = {}) {
     warnings: [
       ...(pacResult.normalized_warnings || []),
       ...(legacyFallbackRequested ? ["LEGACY_RECEIVER_UID_USED"] : []),
+      ...(persistFailed ? ["No se pudo guardar el estado del timbrado en PostgreSQL local."] : []),
     ],
-    errors: [],
+    errors: persistFailed ? [persistence.error_class || "SANDBOX_DRAFT_PERSISTENCE_ERROR"] : [],
   };
 }
 

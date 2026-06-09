@@ -56,6 +56,19 @@ node scripts/test-scoring.js
 node scripts/test-n8n-contract.js
 ```
 
+## Sandbox XML/PDF delivery
+
+La fase 7.17E documenta el contrato sandbox actual:
+
+- `sandbox.draft.stamp` persiste `SANDBOX_TIMBRADO` y deja XML/PDF en
+  `DOWNLOAD_READY`.
+- `sandbox.draft.download-artifacts` descarga, valida y persiste
+  `artifact_status=DOWNLOADED`.
+- Telegram muestra botones de entrega solo si `persistence_status=UPDATED` y
+  XML/PDF son validos.
+
+Ver `docs/PHASE_7_17E_DOWNLOAD_ARTIFACT_PERSISTENCE_TELEGRAM_DELIVERY.md`.
+
 ## Workflow manual n8n
 
 Workflow importable:

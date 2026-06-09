@@ -87,6 +87,9 @@ function buildDraftByIdQuery(draftId) {
     "'status', d.status,",
     "'invoice_status', COALESCE(d.invoice_status, CASE WHEN d.status = 'PENDIENTE' THEN 'BORRADOR' ELSE d.status END),",
     "'payment_status', COALESCE(d.payment_status, 'NO_APLICA'),",
+    "'sandbox_status', COALESCE(NULLIF(d.sandbox_pac_summary->>'invoice_status', ''), d.invoice_status, CASE WHEN d.status = 'PENDIENTE' THEN 'BORRADOR' ELSE d.status END),",
+    "'sandbox_stamp_result', COALESCE(d.sandbox_pac_summary->'sandbox_stamp_result', d.sandbox_pac_summary->'pac_result', d.sandbox_pac_summary->'pac_sandbox_result', '{}'::jsonb),",
+    "'pac_sandbox_result', COALESCE(d.sandbox_pac_summary->'pac_sandbox_result', d.sandbox_pac_summary->'pac_result', d.sandbox_pac_summary->'sandbox_stamp_result', '{}'::jsonb),",
     "'sandbox_pac_summary', COALESCE(to_jsonb(d)->'sandbox_pac_summary', '{}'::jsonb),",
     "'action', d.action,",
     "'ready_to_copy', d.ready_to_copy,",
@@ -140,6 +143,14 @@ function normalizeDraftRow(row) {
   const providerClientLink = row.provider_client_link && typeof row.provider_client_link === "object"
     ? row.provider_client_link
     : {};
+  const sandboxStampResult = row.sandbox_stamp_result && typeof row.sandbox_stamp_result === "object"
+    ? row.sandbox_stamp_result
+    : {};
+  const pacSandboxResult = row.pac_sandbox_result && typeof row.pac_sandbox_result === "object"
+    ? row.pac_sandbox_result
+    : (sandboxStampResult.ok !== undefined || sandboxStampResult.status !== undefined || sandboxStampResult.pac_invoice_id || sandboxStampResult.uuid || sandboxStampResult.cfdi_uid)
+      ? sandboxStampResult
+      : {};
   const firstLine = lineItems[0] || {};
   const concept = row.concept && typeof row.concept === "object" && Object.keys(row.concept).length
     ? row.concept
@@ -160,7 +171,10 @@ function normalizeDraftRow(row) {
     draft_id: text(row.draft_id),
     status: text(row.status),
     invoice_status: text(row.invoice_status),
+    sandbox_status: text(row.sandbox_status),
     payment_status: text(row.payment_status) || "NO_APLICA",
+    sandbox_stamp_result: sandboxStampResult,
+    pac_sandbox_result: pacSandboxResult,
     client_found: row.client_found !== false,
     current_client: currentClient,
     historical_client_snapshot: historicalClientSnapshot,

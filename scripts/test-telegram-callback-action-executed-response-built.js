@@ -80,16 +80,19 @@ check("download_action_executed_builds_visible_response", () => {
       client_display_name: "Real Bilbao",
       invoice_status: "SANDBOX_TIMBRADO",
       payment_status: "PENDIENTE",
+      artifact_status: "DOWNLOADED",
       xml_downloaded: true,
       pdf_downloaded: true,
       xml_content_valid: true,
       pdf_content_valid: true,
       storage_updated: true,
+      persistence_status: "UPDATED",
     },
   });
   const result = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({ draft_id: "DRAFT-ACTION-BUILT-DOWNLOAD" }) }]);
   assertResponseBuilt(result, "sandbox.draft.download-artifacts");
   assert(/Descarga sandbox completada/.test(result.telegram_message));
+  assert(result.reply_markup?.inline_keyboard?.flat().some((button) => /Enviar a canal documentos/.test(button.text)), "telegram channel delivery button missing");
   return result.sandbox_action_status;
 });
 

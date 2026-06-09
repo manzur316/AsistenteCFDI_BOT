@@ -88,6 +88,22 @@ normalizado, no desde APIs especificas de PAC.
 El PAC Adapter Hub debe exponer un contrato interno unico. Los workflows y la
 UI no deben conocer detalles de Factura.com ni de ningun proveedor especifico.
 
+## Sandbox Durable Artifact State
+
+Fase 7.17E fija que el estado durable de XML/PDF sandbox vive en
+`cfdi_drafts.sandbox_pac_summary`.
+
+El flujo correcto es:
+
+- despues de timbrar: `artifact_status=DOWNLOAD_READY`;
+- despues de descargar y validar: `artifact_status=DOWNLOADED`;
+- Telegram crea botones de entrega solo si la persistencia local devuelve
+  `persistence_status=UPDATED`.
+
+El boton `Descargar XML/PDF sandbox` no envia documentos automaticamente. La
+entrega real pasa por `sandbox.documents.delivery.prepare` y
+`sandbox.documents.delivery.send` con confirmacion humana.
+
 Contrato propuesto:
 
 - `createDraftPayload(draft, context)`

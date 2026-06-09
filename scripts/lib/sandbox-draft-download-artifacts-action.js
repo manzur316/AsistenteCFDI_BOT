@@ -5,6 +5,7 @@ const path = require("path");
 const { PAC_ENVIRONMENTS } = require("./canonical-cfdi-contracts");
 const { FacturaComSandboxAdapter } = require("./factura-com-sandbox-adapter");
 const { renderLocalCfdiPdfFromXml } = require("./document-rendering/local-cfdi-pdf-renderer");
+const { persistSandboxStampResult } = require("./sandbox-draft-stamp-persistence");
 const {
   SANDBOX_DRAFT_STAMP_STATUS,
   readDraftFromOptions,
@@ -352,6 +353,70 @@ function safeSandboxPacSummaryForOutput(draft, identity, manifest) {
   };
 }
 
+function sandboxPacSummaryForPersistence(draft, identity, manifest, manifestPath, clientStorageManifestPath) {
+  const source = draft.sandbox_pac_summary && typeof draft.sandbox_pac_summary === "object" ? draft.sandbox_pac_summary : {};
+  const link = draft.provider_client_link && typeof draft.provider_client_link === "object" ? draft.provider_client_link : {};
+  const providerClientUid = text(source.provider_client_uid || link.provider_client_uid || link.provider_client_id);
+  const providerClientUidSource = providerClientUid && (!source.provider_client_uid_source || String(source.provider_client_uid_source).toLowerCase() === "missing")
+    ? "provider_client_links"
+    : source.provider_client_uid_source || null;
+  const providerClientLinkStatus = providerClientUid && (!source.provider_client_link_status || String(source.provider_client_link_status).toUpperCase() === "MISSING")
+    ? "FOUND"
+    : source.provider_client_link_status || null;
+  return {
+    ...source,
+    provider: source.provider || "Factura.com Sandbox",
+    environment: source.environment || PAC_ENVIRONMENTS.SANDBOX,
+    invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
+    payment_status: text(draft.payment_status || source.payment_status) || "PENDIENTE",
+    cfdi_uid: identity.cfdi_uid || source.cfdi_uid || null,
+    uuid: identity.uuid || source.uuid || null,
+    pac_invoice_id: identity.pac_invoice_id || source.pac_invoice_id || null,
+    serie: identity.serie || source.serie || null,
+    folio: identity.folio || source.folio || null,
+    cfdi_uid_present: Boolean(identity.cfdi_uid || source.cfdi_uid || source.cfdi_uid_present === true),
+    uuid_present: Boolean(identity.uuid || source.uuid || source.uuid_present === true),
+    pac_invoice_id_present: Boolean(identity.pac_invoice_id || source.pac_invoice_id || source.pac_invoice_id_present === true),
+    serie_present: Boolean(identity.serie || source.serie || source.serie_present === true),
+    folio_present: Boolean(identity.folio || source.folio || source.folio_present === true),
+    xml_provider_available: true,
+    pdf_provider_available: true,
+    xml_downloaded: manifest.xml_downloaded === true,
+    pdf_downloaded: manifest.pdf_downloaded === true,
+    provider_pdf_downloaded: manifest.provider_pdf_downloaded === true,
+    provider_pdf_content_valid: manifest.provider_pdf_content_valid === true,
+    provider_pdf_validation_status: manifest.provider_pdf_validation_status || null,
+    xml_content_valid: manifest.xml_content_valid === true,
+    pdf_content_valid: manifest.pdf_content_valid === true,
+    pdf_source: manifest.pdf_source || null,
+    xml_validation_status: manifest.xml_validation_status || null,
+    pdf_validation_status: manifest.pdf_validation_status || null,
+    pdf_retryable: manifest.pdf_retryable === true,
+    pdf_visual_content_present: manifest.pdf_visual_content_present === true,
+    pdf_page_count_estimate: manifest.pdf_page_count_estimate ?? null,
+    xml_storage_path: manifest.xml_storage_path || null,
+    pdf_storage_path: manifest.pdf_storage_path || null,
+    local_rendered_pdf_path: manifest.local_rendered_pdf_path || null,
+    provider_pdf_storage_path: manifest.provider_pdf_storage_path || null,
+    client_storage_xml_path: manifest.client_storage_xml_path || null,
+    client_storage_pdf_path: manifest.client_storage_pdf_path || null,
+    human_file_base_name: manifest.human_file_base_name || null,
+    human_xml_path: manifest.human_xml_path || null,
+    human_pdf_path: manifest.human_pdf_path || null,
+    xml_sha256: manifest.xml_sha256 || null,
+    pdf_sha256: manifest.pdf_sha256 || null,
+    xml_size_bytes: manifest.xml_size_bytes ?? null,
+    pdf_size_bytes: manifest.pdf_size_bytes ?? null,
+    artifact_status: manifest.artifact_status,
+    manifest_path: rel(manifestPath),
+    client_storage_manifest_path: clientStorageManifestPath ? rel(clientStorageManifestPath) : null,
+    provider_client_uid_source: providerClientUidSource,
+    provider_client_uid: providerClientUid,
+    provider_client_link_status: providerClientLinkStatus,
+    legacy_receiver_uid_used: source.legacy_receiver_uid_used === true,
+  };
+}
+
 async function runSandboxDraftDownloadArtifacts(options = {}) {
   const env = options.env || process.env;
   const now = options.now || new Date();
@@ -465,7 +530,68 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
       requires_human_review: true,
     });
   }
-  writeJson(path.join(bundleDir, "sandbox-download-manifest.json"), manifest);
+  const manifestPath = path.join(bundleDir, "sandbox-download-manifest.json");
+  const clientStorageManifestPath = storageUpdated ? path.join(clientInvoiceDir, "manifest.json") : null;
+  writeJson(manifestPath, manifest);
+  const outputSandboxPacSummary = safeSandboxPacSummaryForOutput(draft, identity, manifest);
+  outputSandboxPacSummary.manifest_path = rel(manifestPath);
+  const persistenceSandboxPacSummary = sandboxPacSummaryForPersistence(draft, identity, manifest, manifestPath, clientStorageManifestPath);
+  const persistence = await persistSandboxStampResult({
+    draftId: draft.draft_id,
+    invoiceStatus: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
+    paymentStatus: text(draft.payment_status) || "PENDIENTE",
+    pacResult: {
+      ok: manifest.artifact_status === ARTIFACT_STATUS.DOWNLOADED || manifest.artifact_status === ARTIFACT_STATUS.PARTIAL_DOWNLOAD,
+      status: manifest.artifact_status,
+      provider: "Factura.com Sandbox",
+      operation: "downloadSandboxArtifacts",
+      cfdi_uid: identity.cfdi_uid,
+      uuid: identity.uuid,
+      pac_invoice_id: identity.pac_invoice_id,
+      serie: identity.serie,
+      folio: identity.folio,
+      xml_provider_available: true,
+      pdf_provider_available: true,
+      xml_content_valid: manifest.xml_content_valid,
+      pdf_content_valid: manifest.pdf_content_valid,
+      xml_downloaded: manifest.xml_downloaded,
+      pdf_downloaded: manifest.pdf_downloaded,
+      xml_storage_path: manifest.xml_storage_path,
+      pdf_storage_path: manifest.pdf_storage_path,
+      xml_sha256: manifest.xml_sha256,
+      pdf_sha256: manifest.pdf_sha256,
+      xml_size_bytes: manifest.xml_size_bytes,
+      pdf_size_bytes: manifest.pdf_size_bytes,
+      pdf_source: manifest.pdf_source,
+      provider_pdf_downloaded: manifest.provider_pdf_downloaded,
+      provider_pdf_content_valid: manifest.provider_pdf_content_valid,
+      provider_pdf_validation_status: manifest.provider_pdf_validation_status,
+      xml_validation_status: manifest.xml_validation_status,
+      pdf_validation_status: manifest.pdf_validation_status,
+      pdf_visual_content_present: manifest.pdf_visual_content_present,
+      pdf_page_count_estimate: manifest.pdf_page_count_estimate,
+      artifact_status: manifest.artifact_status,
+    },
+    sandboxPacSummary: persistenceSandboxPacSummary,
+    artifactStatus: manifest.artifact_status,
+    providerClientLink: {
+      provider_client_uid: persistenceSandboxPacSummary.provider_client_uid,
+      source: persistenceSandboxPacSummary.provider_client_uid_source,
+      provider_client_link_status: persistenceSandboxPacSummary.provider_client_link_status,
+      legacy_receiver_uid_used: persistenceSandboxPacSummary.legacy_receiver_uid_used === true,
+    },
+    manifestPath,
+    now: now || new Date(),
+    env: options.env || process.env,
+    dbConfig: options.dbConfig,
+    dbExecMode: options.dbExecMode,
+    execMode: options.execMode,
+    pgDockerContainer: options.pgDockerContainer,
+    dockerContainer: options.dockerContainer,
+    execFileSync: options.execFileSync,
+  });
+  const persistenceStatus = persistence.persistence_status || "SKIPPED";
+  const persistFailed = persistence.ok !== true && persistenceStatus === "FAILED";
 
   const status = xmlOk && pdfOk
     ? "OK"
@@ -481,64 +607,72 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
     ...(pdfOk ? [] : (pdfResult?.normalized_errors || []).map((item) => item.code || item.message || "PDF_DOWNLOAD_ERROR")),
   ];
   const client = normalizeClient(draft);
-  return {
-    status,
-    output: {
-      draft_id: text(draft.draft_id),
-      provider: "Factura.com Sandbox",
-      invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
-      draft_status: text(draft.status),
-      payment_status: text(draft.payment_status) || "PENDIENTE",
-      client_display_name: client.display_name,
-      client_id: client.client_id,
-      total: number(draft.total),
-      artifact_status: manifest.artifact_status,
-      xml_provider_available: true,
-      pdf_provider_available: true,
-      xml_downloaded: manifest.xml_downloaded,
-      pdf_downloaded: manifest.pdf_downloaded,
-      provider_pdf_downloaded: manifest.provider_pdf_downloaded,
-      provider_pdf_content_valid: manifest.provider_pdf_content_valid,
-      provider_pdf_validation_status: manifest.provider_pdf_validation_status,
-      xml_content_valid: manifest.xml_content_valid,
-      pdf_content_valid: manifest.pdf_content_valid,
-      pdf_source: manifest.pdf_source,
-      xml_validation_status: manifest.xml_validation_status,
-      pdf_validation_status: manifest.pdf_validation_status,
-      pdf_retryable: manifest.pdf_retryable,
-      pdf_visual_content_present: manifest.pdf_visual_content_present,
-      pdf_page_count_estimate: manifest.pdf_page_count_estimate,
-      pdf_text_present: manifest.pdf_text_present,
-      pdf_graphics_present: manifest.pdf_graphics_present,
-      pdf_image_xobject_present: manifest.pdf_image_xobject_present,
-      pdf_content_streams_present: manifest.pdf_content_streams_present,
-      download_content_validation: manifest.download_content_validation,
-      xml_storage_path: manifest.xml_storage_path,
-      pdf_storage_path: manifest.pdf_storage_path,
-      local_rendered_pdf_path: manifest.local_rendered_pdf_path,
-      provider_pdf_storage_path: manifest.provider_pdf_storage_path,
-      xml_sha256: manifest.xml_sha256,
-      pdf_sha256: manifest.pdf_sha256,
-      xml_size_bytes: manifest.xml_size_bytes,
-      pdf_size_bytes: manifest.pdf_size_bytes,
-      storage_updated: storageUpdated,
-      manifest_path: rel(path.join(bundleDir, "sandbox-download-manifest.json")),
-      client_storage_manifest_path: storageUpdated ? rel(path.join(clientInvoiceDir, "manifest.json")) : null,
-      human_file_base_name: manifest.human_file_base_name || null,
-      human_xml_path: manifest.human_xml_path || null,
-      human_pdf_path: manifest.human_pdf_path || null,
-      pac_identity: {
-        cfdi_uid_present: Boolean(identity.cfdi_uid),
-        uuid_present: Boolean(identity.uuid),
-        pac_invoice_id_present: Boolean(identity.pac_invoice_id),
-      },
-      sandbox_pac_summary: safeSandboxPacSummaryForOutput(draft, identity, manifest),
-      sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
-      requires_human_review: true,
+  const output = {
+    draft_id: text(draft.draft_id),
+    provider: "Factura.com Sandbox",
+    invoice_status: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
+    draft_status: text(draft.status),
+    payment_status: text(draft.payment_status) || "PENDIENTE",
+    client_display_name: client.display_name,
+    client_id: client.client_id,
+    total: number(draft.total),
+    artifact_status: manifest.artifact_status,
+    xml_provider_available: true,
+    pdf_provider_available: true,
+    xml_downloaded: manifest.xml_downloaded,
+    pdf_downloaded: manifest.pdf_downloaded,
+    provider_pdf_downloaded: manifest.provider_pdf_downloaded,
+    provider_pdf_content_valid: manifest.provider_pdf_content_valid,
+    provider_pdf_validation_status: manifest.provider_pdf_validation_status,
+    xml_content_valid: manifest.xml_content_valid,
+    pdf_content_valid: manifest.pdf_content_valid,
+    pdf_source: manifest.pdf_source,
+    xml_validation_status: manifest.xml_validation_status,
+    pdf_validation_status: manifest.pdf_validation_status,
+    pdf_retryable: manifest.pdf_retryable,
+    pdf_visual_content_present: manifest.pdf_visual_content_present,
+    pdf_page_count_estimate: manifest.pdf_page_count_estimate,
+    pdf_text_present: manifest.pdf_text_present,
+    pdf_graphics_present: manifest.pdf_graphics_present,
+    pdf_image_xobject_present: manifest.pdf_image_xobject_present,
+    pdf_content_streams_present: manifest.pdf_content_streams_present,
+    download_content_validation: manifest.download_content_validation,
+    xml_storage_path: manifest.xml_storage_path,
+    pdf_storage_path: manifest.pdf_storage_path,
+    local_rendered_pdf_path: manifest.local_rendered_pdf_path,
+    provider_pdf_storage_path: manifest.provider_pdf_storage_path,
+    xml_sha256: manifest.xml_sha256,
+    pdf_sha256: manifest.pdf_sha256,
+    xml_size_bytes: manifest.xml_size_bytes,
+    pdf_size_bytes: manifest.pdf_size_bytes,
+    storage_updated: storageUpdated,
+    manifest_path: rel(manifestPath),
+    client_storage_manifest_path: storageUpdated ? rel(path.join(clientInvoiceDir, "manifest.json")) : null,
+    human_file_base_name: manifest.human_file_base_name || null,
+    human_xml_path: manifest.human_xml_path || null,
+    human_pdf_path: manifest.human_pdf_path || null,
+    pac_identity: {
+      cfdi_uid_present: Boolean(identity.cfdi_uid),
+      uuid_present: Boolean(identity.uuid),
+      pac_invoice_id_present: Boolean(identity.pac_invoice_id),
     },
+    sandbox_pac_summary: outputSandboxPacSummary,
+    persistence_status: persistenceStatus,
+    persistence_error: persistFailed ? persistence.error : null,
+    persistence_row: persistence.ok ? persistence.row : null,
+    sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
+    requires_human_review: true,
+  };
+  if (persistFailed) {
+    errors.push(persistence.error_class || "SANDBOX_DRAFT_PERSISTENCE_ERROR");
+  }
+  return {
+    status: persistFailed ? "NEEDS_RUNTIME" : status,
+    output,
     warnings: [
       ...(xmlResult?.normalized_warnings || []),
       ...(pdfOk ? (finalPdfResult?.normalized_warnings || []) : (pdfResult?.normalized_warnings || [])),
+      ...(persistFailed ? ["No se pudo guardar el estado de descarga en PostgreSQL local."] : []),
     ],
     errors,
   };

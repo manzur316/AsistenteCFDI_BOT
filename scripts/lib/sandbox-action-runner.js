@@ -11,6 +11,7 @@ const { analyze: analyzePackage } = require("../analyze-sandbox-accountant-packa
 const { analyzeAudit } = require("../analyze-sandbox-action-audit");
 const { runSandboxDraftCancel } = require("./sandbox-draft-cancel-action");
 const { runSandboxDraftDownloadArtifacts } = require("./sandbox-draft-download-artifacts-action");
+const { runSandboxDraftRecoverArtifactState } = require("./sandbox-draft-recover-artifact-state-action");
 const { runSandboxDraftStamp } = require("./sandbox-draft-stamp-action");
 const { runSandboxPdfDiagnose } = require("./sandbox-pdf-diagnose-action");
 const {
@@ -51,6 +52,7 @@ const ACTION_STATUSES = [
   "DRY_RUN",
   "SENT",
   "BLOCKED_DUPLICATE",
+  "RECOVERED",
   "ERROR",
   "SKIPPED",
   "NEEDS_RUNTIME",
@@ -58,7 +60,7 @@ const ACTION_STATUSES = [
   "NEEDS_SOURCE",
   "PACKAGE_SAFETY_ERROR",
 ];
-const ACTION_OK_STATUSES = new Set(["OK", "READY", "DRY_RUN", "SENT", "BLOCKED_DUPLICATE"]);
+const ACTION_OK_STATUSES = new Set(["OK", "READY", "DRY_RUN", "SENT", "BLOCKED_DUPLICATE", "RECOVERED"]);
 
 const ACTIONS = [
   "sandbox.preflight",
@@ -76,6 +78,7 @@ const ACTIONS = [
   "sandbox.audit.summary",
   "sandbox.draft.stamp",
   "sandbox.draft.download-artifacts",
+  "sandbox.draft.recover-artifact-state",
   "sandbox.draft.cancel",
   "sandbox.documents.pdf.diagnose",
   "sandbox.documents.delivery.status",
@@ -523,6 +526,15 @@ async function runDraftDownloadArtifacts(paths, env, options = {}) {
   return stableStep("sandbox.draft.download-artifacts", result.status, result.output, result.warnings, result.errors);
 }
 
+async function runDraftRecoverArtifactState(paths, env, options = {}) {
+  const result = await runSandboxDraftRecoverArtifactState({
+    ...options,
+    env,
+    actionResultsRoot: paths.actionResultsRoot,
+  });
+  return stableStep("sandbox.draft.recover-artifact-state", result.status, result.output, result.warnings, result.errors);
+}
+
 async function runDraftCancel(paths, env, options = {}) {
   const result = await runSandboxDraftCancel({
     ...options,
@@ -619,6 +631,7 @@ async function executeAction(action, env = process.env, options = {}) {
   if (action === "sandbox.audit.summary") return runAuditSummary(paths);
   if (action === "sandbox.draft.stamp") return runDraftStamp(paths, env, options);
   if (action === "sandbox.draft.download-artifacts") return runDraftDownloadArtifacts(paths, env, options);
+  if (action === "sandbox.draft.recover-artifact-state") return runDraftRecoverArtifactState(paths, env, options);
   if (action === "sandbox.draft.cancel") return runDraftCancel(paths, env, options);
   if (action === "sandbox.documents.pdf.diagnose") {
     const result = await runSandboxPdfDiagnose({ ...options, env });
