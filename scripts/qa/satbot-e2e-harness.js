@@ -450,6 +450,8 @@ async function runWorkflowSyncCheckScenario({ workflowPath, n8nClient, args }) {
     missing_nodes: comparison.missing_nodes,
     extra_nodes: comparison.extra_nodes,
     changed_fields_summary: comparison.changed_fields_summary,
+    ignored_n8n_settings: comparison.ignored_n8n_settings,
+    settings_diff: comparison.settings_diff,
     workflow_diff: comparison,
     send_real_allowed: false,
     send_real_executed: false,
@@ -510,6 +512,8 @@ async function runWorkflowSyncScenario({ workflowPath, n8nClient, args }) {
     missing_nodes: workflowDiff.missing_nodes,
     extra_nodes: workflowDiff.extra_nodes,
     changed_fields_summary: workflowDiff.changed_fields_summary,
+    ignored_n8n_settings: workflowDiff.ignored_n8n_settings,
+    settings_diff: workflowDiff.settings_diff,
     workflow_diff: workflowDiff,
     failures: sync.workflow_in_sync ? [] : ["workflow_diff_detected"],
   };

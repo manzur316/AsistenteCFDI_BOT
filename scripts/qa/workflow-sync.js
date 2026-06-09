@@ -22,6 +22,11 @@ const MANAGED_KEYS = new Set([
   "_id",
   "meta",
 ]);
+const N8N_MANAGED_SETTINGS_KEYS = new Set([
+  "availableInMCP",
+  "callerPolicy",
+]);
+const SIGNIFICANT_SETTINGS_KEYS = ["executionOrder"];
 
 function hashText(value) {
   const text = String(value || "");
@@ -64,12 +69,22 @@ function workflowNodeNames(workflow) {
     .filter(Boolean);
 }
 
+function sanitizeSettingsForHash(settings) {
+  const raw = settings && typeof settings === "object" ? settings : {};
+  return SIGNIFICANT_SETTINGS_KEYS.reduce((acc, key) => {
+    if (Object.prototype.hasOwnProperty.call(raw, key)) {
+      acc[key] = raw[key];
+    }
+    return acc;
+  }, {});
+}
+
 function sanitizeWorkflowForHash(workflow) {
   const raw = workflow || {};
   const sanitized = pruneObject({
     nodes: Array.isArray(raw.nodes) ? raw.nodes : [],
     connections: raw.connections || {},
-    settings: raw.settings || {},
+    settings: sanitizeSettingsForHash(raw.settings || {}),
   });
   return sanitized;
 }
@@ -77,12 +92,41 @@ function sanitizeWorkflowForHash(workflow) {
 function buildChangedFieldsSummary(repoWorkflow, n8nWorkflow) {
   const repo = sanitizeWorkflowForHash(repoWorkflow);
   const n8n = sanitizeWorkflowForHash(n8nWorkflow || {});
+  const rawRepoSettings = repoWorkflow?.settings && typeof repoWorkflow.settings === "object" ? repoWorkflow.settings : {};
+  const rawN8nSettings = n8nWorkflow?.settings && typeof n8nWorkflow.settings === "object" ? n8nWorkflow.settings : {};
   const summary = [];
   if (String(repoWorkflow?.name || "") !== String(n8nWorkflow?.name || "")) summary.push("name");
   if (stableStringify(repo.nodes) !== stableStringify(n8n.nodes)) summary.push("nodes");
   if (stableStringify(repo.connections) !== stableStringify(n8n.connections)) summary.push("connections");
-  if (stableStringify(repo.settings) !== stableStringify(n8n.settings)) summary.push("settings");
+  const repoHashSettings = sanitizeSettingsForHash(rawRepoSettings);
+  const n8nHashSettings = sanitizeSettingsForHash(rawN8nSettings);
+  if (stableStringify(repoHashSettings) !== stableStringify(n8nHashSettings)) summary.push("settings");
   return summary;
+}
+
+function buildIgnoredSettingsDiff(repoWorkflow = {}, n8nWorkflow = {}) {
+  const rawRepoSettings = repoWorkflow?.settings && typeof repoWorkflow.settings === "object" ? repoWorkflow.settings : {};
+  const rawN8nSettings = n8nWorkflow?.settings && typeof n8nWorkflow.settings === "object" ? n8nWorkflow.settings : {};
+  const normalizedRepoSettings = sanitizeSettingsForHash(rawRepoSettings);
+  const normalizedN8nSettings = sanitizeSettingsForHash(rawN8nSettings);
+  const ignored_n8n_settings = [];
+  for (const key of N8N_MANAGED_SETTINGS_KEYS) {
+    if (rawRepoSettings[key] !== rawN8nSettings[key]) {
+      ignored_n8n_settings.push(key);
+    }
+  }
+  const repoExecutionOrder = Object.prototype.hasOwnProperty.call(normalizedRepoSettings, "executionOrder") ? normalizedRepoSettings.executionOrder : null;
+  const n8nExecutionOrder = Object.prototype.hasOwnProperty.call(normalizedN8nSettings, "executionOrder") ? normalizedN8nSettings.executionOrder : null;
+  const settings_diff = repoExecutionOrder === n8nExecutionOrder ? null : {
+    executionOrder: {
+      repo: repoExecutionOrder,
+      n8n: n8nExecutionOrder,
+    },
+  };
+  return {
+    ignored_n8n_settings,
+    settings_diff,
+  };
 }
 
 function hashWorkflow(workflow) {
@@ -168,6 +212,11 @@ function buildWorkflowDiffReport({
   const n8nNodes = workflowNodeNames(n8nWorkflow);
   const repoSet = new Set(repoNodes);
   const n8nSet = new Set(n8nNodes);
+  const changed_fields_summary = buildChangedFieldsSummary(repoWorkflow, n8nWorkflow);
+  const {
+    ignored_n8n_settings,
+    settings_diff,
+  } = buildIgnoredSettingsDiff(repoWorkflow, n8nWorkflow);
   return sanitizeReport({
     before_update: beforeUpdate,
     after_update: afterUpdate,
@@ -176,7 +225,9 @@ function buildWorkflowDiffReport({
     n8n_node_count: n8nNodes.length,
     missing_nodes: repoNodes.filter((name) => !n8nSet.has(name)),
     extra_nodes: n8nNodes.filter((name) => !repoSet.has(name)),
-    changed_fields_summary: buildChangedFieldsSummary(repoWorkflow, n8nWorkflow),
+    changed_fields_summary,
+    ignored_n8n_settings,
+    settings_diff,
   });
 }
 
