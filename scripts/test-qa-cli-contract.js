@@ -6,6 +6,12 @@ const { parseArgs } = require("./qa/satbot-e2e-harness");
 const cliPath = path.join(__dirname, "qa", "satbot-e2e-harness.js");
 const help = childProcess.execFileSync(process.execPath, [cliPath, "--help"], { encoding: "utf8" });
 assert(help.includes("inspect-execution"));
+assert(help.includes("workflow-status"));
+assert(help.includes("workflow-sync"));
+assert(help.includes("workflow-activate"));
+assert(help.includes("sandbox-button-smoke-safe"));
+assert(help.includes("telegram-document-real-smoke"));
+assert(help.includes("provider-email-real-smoke"));
 assert(help.includes("callback-token"));
 assert(help.includes("delivery-prepare"));
 assert(help.includes("N8N_API_KEY"));
@@ -14,6 +20,9 @@ const args = parseArgs(["--scenario", "inspect-execution", "--execution-id", "23
 assert.strictEqual(args.scenario, "inspect-execution");
 assert.strictEqual(args.executionId, "2351");
 assert.strictEqual(args.safe, true);
+assert.strictEqual(args.allowWorkflowUpdate, false);
+assert.strictEqual(args.sendReal, false);
+assert.strictEqual(args.maxRealSends, 1);
 assert.strictEqual(args.noRealSend, true);
 assert.strictEqual(args.noProduction, true);
 

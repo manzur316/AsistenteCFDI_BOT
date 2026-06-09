@@ -1,6 +1,14 @@
 const assert = require("assert");
 
 const DISPATCH_NODES = ["Telegram editMessageText", "Telegram sendMessage", "Telegram fallback sendMessage"];
+const ACTIVE_WORKFLOW_NODES = [
+  "Build Telegram Dispatch Plan",
+  "Should Send Telegram",
+  "Telegram editMessageText",
+  "Telegram sendMessage",
+  "Telegram fallback sendMessage",
+  "Log Send Result SQL",
+];
 
 function getRunData(execution) {
   return execution?.data?.resultData?.runData
@@ -43,6 +51,30 @@ function getNodeJsonItems(execution, nodeName) {
 function latestNodeJson(execution, nodeName) {
   const items = getNodeJsonItems(execution, nodeName);
   return items.length ? items[items.length - 1] : null;
+}
+
+function findTokenInValue(value) {
+  if (typeof value === "string") {
+    const direct = value.match(/\bcfdi:([A-Za-z0-9_-]{8,})\b/);
+    if (direct) return direct[1];
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findTokenInValue(item);
+      if (found) return found;
+    }
+  }
+  if (value && typeof value === "object") {
+    for (const child of Object.values(value)) {
+      const found = findTokenInValue(child);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function searchToken(execution) {
+  return findTokenInValue(execution);
 }
 
 function searchJson(value, predicate) {
@@ -97,6 +129,16 @@ function assertTelegramDispatchOkOrExplained(execution) {
   assert(plan?.telegram_dispatch_blocked_reason, "Telegram dispatch missing and no blocked reason recorded");
 }
 
+function assertActiveWorkflowHasDispatchNodes(workflow) {
+  const nodeNames = new Set((Array.isArray(workflow?.nodes) ? workflow.nodes : []).map((node) => String(node?.name || "").trim()).filter(Boolean));
+  const missing = ACTIVE_WORKFLOW_NODES.filter((name) => !nodeNames.has(name));
+  assert(missing.length === 0, `ACTIVE_WORKFLOW_OUT_OF_SYNC: missing required nodes [${missing.join(", ")}]`);
+  return {
+    pass: true,
+    missing,
+  };
+}
+
 function assertNoSilentSuccess(execution) {
   const messageBuilt = hasTelegramMessage(execution);
   const actionExecuted = hasActionExecuted(execution) || nodeExecuted(execution, "Execute PAC Sandbox Action");
@@ -135,6 +177,9 @@ function analyzeExecution(execution, options = {}) {
   const replyMarkupPresent = hasReplyMarkup(execution);
   const actionExecuted = hasActionExecuted(execution) || nodeExecuted(execution, "Execute PAC Sandbox Action");
   const blockedReason = plan?.telegram_dispatch_blocked_reason || null;
+  const confirmToken = options.confirmToken || summary?.confirm_token || plan?.confirm_token || null;
+  const confirmTokenCreated = searchToken(execution) !== null || Boolean(plan?.confirm_token);
+  const replyMarkupReferencesConfirmToken = confirmToken ? searchJson(execution, (value) => typeof value === "string" && value === `cfdi:${String(confirmToken).trim()}`) : null;
 
   if (telegramMessagePresent && plan && !plan.chat_id) failures.push("telegram_message built but chat_id missing at Build Telegram Dispatch Plan");
   if (telegramMessagePresent && plan && plan.should_send_telegram === false && !blockedReason) failures.push("telegram_message built but should_send_telegram=false without controlled reason");
@@ -144,6 +189,9 @@ function analyzeExecution(execution, options = {}) {
   if (plan && String(plan.source_kind || "") === "CALLBACK_QUERY" && !plan.callback_query_id) failures.push("callback_query_id missing at dispatch plan");
   if (options.confirmToken && !searchJson(execution, (value) => typeof value === "string" && value === `cfdi:${options.confirmToken}`)) failures.push("confirm token created but reply_markup does not reference it");
   if (!plan) warnings.push("Build Telegram Dispatch Plan not found");
+  if (options.confirmToken && replyMarkupReferencesConfirmToken !== true) {
+    failures.push("confirm token exists but reply_markup does not reference it");
+  }
 
   return {
     workflow_id: execution?.workflowId || execution?.workflow_id || execution?.workflowData?.id || null,
@@ -158,7 +206,11 @@ function analyzeExecution(execution, options = {}) {
     telegram_dispatch_attempted: dispatchExecuted.length > 0,
     telegram_dispatch_method: dispatchExecuted[0] || plan?.telegram_dispatch_method || null,
     telegram_dispatch_payload_built: plan?.telegram_dispatch_payload_built === true,
+    telegram_dispatch_ok: dispatchExecuted.length > 0,
     should_send_telegram: plan?.should_send_telegram === true,
+    confirm_token_created: confirmTokenCreated,
+    confirm_token: confirmToken || null,
+    reply_markup_references_confirm_token: replyMarkupReferencesConfirmToken === true,
     chat_id_present: Boolean(plan?.chat_id),
     source_kind: plan?.source_kind || null,
     callback_query_id_present: Boolean(plan?.callback_query_id),
@@ -183,6 +235,7 @@ module.exports = {
   assertNodeExecuted,
   assertNodeNotExecuted,
   assertReplyMarkupReferencesToken,
+  assertActiveWorkflowHasDispatchNodes,
   assertTelegramDispatchAttempted,
   assertTelegramDispatchOkOrExplained,
   dispatchNodesExecuted,

@@ -1,11 +1,12 @@
 const path = require("path");
 
-const SECRET_KEY_RE = /(api[_-]?key|secret|password|authorization|token|bot[_-]?token|f[-_]?secret|f[-_]?plugin|credential|csd)/i;
+const SECRET_KEY_RE = /(api[_-]?key|secret|password|authorization|token|bot[_-]?token|f[-_]?secret|f[-_]?plugin|credential|csd|file[_-]?path)/i;
 const TELEGRAM_TOKEN_RE = /\b(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}\b/g;
 const GENERIC_TOKEN_RE = /\bcfdi:[A-Za-z0-9_-]{12,40}\b/g;
 const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const RFC_RE = /\b[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}\b/gi;
 const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
+const FACTURA_COM_TOKEN_RE = /\b(F-?[A-Z]{1,}[A-Z0-9_-]*|FACTURACOM[_-]?[A-Z0-9_-]+)\b/i;
 const XML_CONTENT_RE = /<\?xml[\s\S]*?(?:<\/cfdi:Comprobante>|<\/Comprobante>|$)/gi;
 const PDF_HEADER_RE = /%PDF-[\s\S]*/g;
 
@@ -38,18 +39,21 @@ function sanitizeString(value, key = "") {
   if (!text) return text;
   if (/chat_?id|telegram_?user_?id/i.test(key) && /^[0-9-]{5,}$/.test(text.trim())) return redactIdentifier(text, "chat_id");
   if (/rfc/i.test(key)) return text.replace(RFC_RE, "[REDACTED_RFC]");
+  if (/provider_client_uid|client_uid|cfdi_uid|pac_invoice_id|provider_email|provider-email|provideruid|provider_uid/i.test(key) && text.length > 4) {
+    return redactIdentifier(text, key);
+  }
   if (/email|recipient/i.test(key)) text = maskEmail(text);
-  if (/provider_client_uid|client_uid|cfdi_uid|pac_invoice_id/i.test(key)) return redactIdentifier(text, key);
   text = text
     .replace(TELEGRAM_TOKEN_RE, "[REDACTED_TELEGRAM_BOT_TOKEN]")
     .replace(GENERIC_TOKEN_RE, "cfdi:[REDACTED_ACTION_TOKEN]")
+    .replace(FACTURA_COM_TOKEN_RE, "[REDACTED_FACTURACOM_TOKEN]")
     .replace(EMAIL_RE, (email) => maskEmail(email))
     .replace(RFC_RE, "[REDACTED_RFC]")
     .replace(UUID_RE, "[REDACTED_UUID]")
     .replace(XML_CONTENT_RE, "[REDACTED_XML_CONTENT]")
     .replace(PDF_HEADER_RE, "[REDACTED_PDF_CONTENT]");
   const repoRoot = path.resolve(__dirname, "../..").replace(/\\/g, "/");
-  return text.replace(/[A-Za-z]:[\\/][^\s"'<>]+/g, (absolutePath) => {
+  return text.replace(/[A-Za-z]:[\\/][^"'<>\\r\\n]+/g, (absolutePath) => {
     const normalized = absolutePath.replace(/\\/g, "/");
     if (normalized.startsWith(repoRoot) && normalized.includes("/runtime/")) return normalized.slice(repoRoot.length + 1);
     if (normalized.startsWith(repoRoot)) return normalized.slice(repoRoot.length + 1);

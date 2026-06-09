@@ -37,6 +37,29 @@ function createPostgresQaClient(options = {}) {
       const draft = queryJson(`SELECT jsonb_build_object('draft_id', draft_id, 'document_delivery_ledger', COALESCE(document_delivery_ledger, '[]'::jsonb), 'sandbox_pac_summary', COALESCE(sandbox_pac_summary, '{}'::jsonb)) FROM cfdi_drafts WHERE draft_id = ${sqlQuote(draftId)} LIMIT 1;`);
       return draft || {};
     },
+    getDeliveryLedgerRows(draftId, options = {}) {
+      const limit = Number(options.limit || 30);
+      const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.trunc(limit) : 30;
+      return queryJson(`SELECT COALESCE(jsonb_agg(to_jsonb(d) ORDER BY created_at DESC), '[]'::jsonb) FROM (SELECT delivery_id, draft_id, channel, delivery_status, delivery_action, recipient_present, recipient_redacted, documents_valid, xml_content_valid, pdf_content_valid, xml_sha256, pdf_sha256, created_at, updated_at, sent_at FROM document_delivery_ledger WHERE draft_id = ${sqlQuote(draftId)} ORDER BY created_at DESC LIMIT ${safeLimit}) d;`) || [];
+    },
+    getDeliveryStatusByChannel(draftId, channel) {
+      const rows = this.getDeliveryLedgerRows(draftId, { limit: 20 }) || [];
+      const normalized = String(channel || "").trim().toUpperCase();
+      const match = rows.find((row) => String(row?.channel || "").trim().toUpperCase() === normalized);
+      return match || null;
+    },
+    getDocumentDeliverySummaryFromDraft(draftId) {
+      const draft = this.getDeliveryLedger(draftId);
+      const row = draft?.sandbox_pac_summary || {};
+      return {
+        draft_id: row.draft_id || draftId,
+        invoice_status: row.invoice_status || null,
+        artifact_status: row.artifact_status || null,
+        documents_valid: row.documents_valid === true || (row.xml_content_valid === true && row.pdf_content_valid === true),
+        telegram_document_channel: row.telegram_document_channel || null,
+        provider_email: row.provider_email || null,
+      };
+    },
     getRecentBotEvents(chatId) {
       return queryJson(jsonSelect("bot_events", `chat_id = ${sqlQuote(chatId)}`, "ORDER BY created_at DESC", 80)) || [];
     },

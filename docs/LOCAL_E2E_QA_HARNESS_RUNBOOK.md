@@ -80,6 +80,23 @@ node scripts/qa/satbot-e2e-harness.js --scenario sandbox-existing-draft --draft-
 
 This checks local draft/document state without timbrar again.
 
+## Sync workflow with repository definition
+
+```powershell
+node scripts/qa/satbot-e2e-harness.js --scenario workflow-sync --workflow-path workflow/cfdi_telegram_local_ingest.n8n.json
+```
+
+This verifies whether the active n8n workflow `cfdi_telegram_local_ingest` matches the
+repo workflow definition and writes a workflow diff report.
+
+To apply updates from repo to n8n, use explicit safety flags:
+
+```powershell
+node scripts/qa/satbot-e2e-harness.js --scenario workflow-sync --workflow-path workflow/cfdi_telegram_local_ingest.n8n.json --safe=false --apply-workflow-sync=true --confirm-workflow-sync=true --activate-workflow-after-sync=true
+```
+
+This is disabled unless both sync flags are explicitly enabled.
+
 ## Reading reports
 
 Reports are written under:
@@ -100,6 +117,8 @@ posting externally.
 - `missing_telegram_bot_token`: configure `TELEGRAM_BOT_TOKEN` or n8n Set Config.
 - `confirm token created but reply_markup does not reference it`: user cannot
   press the confirmation button that was created in DB.
+- `workflow_not_found: no active workflow named cfdi_telegram_local_ingest`: the sync
+  scenario expects that workflow to be active.
 
 ## Safety boundaries
 
