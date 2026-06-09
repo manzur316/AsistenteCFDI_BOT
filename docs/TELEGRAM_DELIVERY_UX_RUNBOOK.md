@@ -174,3 +174,76 @@ This phase does not:
 - send documents without human confirmation;
 - send documents to the operational chat by default;
 - store real secrets, full emails, full chat IDs or document contents in ledger.
+## Diagnosing post-action silence
+
+7.17F fixes a separate failure mode: the Action Layer can run and create fresh
+tokens, but Telegram may not render the follow-up message. The symptom is:
+
+```text
+action_executed=true
+confirm token exists
+Telegram did not show the next menu
+second click only says the old button was used
+```
+
+The workflow must now build a dispatch plan after post-action persistence:
+
+- `Build Telegram Dispatch Plan`
+- `Should Edit Telegram Message`
+- `Telegram editMessageText`
+- `Telegram fallback sendMessage`
+- `Telegram sendMessage`
+- `Log Send Result SQL`
+
+For callback queries, the preferred path is `editMessageText`. If Telegram says
+the original message cannot be edited, the workflow falls back to `sendMessage`.
+For normal messages or callbacks without `callback_message_id`, it uses
+`sendMessage` directly.
+
+The lifecycle diagnostic must include:
+
+```json
+{
+  "callback_lifecycle": {
+    "action_executed": true,
+    "response_built": true,
+    "reply_markup_built": true,
+    "telegram_dispatch_attempted": true,
+    "telegram_dispatch_ok": true,
+    "telegram_dispatch_method": "editMessageText|sendMessage|fallbackSendMessage",
+    "draft_id_present": true,
+    "chat_id_present": true
+  }
+}
+```
+
+If a `DELIVERY_PREPARE_*` button was already used but a live unused confirm
+token exists, token recovery must show:
+
+```text
+La preparacion ya fue creada.
+Puedes confirmar el envio.
+```
+
+and the `reply_markup` must point to the existing
+`DELIVERY_CONFIRM_TELEGRAM_CHANNEL` or `DELIVERY_CONFIRM_PROVIDER_EMAIL` token.
+
+Safe checks:
+
+```powershell
+node scripts/test-telegram-post-action-confirm-token-in-reply-markup.js
+node scripts/test-telegram-post-action-send-fallback.js
+node scripts/test-local-ingest-workflow-post-action-dispatch.js
+```
+
+For DB diagnosis, query `cfdi_action_tokens` by `draft_id` and compare the
+unused confirm token with the `callback_data` in the Telegram payload. Do not log
+full tokens in shared channels; only compare locally.
+
+E2E closure still requires a real Telegram/n8n run after reimport:
+
+- press `Timbrar sandbox` and see the visible stamp message plus download button;
+- press `Descargar XML/PDF sandbox` and see delivery buttons;
+- press `Enviar a canal documentos` and see the channel confirmation button;
+- press `Enviar por correo` and see the email confirmation button;
+- confirm send only with explicit operator approval.

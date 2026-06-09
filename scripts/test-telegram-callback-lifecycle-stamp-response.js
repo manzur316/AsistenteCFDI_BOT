@@ -94,7 +94,7 @@ check("stamp_action_summary_builds_visible_response_and_buttons", () => {
   const result = executeCode(summaryCode, { stdout }, () => [{ json: source }]);
   assert.strictEqual(result.should_send_telegram, true);
   assert(/Timbrado sandbox completado/.test(result.telegram_message));
-  assert(/Siguiente paso: descarga XML\/PDF sandbox/.test(result.telegram_message));
+  assert(/Siguiente paso: Descargar XML\/PDF sandbox/.test(result.telegram_message));
   assert(/Resultado PAC: live sandbox/.test(result.telegram_message));
   assert.strictEqual(result.json_debug.callback_lifecycle.action_executed, true);
   assert.strictEqual(result.json_debug.callback_lifecycle.response_built, true);

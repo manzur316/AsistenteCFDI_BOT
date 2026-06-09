@@ -1281,3 +1281,20 @@ Si una linea queda ambigua, el estado pasa a `LINE_NEEDS_CLARIFICATION`. Mensaje
 - No expone webhook a internet.
 - Toda salida requiere revision humana.
 - Todo calculo de impuestos es conservador y debe leerse como: BORRADOR SUJETO A REVISION HUMANA.
+
+## Fase 7.17F: dispatch Telegram post-action
+
+La UX sandbox debe mostrar respuesta visible despues de cada callback exitoso.
+El workflow local ahora planea el dispatch, intenta editar el mensaje del
+callback y cae a `sendMessage` si Telegram no permite editar.
+
+Contratos cubiertos:
+
+- timbrado sandbox muestra el boton `Descargar XML/PDF sandbox`;
+- descarga XML/PDF muestra botones de entrega;
+- prepare de canal/correo muestra confirmacion con el token confirm real;
+- si un prepare ya fue usado pero el confirm token sigue vigente, se reconstruye
+  el menu de confirmacion;
+- no se implementa 7.18B ni Provider Client Sync UX.
+
+Runbook: `docs/PHASE_7_17F_TELEGRAM_POST_ACTION_RESPONSE_DISPATCH.md`.

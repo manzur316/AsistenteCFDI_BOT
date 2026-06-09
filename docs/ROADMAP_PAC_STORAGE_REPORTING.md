@@ -1822,3 +1822,11 @@ Alcance:
 Siguiente fase recomendada: cerrar 7.17 con E2E local completo cuando Docker,
 n8n, Telegram y credenciales sandbox esten disponibles; si falta alguno,
 documentar explicitamente `NO VALIDADO END-TO-END`.
+
+### Fase 7.17F - Telegram Post-Action Response Dispatch
+
+7.17F corrige el dispatch visible posterior a callbacks: despues de ejecutar
+acciones sandbox, el workflow construye plan de envio, intenta `editMessageText`,
+cae a `sendMessage` si Telegram no permite editar y registra lifecycle seguro.
+Tambien recupera `DELIVERY_PREPARE_*` usados cuando existe un confirm token sin
+usar. Ver `docs/PHASE_7_17F_TELEGRAM_POST_ACTION_RESPONSE_DISPATCH.md`.
