@@ -1,0 +1,111 @@
+{
+  "id": "2351",
+  "workflowId": "cfdi-local-ingest",
+  "status": "success",
+  "finished": true,
+  "data": {
+    "resultData": {
+      "runData": {
+        "Execute PAC Sandbox Action": [
+          {
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "stdout": "{\"action\":\"sandbox.documents.delivery.prepare\",\"status\":\"READY\"}"
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Build PAC Sandbox Action Summary": [
+          {
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "telegram_message": "Confirmar envio por correo.\nCanal: PROVIDER_EMAIL\nXML/PDF: listos",
+                      "reply_markup": {
+                        "inline_keyboard": [
+                          [
+                            {
+                              "text": "Confirmar envio por correo",
+                              "callback_data": "cfdi:CONFIRMEMAIL2351"
+                            }
+                          ]
+                        ]
+                      },
+                      "should_send_telegram": true,
+                      "json_debug": {
+                        "callback_lifecycle": {
+                          "action_executed": true,
+                          "response_built": true,
+                          "reply_markup_built": true
+                        }
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Build Telegram Dispatch Plan": [
+          {
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "telegram_message": "Confirmar envio por correo.\nCanal: PROVIDER_EMAIL\nXML/PDF: listos",
+                      "reply_markup": {
+                        "inline_keyboard": [
+                          [
+                            {
+                              "text": "Confirmar envio por correo",
+                              "callback_data": "cfdi:CONFIRMEMAIL2351"
+                            }
+                          ]
+                        ]
+                      },
+                      "chat_id": "",
+                      "source_kind": "",
+                      "callback_query_id": "",
+                      "callback_message_id": "",
+                      "should_send_telegram": false,
+                      "telegram_dispatch_attempted": false,
+                      "telegram_dispatch_payload_built": false
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Build Webhook Response": [
+          {
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "webhook_response": {
+                        "ok": true,
+                        "status": "processed",
+                        "message": "Sandbox action handled and Telegram response prepared"
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

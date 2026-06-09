@@ -1308,3 +1308,22 @@ sin mensaje visible por `chat_id=null`.
 Tambien valida que `telegramBotToken` venga de `TELEGRAM_BOT_TOKEN` o
 `TELEGRAM_TOKEN`; si falta, no intenta llamar Telegram y responde con diagnostico
 seguro en lugar de exito silencioso.
+
+## Fase 7.17H: Local E2E QA Harness
+
+Se agrego `scripts/qa/satbot-e2e-harness.js` para inspeccionar ejecuciones n8n
+reales, simular callbacks Telegram contra el webhook local, consultar PostgreSQL
+local y generar reportes sanitizados bajo `runtime/qa-reports`.
+
+Comandos principales:
+
+```powershell
+node scripts/qa/satbot-e2e-harness.js --help
+node scripts/qa/satbot-e2e-harness.js --scenario inspect-execution --execution-id 2351
+node scripts/qa/satbot-e2e-harness.js --scenario callback-token --token <TOKEN>
+```
+
+Docs:
+
+- `docs/PHASE_7_17H_LOCAL_E2E_QA_HARNESS.md`
+- `docs/LOCAL_E2E_QA_HARNESS_RUNBOOK.md`

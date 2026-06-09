@@ -1839,3 +1839,13 @@ usar. Ver `docs/PHASE_7_17F_TELEGRAM_POST_ACTION_RESPONSE_DISPATCH.md`.
 con error controlado si `telegramBotToken` esta vacio o sigue como placeholder,
 ev ??itando llamadas HTTP a Telegram sin token. No cambia PAC, persistencia,
 reglas fiscales ni 7.18B.
+
+### Fase 7.17H - SATBOT Local E2E QA Harness
+
+7.17H agrega un harness CLI local para dejar de validar a ciegas cambios de
+n8n/Telegram. Puede inspeccionar ejecuciones reales via n8n API, simular
+callbacks Telegram, consultar PostgreSQL Docker y generar reportes sanitizados
+que detectan perdida de `chat_id`, `callback_message_id`, `should_send_telegram=false`,
+rutas sin Telegram dispatch y confirm tokens no referenciados por `reply_markup`.
+Ver `docs/PHASE_7_17H_LOCAL_E2E_QA_HARNESS.md` y
+`docs/LOCAL_E2E_QA_HARNESS_RUNBOOK.md`.

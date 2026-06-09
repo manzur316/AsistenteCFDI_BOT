@@ -275,3 +275,17 @@ node scripts/test-telegram-post-action-dispatch-context-preserved.js
 node scripts/test-telegram-post-action-dispatch-requires-token-or-safe-block.js
 node scripts/test-telegram-post-action-no-silent-success.js
 ```
+
+## 7.17H Local E2E QA Harness
+
+Para diagnosticar ejecuciones reales de n8n y Telegram local usa:
+
+```powershell
+node scripts/qa/satbot-e2e-harness.js --scenario inspect-execution --execution-id <ID>
+```
+
+El reporte sanitizado se escribe en `runtime/qa-reports` e indica si hubo
+`telegram_message`, contexto de callback, token de bot configurado, nodos
+Telegram edit/send/fallback y referencias de confirm tokens en `reply_markup`.
+
+Runbook completo: `docs/LOCAL_E2E_QA_HARNESS_RUNBOOK.md`.
