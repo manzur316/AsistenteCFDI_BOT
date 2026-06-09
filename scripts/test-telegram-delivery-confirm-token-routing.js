@@ -52,8 +52,10 @@ check("used_confirm_token_is_not_reused", () => {
     channel: "PROVIDER_EMAIL",
     used_at: "2026-06-08T01:00:00.000Z",
   }));
-  assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
+  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
   assert(!String(result.sandbox_execute_command || "").includes("sandbox.documents.delivery.send"), "used token must not execute send");
+  assert(/confirmacion ya fue usada|accion ya fue procesada/i.test(result.telegram_message));
+  assert(result.reply_markup?.inline_keyboard?.length > 0, "used confirm token must include recovery buttons");
   return result.action;
 });
 

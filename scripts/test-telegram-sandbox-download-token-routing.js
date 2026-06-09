@@ -202,17 +202,33 @@ check("expired_download_token_is_invalid_or_expired", () => {
     update_id: 7163003,
   }));
   assert.strictEqual(result.action, "CALLBACK_TOKEN_INVALID");
-  assert(/Boton invalido o vencido/.test(result.telegram_message));
+  assert(/El boton vencio/.test(result.telegram_message));
+  assert(/botones actualizados/.test(result.telegram_message));
+  assert(result.reply_markup?.inline_keyboard?.length > 0, "expired token must include recovery buttons");
   return result.action;
 });
 
-check("used_download_token_is_invalid_or_expired", () => {
+check("used_download_token_recovers_download_state", () => {
+  const draft = sandboxStampedDraft("DRAFT-20260607-153936-173694386");
+  draft.sandbox_pac_summary = {
+    artifact_status: "DOWNLOADED",
+    xml_downloaded: true,
+    pdf_downloaded: true,
+    xml_content_valid: true,
+    pdf_content_valid: true,
+    pdf_source: "PROVIDER",
+  };
   const result = executeCode(handleCode, callbackInput("usedtokendownload01", {
     used_at: "2026-06-07T15:00:00.000Z",
     update_id: 7163004,
+    draft,
   }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_INVALID");
-  assert(/Boton invalido o vencido/.test(result.telegram_message));
+  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
+  assert(/Esta descarga ya fue procesada/.test(result.telegram_message));
+  assert(/XML\/PDF ya estan disponibles/.test(result.telegram_message));
+  assert(!/Boton invalido|token_usado/.test(result.telegram_message), "raw token_usado recovery leaked");
+  const callbacks = (result.reply_markup?.inline_keyboard || []).flat().map((button) => button.callback_data).filter(Boolean);
+  assert(callbacks.length > 0, "used download token must include recovery buttons");
   return result.action;
 });
 
@@ -222,7 +238,7 @@ check("wrong_chat_download_token_is_rejected", () => {
     update_id: 7163005,
   }));
   assert.strictEqual(result.action, "CALLBACK_TOKEN_INVALID");
-  assert(/Boton invalido o vencido/.test(result.telegram_message));
+  assert(/Este boton no pertenece a este chat/.test(result.telegram_message));
   return result.action;
 });
 
@@ -232,7 +248,8 @@ check("unknown_action_token_is_rejected", () => {
     update_id: 7163006,
   }));
   assert.strictEqual(result.action, "CALLBACK_TOKEN_INVALID");
-  assert(/Boton invalido o vencido/.test(result.telegram_message));
+  assert(/No pude usar este boton/.test(result.telegram_message));
+  assert(/accion_invalida/.test(result.telegram_message));
   return result.action;
 });
 

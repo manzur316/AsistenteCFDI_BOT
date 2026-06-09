@@ -76,3 +76,17 @@ confirmacion o sincronizacion del email.
 - Botones de sincronizacion desde Telegram.
 - Datos reales versionados.
 - Cambios a `data/concepts.normalized.json`.
+
+## Nota 7.17C
+
+La estabilizacion de callbacks Telegram es requisito antes de implementar la UX
+7.18B de sync/link desde botones. El backend de `sandbox.provider.client.sync`
+ya existe, pero la experiencia diaria debe seguir usando un unico ciclo seguro:
+
+```text
+boton -> token -> contexto -> accion -> respuesta visible -> nuevos botones
+```
+
+No agregar botones de sync proveedor hasta que el lifecycle de
+`STAMP_DRAFT_SANDBOX`, `DOWNLOAD_SANDBOX_ARTIFACTS` y delivery quede validado en
+Telegram real.

@@ -1138,6 +1138,10 @@ launcher local recomendado, sin versionar sus scripts locales. Ver
 7.17B corrige la persistencia de tokens `DELIVERY_CONFIRM_*`; reimporta
 `workflow/cfdi_telegram_local_ingest.n8n.json` en n8n para activar el fix.
 Ver `docs/PHASE_7_17B_TELEGRAM_DELIVERY_CONFIRM_TOKEN_FIX.md`.
+7.17C recupera callbacks usados/expirados en timbrado sandbox, descarga XML/PDF
+y delivery: un segundo click debe mostrar estado actual y botones frescos, no
+un callejon sin salida con `token_usado`. Reimporta el workflow principal.
+Ver `docs/PHASE_7_17C_TELEGRAM_CALLBACK_LIFECYCLE_RECOVERY.md`.
 
 7.18A agrega el gate read-only `sandbox.provider.client.readiness`: valida
 `cfdi_clients + provider_client_links` antes de timbrado sandbox live, separa

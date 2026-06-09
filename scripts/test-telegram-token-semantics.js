@@ -226,10 +226,11 @@ check("stamp_used_token_still_not_reexecuted", () => {
       payload: { draft_id: "DRAFT-714B" },
     }),
   }));
-  assert.strictEqual(result.action, "CALLBACK_DUPLICATE_BLOCKED");
+  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
   assert(result.telegram_message.includes("Esta accion ya fue procesada."));
+  assert(!String(result.sandbox_execute_command || "").includes("sandbox.draft.stamp"), "used stamp token must not re-execute");
   assert(result.reply_markup);
-  return "blocked";
+  return "recovered";
 });
 
 check("workflow_safe_no_production_or_file_send", () => {

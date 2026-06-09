@@ -140,3 +140,12 @@ versioning, or 7.18B provider client sync UX.
 
 Do not start 7.18B until 7.17B is validated with real Telegram/n8n clicks or an
 explicit product decision accepts simulated validation only.
+
+## 7.17C Follow-Up
+
+7.17C extends this fix from confirmation-token creation into full callback
+lifecycle recovery. Used stamp/download/delivery tokens now return an
+action-aware recovery message with fresh buttons instead of a raw `token_usado`
+dead end.
+
+See `docs/PHASE_7_17C_TELEGRAM_CALLBACK_LIFECYCLE_RECOVERY.md`.

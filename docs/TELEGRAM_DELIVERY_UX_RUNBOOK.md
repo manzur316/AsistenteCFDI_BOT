@@ -98,6 +98,28 @@ If a delivery confirmation button says the token is missing:
 5. Confirm once, then verify `used_at` is filled and `document_delivery_ledger`
    has `SENT` if the Action Layer succeeded.
 
+## Diagnosing token_usado / dead callbacks
+
+Since 7.17C, used one-time callbacks should recover current state instead of
+leaving the user with only `token_usado`.
+
+Expected recovery:
+
+- used `STAMP_DRAFT_SANDBOX`: if the draft is `SANDBOX_TIMBRADO`, show
+  `Descargar XML/PDF sandbox` and `Ver estado documental`;
+- used `DOWNLOAD_SANDBOX_ARTIFACTS`: if XML/PDF are already downloaded, show
+  document status and delivery buttons;
+- used `DELIVERY_CONFIRM_*`: if the ledger has `SENT`, show already-sent
+  status; otherwise ask the user to prepare delivery again.
+
+If a user still sees a raw invalid-button dead end, reimport
+`workflow/cfdi_telegram_local_ingest.n8n.json` and run:
+
+```powershell
+node scripts/test-local-ingest-workflow-callback-lifecycle.js
+node scripts/test-telegram-callback-token-used-recovery.js
+```
+
 ## Status
 
 `Ver estado documental` maps to:

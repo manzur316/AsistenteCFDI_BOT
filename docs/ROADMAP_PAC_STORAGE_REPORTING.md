@@ -1776,6 +1776,10 @@ Alcance:
   `DELIVERY_FORCE_*` solo para duplicado `SENT`, y idempotencia canonica sin
   status/timestamp. Ver
   `docs/PHASE_7_17B_TELEGRAM_DELIVERY_CONFIRM_TOKEN_FIX.md`.
+- 7.17C: recuperacion del lifecycle de callbacks usados/expirados para
+  timbrado, descarga XML/PDF y delivery. El usuario recibe estado actual y
+  botones frescos en lugar de `token_usado` como callejon sin salida. Ver
+  `docs/PHASE_7_17C_TELEGRAM_CALLBACK_LIFECYCLE_RECOVERY.md`.
 
 Fuera de alcance: produccion fiscal real, PAC productivo, CSD, SMTP principal,
 email2/email3, envio automatico sin confirmacion, runtime versionado y cambios a

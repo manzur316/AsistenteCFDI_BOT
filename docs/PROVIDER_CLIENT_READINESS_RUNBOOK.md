@@ -88,6 +88,23 @@ node scripts/run-sandbox-action.js sandbox.draft.stamp --draft-id DRAFT-... --re
 
 No usar como flujo normal de clientes.
 
+## Telegram callback lifecycle
+
+7.17C no agrega UX completa de sincronizacion de proveedor. Solo garantiza que
+los botones existentes de timbrado/descarga/delivery puedan recuperar estado si
+un token ya fue usado.
+
+El gate sigue siendo:
+
+```text
+provider_client_links.provider_client_uid presente -> puede timbrar sandbox
+provider_client_links faltante -> bloquear antes de Factura.com y pedir sync/link
+```
+
+Si el boton `Timbrar sandbox` no deja respuesta visible, revisar primero
+`docs/PHASE_7_17C_TELEGRAM_CALLBACK_LIFECYCLE_RECOVERY.md` antes de abrir la UX
+7.18B.
+
 ## Seguridad
 
 El output esta sanitizado. No debe imprimir RFC completo, UID completo, email
