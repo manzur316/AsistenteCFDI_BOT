@@ -19,6 +19,7 @@ const {
   WORKFLOW_SYNC_UNSUPPORTED_BY_LOCAL_N8N_API,
 } = require("./n8n-api-client");
 const { createPostgresQaClient } = require("./postgres-qa-client");
+const { sanitizeReport } = require("./sanitize-report");
 const { writeQaReport } = require("./report-builder");
 const { runCallbackTokenScenario } = require("./scenarios/sandbox-callback-dispatch");
 const { runDeliveryPrepareScenario } = require("./scenarios/delivery-prepare-flow");
@@ -463,7 +464,7 @@ async function runWorkflowSyncScenario({ workflowPath, n8nClient, args }) {
     workflow_name: target.name || null,
   };
   const backup = extractWorkflowBackup(active || target);
-  const payload = buildWorkflowUpdatePayload(repoWorkflow, target, { preserveActive: true });
+  const payload = buildWorkflowUpdatePayload(repoWorkflow, null);
   const updatedWorkflow = await n8nClient.updateWorkflow({ workflowId: target.id, workflow: payload });
   const refreshed = await n8nClient.getWorkflow({ workflowId: target.id });
   const sync = workflowSyncCheck({ repoWorkflow, n8nWorkflow: refreshed || updatedWorkflow || target });
@@ -853,8 +854,64 @@ async function main() {
 }
 
 if (require.main === module) {
+  const writeWorkflowSyncFailureReport = ({ args, error }) => {
+    const body = sanitizeReport(error?.body || null);
+    const status = error?.status != null ? Number(error.status) : null;
+    const code = error?.code || null;
+    const rootCause = `${error?.message || "N8N_API_HTTP_ERROR"}${Number.isFinite(status) ? `:${status}` : ""}`;
+    const written = writeQaReport({
+      reportRoot: reportRootFromEnv(),
+      scenario: "workflow-sync",
+      report: {
+        pass: false,
+        scenario: "workflow-sync",
+        safe_mode: args?.safe === true,
+        real_mode: parseBool(args?.sendReal),
+        workflow_in_sync: false,
+        workflow_in_sync_after: false,
+        workflow_updated: false,
+        send_real_allowed: false,
+        send_real_executed: false,
+        n8n_error_body_sanitized: body,
+        n8n_error_code: code,
+        n8n_error_method: error?.method || null,
+        http_status: status,
+        failures: [rootCause],
+      },
+      now: new Date(),
+    });
+    return written;
+  };
   main().catch((error) => {
-    console.error(error.message || String(error));
+    const args = parseArgs(process.argv.slice(2));
+    const scenario = String(args.scenario || "qa").trim();
+    if (scenario === "workflow-sync") {
+      const written = writeWorkflowSyncFailureReport({ args, error });
+      console.log(written.summary);
+      console.log(`Report dir: ${written.dir}`);
+    }
+    const safeError = sanitizeReport({
+      status: error?.status || null,
+      code: error?.code || null,
+      method: error?.method || null,
+      body: error?.body || null,
+      message: error?.message || String(error),
+    });
+    if (safeError?.status) {
+      console.error(`status=${safeError.status}`);
+    }
+    if (safeError?.code) {
+      console.error(`code=${safeError.code}`);
+    }
+    if (safeError?.method) {
+      console.error(`method=${safeError.method}`);
+    }
+    if (safeError?.body) {
+      console.error(`body=${JSON.stringify(safeError.body)}`);
+    }
+    if (!safeError?.status && !safeError?.code && !safeError?.method && !safeError?.body) {
+      console.error(safeError.message || String(error));
+    }
     process.exitCode = 1;
   });
 }

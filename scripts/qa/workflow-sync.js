@@ -130,14 +130,16 @@ function workflowSyncCheck({ repoWorkflow, n8nWorkflow }) {
   };
 }
 
-function buildWorkflowUpdatePayload(repoWorkflow, workflow, options = {}) {
-  const source = workflow || repoWorkflow || {};
-  const clone = JSON.parse(JSON.stringify(source || {}));
-  for (const key of ["id", "versionId", "createdAt", "updatedAt", "pinData", "staticData"]) delete clone[key];
+function buildWorkflowUpdatePayload(repoWorkflow, _n8nWorkflow, options = {}) {
+  const source = repoWorkflow || {};
+  const clone = {
+    name: source.name || null,
+    nodes: Array.isArray(source.nodes) ? source.nodes : [],
+    connections: source.connections || {},
+    settings: source.settings || {},
+  };
   if (Object.prototype.hasOwnProperty.call(options, "active")) {
     clone.active = Boolean(options.active);
-  } else if (Object.prototype.hasOwnProperty.call(options, "preserveActive")) {
-    clone.active = options.preserveActive === true;
   }
   return sanitizeReport(clone);
 }

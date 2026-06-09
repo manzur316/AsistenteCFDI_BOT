@@ -132,6 +132,7 @@ function createN8nApiClient(options = {}) {
     if (!response.ok) {
       const error = new Error(`N8N_API_HTTP_ERROR:${response.status}`);
       error.status = response.status;
+      error.method = method;
       error.body = bodyParsed;
       throw error;
     }

@@ -15,6 +15,8 @@ function buildSummaryMarkdown(report) {
   const analysis = sanitized.analysis || {};
   const db = sanitized.db_snapshot || {};
   const rootCause = (analysis.failures && analysis.failures.length) ? analysis.failures : (Array.isArray(sanitized.failures) ? sanitized.failures : []);
+  const workflowSummary = new Set(["workflow-status", "workflow-sync-check", "workflow-sync", "workflow-activate"]);
+  const isWorkflowScenario = workflowSummary.has(sanitized.scenario || "");
   const reportDir = sanitized.report_dir || "N/A";
   return [
     `# SATBOT Local E2E QA Report`,
@@ -33,11 +35,11 @@ function buildSummaryMarkdown(report) {
     `n8n execution id: ${analysis.execution_id || sanitized.execution_id || "N/A"}`,
     `Workflow id: ${analysis.workflow_id || "N/A"}`,
     `Nodes executed: ${(analysis.nodes_executed || []).join(", ") || "N/A"}`,
-    `Dispatch status: ${analysis.pass === true ? "PASS" : "FAIL"}`,
-    `Telegram dispatch status: ${analysis.telegram_dispatch_ok === true}`,
+    `Dispatch status: ${isWorkflowScenario ? "N/A" : (analysis.pass === true ? "PASS" : "FAIL")}`,
+    `Telegram dispatch status: ${isWorkflowScenario ? "N/A" : analysis.telegram_dispatch_ok === true}`,
     `Telegram dispatch method: ${analysis.telegram_dispatch_method || "N/A"}`,
-    `Telegram dispatch ok: ${analysis.telegram_dispatch_ok === true}`,
-    `chat_id_present: ${analysis.chat_id_present === true}`,
+    `Telegram dispatch ok: ${isWorkflowScenario ? "N/A" : analysis.telegram_dispatch_ok === true}`,
+    `chat_id_present: ${isWorkflowScenario ? "N/A" : analysis.chat_id_present === true}`,
     `callback_message_id_present: ${analysis.callback_message_id_present === true}`,
     `telegram_token_present: ${analysis.telegram_token_present === true}`,
     `confirm token created: ${analysis.confirm_token_created === true}`,
