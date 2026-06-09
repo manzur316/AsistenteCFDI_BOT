@@ -34,7 +34,7 @@ function createPostgresQaClient(options = {}) {
       return queryJson(`SELECT to_jsonb(d) FROM cfdi_drafts d WHERE draft_id = ${sqlQuote(draftId)} LIMIT 1;`);
     },
     getDeliveryLedger(draftId) {
-      const draft = queryJson(`SELECT jsonb_build_object('draft_id', draft_id, 'document_delivery_ledger', COALESCE(document_delivery_ledger, '[]'::jsonb), 'sandbox_pac_summary', COALESCE(sandbox_pac_summary, '{}'::jsonb)) FROM cfdi_drafts WHERE draft_id = ${sqlQuote(draftId)} LIMIT 1;`);
+      const draft = queryJson(`SELECT jsonb_build_object('draft_id', d.draft_id, 'document_delivery_ledger', COALESCE((SELECT jsonb_agg(to_jsonb(l) ORDER BY l.created_at DESC) FROM document_delivery_ledger l WHERE l.draft_id = d.draft_id), '[]'::jsonb), 'sandbox_pac_summary', COALESCE(d.sandbox_pac_summary, '{}'::jsonb)) FROM cfdi_drafts d WHERE d.draft_id = ${sqlQuote(draftId)} LIMIT 1;`);
       return draft || {};
     },
     getDeliveryLedgerRows(draftId, options = {}) {
@@ -51,13 +51,32 @@ function createPostgresQaClient(options = {}) {
     getDocumentDeliverySummaryFromDraft(draftId) {
       const draft = this.getDeliveryLedger(draftId);
       const row = draft?.sandbox_pac_summary || {};
+      const rows = Array.isArray(draft?.document_delivery_ledger) ? draft.document_delivery_ledger : [];
+      const normalizedChannel = (channel) => String(channel || "").trim().toUpperCase();
+      const byChannel = (channel) => rows.find((item) => normalizedChannel(item?.channel) === normalizedChannel(channel));
+      const providerRow = byChannel("PROVIDER_EMAIL");
+      const telegramRow = byChannel("TELEGRAM_DOCUMENT_CHANNEL");
+      const toStatus = (value) => {
+        const normalized = String(value || "").trim().toUpperCase();
+        return normalized === "READY" || normalized === "SENT";
+      };
+      const providerSummary = row.provider_email || (providerRow ? {
+        ready: toStatus(providerRow.delivery_status),
+        last_status: providerRow.delivery_status || null,
+        email_confirmed: providerRow.email_confirmed === true,
+        provider_email_sync_status: providerRow.provider_email_sync_status || null,
+      } : null);
+      const telegramSummary = row.telegram_document_channel || (telegramRow ? {
+        ready: toStatus(telegramRow.delivery_status),
+        last_status: telegramRow.delivery_status || null,
+      } : null);
       return {
-        draft_id: row.draft_id || draftId,
+        draft_id: draft?.draft_id || row.draft_id || draftId,
         invoice_status: row.invoice_status || null,
         artifact_status: row.artifact_status || null,
         documents_valid: row.documents_valid === true || (row.xml_content_valid === true && row.pdf_content_valid === true),
-        telegram_document_channel: row.telegram_document_channel || null,
-        provider_email: row.provider_email || null,
+        telegram_document_channel: telegramSummary || null,
+        provider_email: providerSummary || null,
       };
     },
     getRecentBotEvents(chatId) {
