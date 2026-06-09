@@ -29,6 +29,7 @@ check("delivery_prepare_email_builds_confirmation_message", () => {
   const result = runSummary(prepareStdout("PROVIDER_EMAIL"), baseSource({
     draft_id: "DRAFT-PREPARE-EMAIL-001",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-PREPARE-EMAIL-611",
     callback_message_id: "611",
     sandbox_delivery_channel: "PROVIDER_EMAIL",
   }));
@@ -47,11 +48,14 @@ check("delivery_prepare_email_dispatch_plan_is_visible", () => {
   const result = runSummary(prepareStdout("PROVIDER_EMAIL"), baseSource({
     draft_id: "DRAFT-PREPARE-EMAIL-002",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-PREPARE-EMAIL-612",
     callback_message_id: "612",
     sandbox_delivery_channel: "PROVIDER_EMAIL",
   }));
-  const planned = executeCode(dispatchPlanCode, result);
-  assert.strictEqual(planned.telegram_dispatch_attempted, true);
+  const planned = executeCode(dispatchPlanCode, { ...result, telegramBotToken: "TEST_TELEGRAM_BOT_TOKEN_PRESENT" });
+  assert.strictEqual(planned.telegram_dispatch_attempted, false);
+  assert.strictEqual(planned.telegram_dispatch_payload_built, true);
+  assert.strictEqual(planned.should_send_telegram, true);
   assert.strictEqual(planned.telegram_dispatch_method, "editMessageText");
   assert.strictEqual(planned.json_debug.callback_lifecycle.reply_markup_built, true);
   return planned.telegram_dispatch_method;

@@ -47,6 +47,7 @@ check("stamp_ok_builds_visible_post_action_message_and_download_button", () => {
   const source = baseSource({
     draft_id: "DRAFT-POST-STAMP-001",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-STAMP-411",
     callback_message_id: "411",
     sandbox_reply_markup: {
       inline_keyboard: [
@@ -84,10 +85,13 @@ check("stamp_dispatch_plan_marks_callback_visible_dispatch", () => {
   const summary = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({
     draft_id: "DRAFT-POST-STAMP-002",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-STAMP-412",
     callback_message_id: "412",
   }) }]);
-  const planned = executeCode(dispatchPlanCode, summary);
-  assert.strictEqual(planned.telegram_dispatch_attempted, true);
+  const planned = executeCode(dispatchPlanCode, { ...summary, telegramBotToken: "TEST_TELEGRAM_BOT_TOKEN_PRESENT" });
+  assert.strictEqual(planned.telegram_dispatch_attempted, false);
+  assert.strictEqual(planned.telegram_dispatch_payload_built, true);
+  assert.strictEqual(planned.should_send_telegram, true);
   assert.strictEqual(planned.telegram_dispatch_method, "editMessageText");
   assert.strictEqual(planned.json_debug.callback_lifecycle.action_executed, true);
   assert.strictEqual(planned.json_debug.callback_lifecycle.response_built, true);

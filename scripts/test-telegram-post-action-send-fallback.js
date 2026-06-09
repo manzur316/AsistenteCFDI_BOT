@@ -49,11 +49,14 @@ check("dispatch_plan_uses_send_when_callback_message_id_missing", () => {
     source_kind: "CALLBACK_QUERY",
     callback_message_id: "",
     telegram_message: "Mensaje visible",
+    telegramBotToken: "TEST_TELEGRAM_BOT_TOKEN_PRESENT",
     json_debug: { callback_lifecycle: { action_executed: true } },
   });
   assert.strictEqual(planned.telegram_dispatch_method, "sendMessage");
   assert.strictEqual(planned.telegram_dispatch_can_edit, false);
-  assert.strictEqual(planned.json_debug.callback_lifecycle.telegram_dispatch_attempted, true);
+  assert.strictEqual(planned.json_debug.callback_lifecycle.telegram_dispatch_attempted, false);
+  assert.strictEqual(planned.telegram_dispatch_payload_built, true);
+  assert.strictEqual(planned.should_send_telegram, true);
   return planned.telegram_dispatch_method;
 });
 

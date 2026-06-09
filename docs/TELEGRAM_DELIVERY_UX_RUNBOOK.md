@@ -247,3 +247,31 @@ E2E closure still requires a real Telegram/n8n run after reimport:
 - press `Enviar a canal documentos` and see the channel confirmation button;
 - press `Enviar por correo` and see the email confirmation button;
 - confirm send only with explicit operator approval.
+
+## 7.17G: lost context before Should Send Telegram
+
+If `Build Telegram Dispatch Plan` shows `chat_id=null` after a sandbox action,
+the workflow must rehydrate context from prior nodes before `Should Send
+Telegram`. A valid post-action plan should show:
+
+```text
+chat_id present
+source_kind=CALLBACK_QUERY
+callback_query_id present
+callback_message_id present
+should_send_telegram=true
+telegram_dispatch_payload_built=true
+```
+
+If `telegramBotToken` is empty or still the placeholder, this is a controlled
+configuration error, not a successful action response. Configure
+`TELEGRAM_BOT_TOKEN` or `TELEGRAM_TOKEN` in the n8n environment and re-run V3
+SAFE. The workflow must not call Telegram with an empty token.
+
+Safe checks:
+
+```powershell
+node scripts/test-telegram-post-action-dispatch-context-preserved.js
+node scripts/test-telegram-post-action-dispatch-requires-token-or-safe-block.js
+node scripts/test-telegram-post-action-no-silent-success.js
+```

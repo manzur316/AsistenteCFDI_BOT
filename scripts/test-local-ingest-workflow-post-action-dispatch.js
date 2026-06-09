@@ -37,6 +37,7 @@ check("post_action_route_reaches_telegram_dispatch_plan", () => {
   assert.strictEqual(workflow.connections["Restore Response After Persistence"].main[0][0].node, "Build Telegram Dispatch Plan");
   assert.strictEqual(workflow.connections["Build Telegram Dispatch Plan"].main[0][0].node, "Should Send Telegram");
   assert.strictEqual(workflow.connections["Should Send Telegram"].main[0][0].node, "Should Edit Telegram Message");
+  assert(String(getNode("Should Send Telegram").parameters.conditions.boolean[0].value1).includes("telegram_bot_token_present"), "send router must require bot token");
   return "summary->dispatch";
 });
 
@@ -56,6 +57,8 @@ check("lifecycle_tracks_dispatch_attempt_and_result", () => {
   const logCode = code("Log Send Result SQL");
   assert(summaryCode.includes("telegram_dispatch_attempted: false"), "summary initial dispatch field missing");
   assert(planCode.includes("telegram_dispatch_attempted"), "dispatch plan missing attempted field");
+  assert(planCode.includes("telegram_bot_token_present"), "dispatch plan missing bot token guard");
+  assert(planCode.includes("telegram_dispatch_blocked_reason"), "dispatch plan missing blocked reason");
   assert(planCode.includes("reply_markup_built"), "dispatch plan missing reply_markup field");
   assert(logCode.includes("telegram_dispatch_ok = !failed"), "send log must record dispatch result");
   assert(logCode.includes("dispatchMethod"), "send log must record dispatch method");

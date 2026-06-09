@@ -1298,3 +1298,13 @@ Contratos cubiertos:
 - no se implementa 7.18B ni Provider Client Sync UX.
 
 Runbook: `docs/PHASE_7_17F_TELEGRAM_POST_ACTION_RESPONSE_DISPATCH.md`.
+
+## Fase 7.17G: preservar contexto de dispatch Telegram
+
+El dispatch post-action ahora rehidrata contexto Telegram antes de `Should Send
+Telegram` para evitar que una accion ejecutada y un confirm token creado queden
+sin mensaje visible por `chat_id=null`.
+
+Tambien valida que `telegramBotToken` venga de `TELEGRAM_BOT_TOKEN` o
+`TELEGRAM_TOKEN`; si falta, no intenta llamar Telegram y responde con diagnostico
+seguro en lugar de exito silencioso.

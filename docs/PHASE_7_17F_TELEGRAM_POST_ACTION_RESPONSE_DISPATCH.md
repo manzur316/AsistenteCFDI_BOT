@@ -92,3 +92,68 @@ Do not confirm real sends unless the operator explicitly authorizes it.
 This phase does not implement 7.18B, Provider Client Sync UX, production PAC,
 CSD handling, SMTP, runtime artifact versioning, XML/PDF commits or changes to
 `data/concepts.normalized.json`.
+
+## 7.17G context preservation addendum
+
+A real n8n execution showed a narrower bug after 7.17F: the action response and
+confirm token were built, but `Build Telegram Dispatch Plan` received an item
+without Telegram context.
+
+Observed failure shape:
+
+```text
+action_executed=true
+response_built=true
+reply_markup_built=true
+confirm token created
+chat_id=null before Should Send Telegram
+should_send_telegram=false
+telegram_dispatch_payload_built=false
+```
+
+The fix is to rehydrate dispatch context from prior workflow nodes before
+routing to Telegram. The dispatch plan restores, when missing:
+
+```text
+chat_id
+telegram_user_id
+source_kind
+callback_query_id
+callback_message_id
+source_message_id
+update_id
+max_seen_update_id
+message_id
+workflow_version
+latency_trace
+skip_send
+```
+
+Allowed recovery sources, in order, are:
+
+```text
+Postgres Load Context
+Build Load Context SQL
+Extract Local Ingest Update
+Postgres Insert Incoming Update
+Restore Processing Lock Context
+Build PAC Sandbox Action Summary
+```
+
+The dispatch plan also checks whether `telegramBotToken` is configured. `Set
+Config` loads it from `TELEGRAM_BOT_TOKEN` or `TELEGRAM_TOKEN`, falling back to
+the placeholder only. If the token is empty or still the placeholder, the
+workflow does not call Telegram HTTP nodes and records:
+
+```json
+{
+  "telegram_dispatch_blocked_reason": "missing_telegram_bot_token",
+  "telegram_dispatch_attempted": false,
+  "telegram_dispatch_ok": false,
+  "chat_id_present": true,
+  "telegram_message_present": true
+}
+```
+
+This prevents silent success when the bot has already executed the sandbox
+action but cannot deliver the follow-up message.

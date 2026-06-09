@@ -29,6 +29,7 @@ check("delivery_prepare_channel_builds_confirmation_message", () => {
   const result = runSummary(prepareStdout("TELEGRAM_DOCUMENT_CHANNEL"), baseSource({
     draft_id: "DRAFT-PREPARE-CHANNEL-001",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-PREPARE-CHANNEL-511",
     callback_message_id: "511",
     sandbox_delivery_channel: "TELEGRAM_DOCUMENT_CHANNEL",
   }));
@@ -47,11 +48,14 @@ check("delivery_prepare_channel_dispatch_plan_is_visible", () => {
   const result = runSummary(prepareStdout("TELEGRAM_DOCUMENT_CHANNEL"), baseSource({
     draft_id: "DRAFT-PREPARE-CHANNEL-002",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-PREPARE-CHANNEL-512",
     callback_message_id: "512",
     sandbox_delivery_channel: "TELEGRAM_DOCUMENT_CHANNEL",
   }));
-  const planned = executeCode(dispatchPlanCode, result);
-  assert.strictEqual(planned.telegram_dispatch_attempted, true);
+  const planned = executeCode(dispatchPlanCode, { ...result, telegramBotToken: "TEST_TELEGRAM_BOT_TOKEN_PRESENT" });
+  assert.strictEqual(planned.telegram_dispatch_attempted, false);
+  assert.strictEqual(planned.telegram_dispatch_payload_built, true);
+  assert.strictEqual(planned.should_send_telegram, true);
   assert.strictEqual(planned.telegram_dispatch_method, "editMessageText");
   assert.strictEqual(planned.json_debug.callback_lifecycle.reply_markup_built, true);
   return planned.telegram_dispatch_method;

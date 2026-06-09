@@ -54,6 +54,7 @@ check("download_ok_builds_visible_post_action_message", () => {
   const result = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({
     draft_id: "DRAFT-POST-DOWNLOAD-001",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-DOWNLOAD-321",
     callback_message_id: "321",
   }) }]);
   assert(/Descarga sandbox completada/.test(result.telegram_message));
@@ -87,12 +88,16 @@ check("download_dispatch_plan_targets_visible_telegram_edit", () => {
   const summary = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({
     draft_id: "DRAFT-POST-DOWNLOAD-002",
     source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-DOWNLOAD-322",
     callback_message_id: "322",
   }) }]);
-  const planned = executeCode(dispatchPlanCode, summary);
-  assert.strictEqual(planned.telegram_dispatch_attempted, true);
+  const planned = executeCode(dispatchPlanCode, { ...summary, telegramBotToken: "TEST_TELEGRAM_BOT_TOKEN_PRESENT" });
+  assert.strictEqual(planned.telegram_dispatch_attempted, false);
+  assert.strictEqual(planned.telegram_dispatch_payload_built, true);
+  assert.strictEqual(planned.should_send_telegram, true);
   assert.strictEqual(planned.telegram_dispatch_method, "editMessageText");
-  assert.strictEqual(planned.json_debug.callback_lifecycle.telegram_dispatch_attempted, true);
+  assert.strictEqual(planned.json_debug.callback_lifecycle.telegram_dispatch_attempted, false);
+  assert.strictEqual(planned.json_debug.callback_lifecycle.telegram_dispatch_payload_built, true);
   assert.strictEqual(planned.json_debug.callback_lifecycle.reply_markup_built, true);
   assert.strictEqual(planned.json_debug.callback_lifecycle.chat_id_present, true);
   return planned.telegram_dispatch_method;

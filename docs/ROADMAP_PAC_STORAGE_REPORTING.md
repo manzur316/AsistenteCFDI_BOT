@@ -1830,3 +1830,12 @@ acciones sandbox, el workflow construye plan de envio, intenta `editMessageText`
 cae a `sendMessage` si Telegram no permite editar y registra lifecycle seguro.
 Tambien recupera `DELIVERY_PREPARE_*` usados cuando existe un confirm token sin
 usar. Ver `docs/PHASE_7_17F_TELEGRAM_POST_ACTION_RESPONSE_DISPATCH.md`.
+
+### Fase 7.17G - Preserve Telegram Dispatch Context After Sandbox Actions
+
+7.17G corrige la perdida de contexto Telegram entre la accion sandbox y
+`Should Send Telegram`: el plan de dispatch rehidrata `chat_id`, `source_kind`,
+`callback_query_id` y `callback_message_id` desde nodos previos. Tambien bloquea
+con error controlado si `telegramBotToken` esta vacio o sigue como placeholder,
+ev ??itando llamadas HTTP a Telegram sin token. No cambia PAC, persistencia,
+reglas fiscales ni 7.18B.
