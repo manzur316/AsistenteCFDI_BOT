@@ -8,23 +8,26 @@ const {
 
 const root = path.resolve(__dirname, "..");
 const tempRoot = path.join(root, "runtime", "test-sandbox-documents-delivery-status-action");
+let statusFixtureCounter = 0;
 
 if (fs.existsSync(tempRoot)) fs.rmSync(tempRoot, { recursive: true, force: true });
 fs.mkdirSync(tempRoot, { recursive: true });
 
 const VALID_XML = "<?xml version=\"1.0\"?><cfdi:Comprobante xmlns:cfdi=\"http://www.sat.gob.mx/cfd/4\" Version=\"4.0\"><cfdi:Complemento><tfd:TimbreFiscalDigital xmlns:tfd=\"http://www.sat.gob.mx/TimbreFiscalDigital\" UUID=\"00000000-0000-4000-8000-000000000717\" /></cfdi:Complemento></cfdi:Comprobante>";
+const REDACTED_XML = VALID_XML.replace("</cfdi:Comprobante>", " [REDACTED_RFC]</cfdi:Comprobante>");
 const VALID_PDF = Buffer.concat([
   Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 72 720 Td (CFDI sandbox) Tj ET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", "latin1"),
   Buffer.alloc(1100, "A"),
   Buffer.from("\n%%EOF", "latin1"),
 ]);
 
-function writeFiles() {
-  const dir = path.join(tempRoot, "exports");
+function writeFiles({ xmlContent = VALID_XML, blankPdf = false } = {}) {
+  statusFixtureCounter += 1;
+  const dir = path.join(tempRoot, `case-${statusFixtureCounter}`, "exports");
   fs.mkdirSync(dir, { recursive: true });
   const xml = path.join(dir, "Real-Bilbao_2026-06-08_F-26_SANDBOX.xml");
   const pdf = path.join(dir, "Real-Bilbao_2026-06-08_F-26_SANDBOX.pdf");
-  fs.writeFileSync(xml, VALID_XML);
+  fs.writeFileSync(xml, xmlContent);
   fs.writeFileSync(pdf, VALID_PDF);
   return {
     xml: path.relative(root, xml).replace(/\\/g, "/"),
@@ -77,6 +80,49 @@ assert.strictEqual(result.output.telegram_document_channel.ready, true);
 assert(!JSON.stringify(result).includes("TEST_TOKEN_NOT_REAL"));
 assert(!JSON.stringify(result).includes("123456789"));
 
+const redactedDraftId = "DRAFT-DELIVERY-STATUS-REDACTED-717";
+const redactedFiles = writeFiles({ xmlContent: REDACTED_XML });
+const redactedManifestDir = path.join(
+  tempRoot,
+  "draft-stamps",
+  redactedDraftId,
+  "2026-06-08T06-13-12-128Z",
+);
+fs.mkdirSync(redactedManifestDir, { recursive: true });
+fs.writeFileSync(path.join(redactedManifestDir, "sandbox-download-manifest.json"), JSON.stringify({
+  draft_id: redactedDraftId,
+  human_xml_path: redactedFiles.xml,
+  human_pdf_path: redactedFiles.pdf,
+  xml_content_valid: true,
+  pdf_content_valid: true,
+  artifact_status: "DOWNLOADED",
+}, null, 2));
+
+const reconciledResult = runSandboxDocumentDeliveryStatus({
+  draft: {
+    ...draft,
+    draft_id: redactedDraftId,
+    sandbox_pac_summary: {
+      artifact_status: "DOWNLOADED",
+      xml_content_valid: true,
+      pdf_content_valid: true,
+      human_xml_path: null,
+      human_pdf_path: null,
+    },
+  },
+  channel: "PROVIDER_EMAIL",
+  env: {
+    TELEGRAM_DOCUMENT_DELIVERY_ENABLED: "1",
+    TELEGRAM_DOCUMENT_DELIVERY_CHAT_ID: "123456789",
+    TELEGRAM_BOT_TOKEN: "TEST_TOKEN_NOT_REAL",
+  },
+  storageRoot: tempRoot,
+});
+assert.strictEqual(reconciledResult.status, "OK");
+assert.strictEqual(reconciledResult.output.documents_valid, true);
+assert.strictEqual(reconciledResult.output.xml_content_valid, true);
+assert.strictEqual(reconciledResult.output.pdf_content_valid, true);
+
 const inconsistentResult = runSandboxDocumentDeliveryStatus({
   draft: {
     ...draft,
@@ -104,5 +150,6 @@ assert(inconsistentResult.warnings.includes("ARTIFACT_STATUS_INFERRED_FROM_VALID
 
 console.log("Sandbox Documents Delivery Status Action Tests");
 console.log(" - status_reports_consolidated_delivery_state: PASS (OK)");
+console.log(" - status_reconciles_redacted_manifest_validity: PASS (READY)");
 console.log(" - no_documents_valid_with_not_requested: PASS (DOWNLOADED)");
-console.log("\nPASS total: 2/2");
+console.log("\nPASS total: 3/3");

@@ -100,6 +100,36 @@ function draftDocumentMetadata(draft = {}, options = {}) {
   };
 }
 
+function persistedArtifactValidationFlags(draft = {}, options = {}) {
+  const summary = draft.sandbox_pac_summary || {};
+  const manifest = latestDownloadManifest(draft.draft_id || options.draftId, options.storageRoot || defaultStorageRoot) || {};
+  return {
+    xml_content_valid: summary.xml_content_valid === true || manifest.xml_content_valid === true,
+    pdf_content_valid: summary.pdf_content_valid === true || manifest.pdf_content_valid === true,
+  };
+}
+
+function reconcileDeliveryValidation(draft = {}, options = {}, validation = {}) {
+  const reconciled = {
+    ...validation,
+    xml: { ...validation.xml },
+    pdf: { ...validation.pdf },
+  };
+  const persisted = persistedArtifactValidationFlags(draft, options);
+  const overrideXml = validation?.xml?.status === "XML_SANITIZED_ARTIFACT_INVALID" && persisted.xml_content_valid === true;
+  if (overrideXml) {
+    reconciled.xml.ok = true;
+    reconciled.xml.warnings = [...(validation.xml?.warnings || []), "XML_VALIDATION_OVERRIDDEN_BY_MANIFEST"];
+  }
+  const overridePdf = validation?.pdf?.ok !== true && persisted.pdf_content_valid === true && validation?.pdf?.status === "PDF_SANITIZED_ARTIFACT_INVALID";
+  if (overridePdf) {
+    reconciled.pdf.ok = true;
+    reconciled.pdf.warnings = [...(validation.pdf?.warnings || []), "PDF_VALIDATION_OVERRIDDEN_BY_MANIFEST"];
+  }
+  reconciled.ok = reconciled.xml?.ok === true && reconciled.pdf?.ok === true;
+  return reconciled;
+}
+
 function clientFromDraft(draft = {}) {
   return draft.current_client || draft.client || draft.client_snapshot || {};
 }
@@ -364,7 +394,7 @@ function runSandboxDocumentDeliveryDiagnose(options = {}) {
   if (draft && typeof draft === "object") {
     const files = draftFiles(draft, options);
     const documentMetadata = draftDocumentMetadata(draft, options);
-    const validation = validateDeliveryFiles(files);
+    const validation = reconcileDeliveryValidation(draft, options, validateDeliveryFiles(files));
     const email = primaryEmailFromDraft(draft);
     const emailConfirmed = emailConfirmedFromDraft(draft);
     const providerEmailSyncStatus = providerEmailSyncStatusFromDraft(draft);
@@ -471,7 +501,7 @@ function runSandboxDocumentDeliveryStatus(options = {}) {
   }
   const files = draftFiles(draft, options);
   const documentMetadata = draftDocumentMetadata(draft, options);
-  const validation = validateDeliveryFiles(files);
+  const validation = reconcileDeliveryValidation(draft, options, validateDeliveryFiles(files));
   const ledgerRows = ledgerSummaryForDraft(draft.draft_id || options.draftId, dbOptions(options));
   const providerRows = deliveryRowsByChannel(ledgerRows, DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL);
   const telegramRows = deliveryRowsByChannel(ledgerRows, DOCUMENT_DELIVERY_CHANNELS.TELEGRAM_DOCUMENT_CHANNEL);
@@ -596,7 +626,7 @@ function runSandboxDocumentDeliveryPrepare(options = {}) {
   const diagnose = runSandboxDocumentDeliveryDiagnose({ ...options, draft, channel });
   const files = draftFiles(draft, options);
   const documentMetadata = draftDocumentMetadata(draft, options);
-  const validation = validateDeliveryFiles(files);
+  const validation = reconcileDeliveryValidation(draft, options, validateDeliveryFiles(files));
   const base = ledgerBaseFromDraft(draft, channel, validation, documentMetadata, options);
   const idempotencyKey = canonicalLedgerKey(base);
   const duplicate = safeFindExistingSent(base, options);
