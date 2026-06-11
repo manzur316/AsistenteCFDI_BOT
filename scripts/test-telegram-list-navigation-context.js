@@ -187,9 +187,10 @@ function callbackInput(action, payload = {}, extra = {}) {
 function listState(kind, listDrafts, page = 1, options = {}) {
   const expiresAt = options.expires_at || "2099-01-01T00:00:00.000Z";
   return {
-    state: "LIST_NAVIGATION",
+    state: options.state || "LIST_NAVIGATION",
     expires_at: options.state_expires_at || expiresAt,
     context: {
+      ...(options.context || {}),
       list_context: {
         schema_version: "telegram_list_context.v1",
         context_id: `TEST-${kind}-${page}`,
@@ -255,11 +256,88 @@ if (handleCode) {
         && callbacksSafe(result),
     },
     {
+      name: "aprobadas_pagina_2_muestra_indices_6_10_sin_texto_viejo",
+      run: () => executeCode(handleCode, callbackInput("LIST_APPROVED", { page: 2 }, { update_id: 99213, recent_drafts: approved })),
+      expect: (result) => result.action === "COMMAND_APROBADAS"
+        && hasButtons(result, ["Ver 6", "Ver 10", "Timbrar sandbox 10", "Anterior 1-5"])
+        && lacksButtons(result, ["Ver 1", "Ver 5", "Siguiente 11-15"])
+        && String(result.telegram_message || "").includes("Aprobadas (6-10 de 10)")
+        && !String(result.telegram_message || "").includes("Acciones rapidas disponibles")
+        && callbacksSafe(result),
+    },
+    {
       name: "detalle_10_resuelve_draft_correcto",
       run: () => executeCode(handleCode, baseInput("detalle 10", { update_id: 99203, recent_drafts: pending, chat_state: listState("DRAFTS_PENDING", pending, 2) })),
       expect: (result) => result.action === "COMMAND_DETALLE"
         && result.json_debug?.draft_id === "DRAFT-PEND-LIST-10"
         && String(result.telegram_message || "").includes("DRAFT-PEND-LIST-10")
+        && callbacksSafe(result),
+    },
+    {
+      name: "slash_detalle_10_resuelve_aprobado_desde_list_context",
+      run: () => executeCode(handleCode, baseInput("/detalle 10", { update_id: 99214, recent_drafts: approved, chat_state: listState("DRAFTS_APPROVED", approved, 2) })),
+      expect: (result) => result.action === "COMMAND_DETALLE"
+        && result.json_debug?.draft_id === "DRAFT-APROB-LIST-10"
+        && String(result.telegram_message || "").includes("DRAFT-APROB-LIST-10")
+        && callbacksSafe(result),
+    },
+    {
+      name: "slash_ver_10_no_cae_en_client_list_selection",
+      run: () => executeCode(handleCode, baseInput("/ver 10", {
+        update_id: 99215,
+        recent_drafts: approved,
+        chat_state: listState("DRAFTS_APPROVED", approved, 2, {
+          state: "CLIENT_LIST_SELECTION",
+          context: { clients: [{ visibleIndex: 2, client_id: "CLI-OTHER" }] },
+        }),
+      })),
+      expect: (result) => result.action === "COMMAND_DETALLE"
+        && result.json_debug?.draft_id === "DRAFT-APROB-LIST-10"
+        && String(result.telegram_message || "").includes("DRAFT-APROB-LIST-10")
+        && !String(result.telegram_message || "").includes("Estado actual: CLIENT_LIST_SELECTION")
+        && callbacksSafe(result),
+    },
+    {
+      name: "slash_detalle_10_usa_contexto_draft_aunque_estado_sea_clientes",
+      run: () => executeCode(handleCode, baseInput("/detalle 10", {
+        update_id: 99216,
+        recent_drafts: approved,
+        chat_state: listState("DRAFTS_APPROVED", approved, 2, {
+          state: "CLIENT_LIST_SELECTION",
+          context: { clients: [{ visibleIndex: 2, client_id: "CLI-OTHER" }] },
+        }),
+      })),
+      expect: (result) => result.action === "COMMAND_DETALLE"
+        && result.json_debug?.draft_id === "DRAFT-APROB-LIST-10"
+        && !String(result.telegram_message || "").includes("Estado actual: CLIENT_LIST_SELECTION")
+        && callbacksSafe(result),
+    },
+    {
+      name: "slash_detalle_10_sin_list_context_falla_seguro",
+      run: () => executeCode(handleCode, baseInput("/detalle 10", {
+        update_id: 99217,
+        recent_drafts: approved,
+        chat_state: {
+          state: "CLIENT_LIST_SELECTION",
+          expires_at: "2099-01-01T00:00:00.000Z",
+          context: { clients: [{ visibleIndex: 2, client_id: "CLI-OTHER" }] },
+        },
+      })),
+      expect: (result) => result.action === "LIST_NAV_CONTEXT_MISSING"
+        && !String(result.telegram_message || "").includes("Estado actual: CLIENT_LIST_SELECTION")
+        && callbacksSafe(result),
+    },
+    {
+      name: "slash_cliente_2_no_rompe_contexto_drafts",
+      run: () => executeCode(handleCode, baseInput("/cliente 2", {
+        update_id: 99218,
+        recent_drafts: approved,
+        chat_state: listState("DRAFTS_APPROVED", approved, 2, { state: "CLIENT_LIST_SELECTION" }),
+      })),
+      expect: (result) => result.action !== "COMMAND_DETALLE"
+        && !String(result.persistence_sql || "").includes("DELETE FROM chat_states")
+        && !String(result.persistence_sql || "").includes("status = 'APROBADO'")
+        && !String(result.persistence_sql || "").includes("status = 'DESCARTADO'")
         && callbacksSafe(result),
     },
     {
