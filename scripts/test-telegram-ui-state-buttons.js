@@ -45,6 +45,11 @@ function hasButtons(result, expected) {
   return expected.every((text) => texts.includes(text));
 }
 
+function lacksButtons(result, forbidden) {
+  const texts = buttonTexts(result);
+  return forbidden.every((text) => !texts.includes(text));
+}
+
 function callbacksSafe(result) {
   return flattenButtons(result).every((button) => {
       const callbackData = String(button.callback_data || "");
@@ -198,6 +203,8 @@ function baseInput(text, extra = {}) {
     chat_state: extra.chat_state ?? null,
     action_token: extra.action_token ?? null,
     recent_drafts: extra.recent_drafts || [],
+    client_invoice_ledger: extra.client_invoice_ledger || [],
+    client_invoice_summary: extra.client_invoice_summary || [],
     bot_state: {},
     today_summary: extra.today_summary || { pendientes: 1, aprobados: 1, descartados: 0, bloqueados: 0 },
     source_kind: extra.source_kind || "MESSAGE",
@@ -219,6 +226,8 @@ function callbackInput(action, payload = {}, extra = {}) {
     clients: extra.clients || [demoClient()],
     tax_rules: extra.tax_rules || taxRules,
     today_summary: extra.today_summary,
+    client_invoice_ledger: extra.client_invoice_ledger || [],
+    client_invoice_summary: extra.client_invoice_summary || [],
     action_token: {
       token,
       chat_id: extra.chat_id || chatId,
@@ -299,6 +308,7 @@ if (handleCode) {
   const pending = draft("DRAFT-PEND-1", "PENDIENTE");
   const pending2 = draft("DRAFT-PEND-2", "PENDIENTE");
   const approved = draft("DRAFT-APROB-1", "APROBADO");
+  const discarded = draft("DRAFT-DISC-1", "DESCARTADO");
   const sandboxDownloadReady = draft("DRAFT-SBX-DL-1", "APROBADO", {
     invoice_status: "SANDBOX_TIMBRADO",
     sandbox_status: "APROBADO",
@@ -349,6 +359,14 @@ if (handleCode) {
       expect: (result) => result.action === "COMMAND_DETALLE" && hasButtons(result, ["Aprobar", "Descartar", "Volver a pendientes", "Ver resumen"]) && callbacksSafe(result),
     },
     {
+      name: "detalle_descartado_menu_seguro_sin_resumen",
+      run: () => executeCode(handleCode, baseInput("/detalle DRAFT-DISC-1", { update_id: 93043, recent_drafts: [discarded] })),
+      expect: (result) => result.action === "COMMAND_DETALLE"
+        && hasButtons(result, ["Ver pendientes", "Crear nuevo borrador", "Menu principal", "Ayuda"])
+        && lacksButtons(result, ["Ver resumen", "Aprobar", "Descartar", "Timbrar sandbox", "Regresar a borrador"])
+        && callbacksSafe(result),
+    },
+    {
       name: "detalle_timbrado_download_ready_muestra_descarga_y_no_timbrado",
       run: () => executeCode(handleCode, baseInput("/detalle DRAFT-SBX-DL-1", { update_id: 93041, recent_drafts: [sandboxDownloadReady] })),
       expect: (result) => {
@@ -364,7 +382,13 @@ if (handleCode) {
       run: () => executeCode(handleCode, baseInput("/detalle DRAFT-SBX-DL-2", { update_id: 93042, recent_drafts: [sandboxDownloaded] })),
       expect: (result) => {
         const texts = buttonTexts(result);
-        return result.action === "COMMAND_DETALLE" && texts.includes("Descargar XML/PDF sandbox") && callbacksSafe(result);
+        return result.action === "COMMAND_DETALLE"
+          && texts.includes("Descargar XML/PDF sandbox")
+          && texts.includes("Ver estado documental")
+          && texts.includes("Enviar por correo")
+          && texts.includes("Enviar a canal documentos")
+          && !texts.includes("Timbrar sandbox")
+          && callbacksSafe(result);
       },
     },
     {
@@ -412,12 +436,12 @@ if (handleCode) {
     {
       name: "approve_button_actualiza_pendiente_y_usa_token",
       run: () => executeCode(handleCode, callbackInput("APPROVE_DRAFT", { draft_id: "DRAFT-PEND-1" }, { update_id: 9313, recent_drafts: [pending] })),
-      expect: (result) => result.action === "COMMAND_APROBAR" && String(result.telegram_message || "").includes("Borrador aprobado") && hasButtons(result, ["Ver borrador", "Regresar a borrador", "Menu principal"]) && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'APROBADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_APROBAR" && String(result.telegram_message || "").includes("Borrador aprobado") && hasButtons(result, ["Ver borrador", "Regresar a borrador", "Menu principal"]) && lacksButtons(result, ["Aprobar", "Descartar"]) && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'APROBADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
     },
     {
       name: "restore_button_regresa_aprobado_a_borrador",
       run: () => executeCode(handleCode, callbackInput("RESTORE_DRAFT", { draft_id: "DRAFT-APROB-1" }, { update_id: 93131, recent_drafts: [approved] })),
-      expect: (result) => result.action === "COMMAND_REGRESAR_BORRADOR" && /Estado actual:<\/b> BORRADOR|Estado actual: BORRADOR/.test(String(result.telegram_message || "")) && result.parse_mode === "HTML" && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'PENDIENTE'") && hasButtons(result, ["Aprobar", "Descartar", "Volver a pendientes", "Ver resumen"]) && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_REGRESAR_BORRADOR" && /Estado actual:<\/b> BORRADOR|Estado actual: BORRADOR/.test(String(result.telegram_message || "")) && result.parse_mode === "HTML" && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'PENDIENTE'") && hasButtons(result, ["Aprobar", "Descartar", "Volver a pendientes", "Ver resumen"]) && lacksButtons(result, ["Timbrar sandbox", "Regresar a borrador"]) && callbacksSafe(result),
     },
     {
       name: "view_summary_no_abre_menu_silencioso",
@@ -425,9 +449,32 @@ if (handleCode) {
       expect: (result) => result.action === "COMMAND_RESUMEN" && String(result.telegram_message || "").includes("No hay facturas sandbox registradas para este periodo.") && !String(result.telegram_message || "").includes("Comandos disponibles") && hasButtons(result, ["Ver clientes con saldo", "Ver vencidas", "Ver pagadas", "Ver canceladas", "Menu principal"]) && callbacksSafe(result),
     },
     {
+      name: "view_summary_persistencia_escapa_pesos_para_dispatch",
+      run: () => executeCode(handleCode, callbackInput("VIEW_SUMMARY", {}, {
+        update_id: 93133,
+        recent_drafts: [],
+        clients: [],
+        tax_rules: [],
+        client_invoice_ledger: [{
+          client_id: "CLI-DEMO-RIVERA",
+          client_display: "Privada Rivera",
+          invoice_status: "SANDBOX_TIMBRADO",
+          payment_status: "PENDIENTE",
+          total: 101410.68,
+          created_at: "2026-06-11T10:20:00.000Z",
+        }],
+      })),
+      expect: (result) => result.action === "COMMAND_RESUMEN"
+        && result.should_send_telegram === true
+        && String(result.telegram_message || "").includes("$101410.68")
+        && !String(result.persistence_sql || "").includes("$101410")
+        && String(result.persistence_sql || "").includes("chr(36)")
+        && callbacksSafe(result),
+    },
+    {
       name: "discard_button_actualiza_pendiente_y_usa_token",
       run: () => executeCode(handleCode, callbackInput("DISCARD_DRAFT", { draft_id: "DRAFT-PEND-1" }, { update_id: 9314, recent_drafts: [pending] })),
-      expect: (result) => result.action === "COMMAND_DESCARTAR" && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'DESCARTADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_DESCARTAR" && hasButtons(result, ["Ver pendientes", "Crear nuevo borrador", "Menu principal", "Ayuda"]) && lacksButtons(result, ["Ver resumen", "Aprobar", "Descartar", "Timbrar sandbox", "Regresar a borrador"]) && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'DESCARTADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
     },
     {
       name: "approve_invalid_no_actualiza_status",
