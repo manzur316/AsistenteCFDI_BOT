@@ -30,6 +30,9 @@ const ROOT = path.resolve(__dirname, "../..");
 const DEFAULT_TIMEOUT_MS = 120000;
 const DEFAULT_POLL_MS = 2500;
 const WATCH_LIMIT = 20;
+const DEFAULT_LATENCY_OK_MS = 3000;
+const DEFAULT_LATENCY_FAIL_MS = 8000;
+const DEFAULT_DUPLICATE_WINDOW_MS = 5000;
 
 const REQUIRED_ENV_KEYS = [
   "N8N_API_KEY",
@@ -89,6 +92,9 @@ function parseArgs(argv) {
     allowTelegramChannelSend: false,
     allowProviderEmailSend: false,
     maxProviderEmailSend: 1,
+    latencyOkMs: DEFAULT_LATENCY_OK_MS,
+    latencyFailMs: DEFAULT_LATENCY_FAIL_MS,
+    duplicateWindowMs: DEFAULT_DUPLICATE_WINDOW_MS,
     dbExecMode: "",
     allowRemoteN8n: false,
   };
@@ -118,6 +124,9 @@ function parseArgs(argv) {
   args.timeoutMs = parseNumber(args.timeoutMs, DEFAULT_TIMEOUT_MS);
   args.pollMs = parseNumber(args.pollMs, DEFAULT_POLL_MS);
   args.maxProviderEmailSend = parseNumber(args.maxProviderEmailSend || process.env.SATBOT_PROVIDER_EMAIL_MAX_PER_RUN, 1);
+  args.latencyOkMs = parseNumber(args.latencyOkMs, DEFAULT_LATENCY_OK_MS);
+  args.latencyFailMs = parseNumber(args.latencyFailMs, DEFAULT_LATENCY_FAIL_MS);
+  args.duplicateWindowMs = parseNumber(args.duplicateWindowMs, DEFAULT_DUPLICATE_WINDOW_MS);
   args.label = String(args.label || "session").trim() || "session";
   args.flow = String(args.flow || "").trim();
   args.draftId = String(args.draftId || "").trim();
@@ -148,6 +157,9 @@ function printHelp() {
     "  --allow-telegram-channel-send",
     "  --allow-provider-email-send",
     "  --max-provider-email-send 1",
+    "  --latency-ok-ms 3000",
+    "  --latency-fail-ms 8000",
+    "  --duplicate-window-ms 5000",
   ].join("\n"));
 }
 
@@ -263,6 +275,35 @@ function firstValidTimeMs(...values) {
   return null;
 }
 
+function parseObjectValue(value) {
+  if (!value) return {};
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value !== "string") return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function firstObjectValue(...values) {
+  for (const value of values) {
+    const parsed = parseObjectValue(value);
+    if (Object.keys(parsed).length) return parsed;
+  }
+  return {};
+}
+
+function firstFiniteNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return null;
+}
+
 function failure(code, message, details = {}, severity = "FAIL") {
   return {
     code,
@@ -275,6 +316,262 @@ function failure(code, message, details = {}, severity = "FAIL") {
 
 function warning(code, message, details = {}) {
   return failure(code, message, details, "WARN");
+}
+
+function latencyThresholds(args = {}) {
+  return {
+    okMs: parseNumber(args.latencyOkMs, DEFAULT_LATENCY_OK_MS),
+    failMs: parseNumber(args.latencyFailMs, DEFAULT_LATENCY_FAIL_MS),
+  };
+}
+
+function durationFromTimes(startMs, endMs) {
+  return Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
+    ? Math.round(endMs - startMs)
+    : null;
+}
+
+function latencyMetricsForContext(context = {}, args = {}) {
+  const trace = parseObjectValue(context.latency_trace);
+  const executionDurationMs = durationFromTimes(context.started_at_ms, context.generated_at_ms);
+  const traceStartMs = firstFiniteNumber(trace.update_received_ms, trace.workflow_start_ms, trace.extract_start_ms);
+  const traceEndMs = firstFiniteNumber(
+    trace.telegram_dispatch_end_ms,
+    trace.workflow_end_ms,
+    trace.handle_end_ms,
+    trace.sandbox_summary_end_ms,
+    trace.processing_lock_end_ms,
+    trace.build_load_context_end_ms,
+  );
+  const traceLatencyMs = durationFromTimes(traceStartMs, traceEndMs);
+  const explicitLatencyMs = firstFiniteNumber(
+    trace.response_latency_ms,
+    trace.telegram_response_ms,
+    trace.telegram_send_ms,
+    trace.send_message_ms,
+  );
+  const approximateResponseLatencyMs = firstFiniteNumber(explicitLatencyMs, traceLatencyMs, executionDurationMs);
+  const measuredMs = firstFiniteNumber(approximateResponseLatencyMs, executionDurationMs);
+  const thresholds = latencyThresholds(args);
+  let status = "LATENCY_UNKNOWN";
+  if (Number.isFinite(measuredMs)) {
+    if (measuredMs <= thresholds.okMs) status = "LATENCY_OK";
+    else if (measuredMs <= thresholds.failMs) status = "LATENCY_WARN";
+    else status = "LATENCY_FAIL";
+  }
+  return {
+    status,
+    execution_duration_ms: executionDurationMs,
+    approximate_response_latency_ms: Number.isFinite(approximateResponseLatencyMs) ? Math.round(approximateResponseLatencyMs) : null,
+    measured_ms: Number.isFinite(measuredMs) ? Math.round(measuredMs) : null,
+    measurement_source: Number.isFinite(explicitLatencyMs)
+      ? "latency_trace_explicit"
+      : Number.isFinite(traceLatencyMs)
+        ? "latency_trace_bounds"
+        : Number.isFinite(executionDurationMs)
+          ? "execution_started_stopped"
+          : "UNKNOWN",
+    thresholds,
+  };
+}
+
+function latencyFailures(metrics = {}, context = {}) {
+  if (metrics.status === "LATENCY_WARN") {
+    return [warning("LATENCY_WARN", "Execution latency above warning threshold", {
+      execution_id: context.execution_id,
+      measured_ms: metrics.measured_ms,
+      threshold_ms: metrics.thresholds?.okMs || DEFAULT_LATENCY_OK_MS,
+    })];
+  }
+  if (metrics.status === "LATENCY_FAIL") {
+    return [failure("LATENCY_FAIL", "Execution latency above failure threshold", {
+      execution_id: context.execution_id,
+      measured_ms: metrics.measured_ms,
+      threshold_ms: metrics.thresholds?.failMs || DEFAULT_LATENCY_FAIL_MS,
+    })];
+  }
+  return [];
+}
+
+const SENSITIVE_ACTION_PATTERNS = [
+  "APROBAR",
+  "APPROVE",
+  "DESCARTAR",
+  "DISCARD",
+  "STAMP_DRAFT_SANDBOX",
+  "DRAFT_SANDBOX_STAMP",
+  "REQUEST_CANCEL_SANDBOX",
+  "CONFIRM_CANCEL_SANDBOX",
+  "CANCEL_SANDBOX",
+  "DOWNLOAD_SANDBOX_ARTIFACTS",
+  "DRAFT_SANDBOX_DOWNLOAD",
+  "DELIVERY_CONFIRM",
+  "DELIVERY_FORCE",
+  "DOCUMENT_DELIVERY_SEND",
+  "PAGAR",
+  "PAY",
+  "MARCAR_PAGADA",
+  "MARK_PAID",
+  "MARCAR_PARCIAL",
+  "MARK_PARTIAL",
+  "MARCAR_VENCIDA",
+  "MARK_OVERDUE",
+  "CANCEL_CFDI",
+  "CANCELAR_CFDI",
+];
+
+function isSensitiveInteraction(context = {}) {
+  const text = [context.action, context.requested_action, context.requested_sandbox_action, context.route]
+    .map((value) => String(value || "").toUpperCase())
+    .join(" ");
+  return SENSITIVE_ACTION_PATTERNS.some((pattern) => text.includes(pattern));
+}
+
+function extractCallbackToken(context = {}) {
+  const candidates = [
+    context.handle?.action_token?.token,
+    context.handle?.token,
+    context.summary?.action_token?.token,
+    context.plan?.action_token?.token,
+  ];
+  for (const value of candidates) {
+    const text = String(value || "").trim();
+    if (text) return text;
+  }
+  const rawText = String(context.handle?.text || context.summary?.text || context.plan?.text || "").trim();
+  const match = rawText.match(/^cfdi:([A-Za-z0-9_-]{8,80})$/);
+  return match ? match[1] : "";
+}
+
+function interactionKey(context = {}) {
+  const token = extractCallbackToken(context);
+  if (token) return { key: `token:${hashText(token)}`, type: "TOKEN", token_masked: maskToken(token) };
+  if (context.callback_query_id_present || String(context.source_kind || "").toUpperCase() === "CALLBACK_QUERY") {
+    const parts = [
+      context.chat_id_raw || "",
+      context.callback_message_id || "",
+      context.action || "",
+      context.draft_id || "",
+      context.requested_sandbox_action || "",
+    ].map((value) => String(value || ""));
+    return { key: `callback:${hashText(parts.join("|"))}`, type: "CALLBACK", token_masked: "" };
+  }
+  return { key: "", type: "UNKNOWN", token_masked: "" };
+}
+
+function duplicateProtectionEffective(context = {}) {
+  const action = String(context.action || "").toUpperCase();
+  const reason = String(context.callback_reason || "").toLowerCase();
+  return action === "CALLBACK_TOKEN_USED_RECOVERY"
+    || action === "CALLBACK_TOKEN_CONTEXT_RECOVERED"
+    || action === "CALLBACK_TOKEN_INVALID"
+    || reason === "token_usado"
+    || reason === "token_expirado"
+    || reason === "token_invalido";
+}
+
+function detectInteractionRisks(context = {}, args = {}, counters = {}) {
+  counters.interactions = counters.interactions || [];
+  const duplicateWindowMs = parseNumber(args.duplicateWindowMs, DEFAULT_DUPLICATE_WINDOW_MS);
+  const startedAtMs = Number.isFinite(context.started_at_ms) ? context.started_at_ms : null;
+  const generatedAtMs = Number.isFinite(context.generated_at_ms) ? context.generated_at_ms : null;
+  const key = interactionKey(context);
+  const sensitive = isSensitiveInteraction(context);
+  const failures = [];
+  const duplicate = {
+    status: "UNKNOWN",
+    duplicate_detected: false,
+    key_type: key.type,
+    token: key.token_masked || "",
+    window_ms: duplicateWindowMs,
+    previous_execution_id: null,
+    protection_effective: false,
+    effect: "UNKNOWN",
+  };
+  const ordering = {
+    status: "UNKNOWN",
+    out_of_order_detected: false,
+    previous_execution_id: null,
+    relation: "UNKNOWN",
+  };
+
+  if (key.key && Number.isFinite(startedAtMs)) {
+    const previous = counters.interactions.find((item) => (
+      item.key === key.key
+      && Number.isFinite(item.started_at_ms)
+      && Math.abs(startedAtMs - item.started_at_ms) <= duplicateWindowMs
+    ));
+    if (previous) {
+      duplicate.status = "DUPLICATE_INTERACTION_WARN";
+      duplicate.duplicate_detected = true;
+      duplicate.previous_execution_id = previous.execution_id || null;
+      duplicate.protection_effective = duplicateProtectionEffective(context);
+      duplicate.effect = duplicate.protection_effective
+        ? "PROTECTION_EFFECTIVE"
+        : sensitive
+          ? "SENSITIVE_ACTION_DUPLICATE_RISK"
+          : "DUPLICATE_NAVIGATION";
+      failures.push(warning("DUPLICATE_INTERACTION_WARN", "Repeated callback or interaction in short window", {
+        execution_id: context.execution_id,
+        previous_execution_id: previous.execution_id || null,
+        key_type: key.type,
+        sensitive,
+        protection_effective: duplicate.protection_effective,
+      }));
+      if (sensitive && !duplicate.protection_effective) {
+        failures.push(failure("SENSITIVE_ACTION_DUPLICATE_FAIL", "Sensitive action repeated without confirmed duplicate protection", {
+          execution_id: context.execution_id,
+          previous_execution_id: previous.execution_id || null,
+          action: context.action || null,
+          route: context.route || null,
+        }));
+      } else if (sensitive && duplicate.effect === "UNKNOWN") {
+        failures.push(warning("UNKNOWN_DUPLICATE_EFFECT", "Duplicate sensitive action effect could not be confirmed", {
+          execution_id: context.execution_id,
+          previous_execution_id: previous.execution_id || null,
+        }));
+      }
+    } else {
+      duplicate.status = "NO_DUPLICATE";
+    }
+  }
+
+  if (Number.isFinite(startedAtMs) && Number.isFinite(generatedAtMs)) {
+    const previousOrder = counters.interactions.find((item) => {
+      if (!Number.isFinite(item.started_at_ms) || !Number.isFinite(item.generated_at_ms)) return false;
+      if (item.chat_id_raw && context.chat_id_raw && String(item.chat_id_raw) !== String(context.chat_id_raw)) return false;
+      if (item.started_at_ms < startedAtMs && item.generated_at_ms > generatedAtMs) return true;
+      if (item.started_at_ms > startedAtMs && item.generated_at_ms < generatedAtMs) return true;
+      return false;
+    });
+    if (previousOrder) {
+      ordering.status = "OUT_OF_ORDER_RESPONSE_WARN";
+      ordering.out_of_order_detected = true;
+      ordering.previous_execution_id = previousOrder.execution_id || null;
+      ordering.relation = previousOrder.started_at_ms < startedAtMs ? "NEWER_RESPONSE_BEFORE_OLDER" : "OLDER_RESPONSE_AFTER_NEWER";
+      failures.push(warning("OUT_OF_ORDER_RESPONSE_WARN", "Execution response order differs from interaction start order", {
+        execution_id: context.execution_id,
+        previous_execution_id: previousOrder.execution_id || null,
+        relation: ordering.relation,
+      }));
+    } else {
+      ordering.status = "ORDER_OK";
+    }
+  }
+
+  counters.interactions.push({
+    key: key.key,
+    key_type: key.type,
+    execution_id: context.execution_id,
+    started_at_ms: startedAtMs,
+    generated_at_ms: generatedAtMs,
+    chat_id_raw: context.chat_id_raw || "",
+    action: context.action || "",
+    sensitive,
+  });
+  if (counters.interactions.length > 200) counters.interactions = counters.interactions.slice(-200);
+
+  return { duplicate, ordering, failures };
 }
 
 function createDbAccess(args = {}) {
@@ -445,6 +742,7 @@ function deriveExecutionContext(execution) {
   const sourceKind = firstNonEmpty(handle.source_kind, summary.source_kind, plan.source_kind, load.source_kind);
   const action = firstNonEmpty(signals.action, handle.callback_action, handle.action_token?.action, handle.action);
   const route = firstNonEmpty(signals.route, handle.requested_sandbox_action, summary.requested_sandbox_action, summary.sandbox_action_summary?.action);
+  const latencyTrace = firstObjectValue(handle.latency_trace, summary.latency_trace, plan.latency_trace, load.latency_trace);
   return {
     execution_id: execution?.id || execution?.executionId || null,
     workflow_id: execution?.workflowId || execution?.workflow_id || execution?.workflowData?.id || null,
@@ -465,6 +763,7 @@ function deriveExecutionContext(execution) {
     requested_action: firstNonEmpty(handle.requested_action, summary.requested_action, plan.requested_action) || null,
     requested_sandbox_action: firstNonEmpty(handle.requested_sandbox_action, summary.requested_sandbox_action, plan.requested_sandbox_action) || null,
     callback_reason: firstNonEmpty(handle.json_debug?.callback_reason, summary.json_debug?.callback_reason) || null,
+    latency_trace: latencyTrace,
     should_execute_sandbox_action: handle.should_execute_sandbox_action === true,
     sandbox_status: summary.sandbox_action_status || summary.sandbox_action_summary?.status || null,
     sandbox_errors: summary.sandbox_action_summary?.errors || summary.errors || [],
@@ -907,8 +1206,12 @@ function classifyExecution(execution, options = {}) {
     ? tokenDiff(previousTokens, tokens)
     : tokenChangesFromExecutionWindow(tokens, context);
   const staleDbSnapshot = dbSnapshotNewerThanExecution(draft, context);
+  const latency = latencyMetricsForContext(context, options.args || {});
+  const interactionRisks = detectInteractionRisks(context, options.args || {}, counters);
 
   let failures = [];
+  failures = failures.concat(latencyFailures(latency, context));
+  failures = failures.concat(interactionRisks.failures || []);
   if (!staleDbSnapshot && shouldAuditDraftStateButtons(context, visibleButtons)) {
     failures = failures.concat(detectStateButtonFailures({ state, buttons: visibleButtons, context }));
   }
@@ -966,6 +1269,9 @@ function classifyExecution(execution, options = {}) {
     tokens_created: tokenChanges.created.map(safeToken),
     tokens_used: tokenChanges.used.map(safeToken),
     token_expired_or_invalid_reason: context.callback_reason || null,
+    latency,
+    duplicate_interaction: interactionRisks.duplicate,
+    interaction_ordering: interactionRisks.ordering,
     reply_markup_generated: visibleButtons.length > 0,
     visible_actions: visibleButtons.map(buttonSummary),
     dispatch,
@@ -1068,6 +1374,9 @@ function updateStateFromClassified(state, classified) {
     action: event.action,
     route: event.route,
     type: event.type,
+    latency_status: event.latency?.status || "LATENCY_UNKNOWN",
+    duration_ms: event.latency?.execution_duration_ms ?? null,
+    duplicate_detected: event.duplicate_interaction?.duplicate_detected === true,
   });
   state.events.push(event);
   state.n8nExecutions.push(sanitizeReport(classified.raw_execution));
@@ -1159,6 +1468,8 @@ function printEventLine(event) {
     `route=${event.route || "N/A"}`,
     `draft=${event.draft_id || "N/A"}`,
     `dispatch=${event.telegram_dispatch_ok === true}`,
+    `latency=${event.latency?.status || "LATENCY_UNKNOWN"}`,
+    `duration_ms=${event.latency?.measured_ms ?? "UNKNOWN"}`,
   ];
   console.log(bits.join(" "));
 }
@@ -1323,6 +1634,15 @@ function buildSummaryMarkdown(state) {
   const tokenUsed = state.events.reduce((sum, event) => sum + (event.tokens_used || []).length, 0);
   const telegramSends = state.events.flatMap((event) => event.dispatch?.methods || []).filter((item) => /Telegram/.test(item.node));
   const providerEmailSends = state.events.flatMap((event) => event.document_delivery_ledger || []).filter((row) => row.channel === "PROVIDER_EMAIL" && row.delivery_status === "SENT");
+  const measuredLatencies = state.events
+    .map((event) => event.latency?.measured_ms)
+    .filter((value) => Number.isFinite(Number(value)))
+    .map(Number);
+  const slowExecutions = state.events.filter((event) => ["LATENCY_WARN", "LATENCY_FAIL"].includes(event.latency?.status));
+  const maxDuration = measuredLatencies.length ? Math.max(...measuredLatencies) : null;
+  const avgDuration = measuredLatencies.length ? Math.round(measuredLatencies.reduce((sum, value) => sum + value, 0) / measuredLatencies.length) : null;
+  const duplicateInteractions = state.events.filter((event) => event.duplicate_interaction?.duplicate_detected === true);
+  const unknownLatency = state.events.filter((event) => event.latency?.status === "LATENCY_UNKNOWN");
   const lines = [
     "# Telegram UI Session Watch",
     "",
@@ -1339,13 +1659,22 @@ function buildSummaryMarkdown(state) {
     `Routes: ${unique(state.events.map((event) => event.route).filter(Boolean)).join(", ") || "N/A"}`,
     `Telegram sends: ${telegramSends.length}`,
     `Provider email sends: ${providerEmailSends.length}`,
+    `Total executions: ${state.events.length}`,
+    `Slow executions: ${slowExecutions.length}`,
+    `Max duration ms: ${maxDuration === null ? "UNKNOWN" : maxDuration}`,
+    `Avg duration ms: ${avgDuration === null ? "UNKNOWN" : avgDuration}`,
+    `Unknown latency: ${unknownLatency.length}`,
+    `Duplicate callbacks/interactions: ${duplicateInteractions.length}`,
     `Bugs detected: ${failures.map((item) => item.code).join(", ") || "none"}`,
     `Human steps: ${(state.human_steps || []).map((item) => item.type).join(", ") || "none"}`,
     "",
     "## Buttons",
     ...state.events.flatMap((event) => {
       const found = (event.visible_actions || []).map((button) => `${button.text}:${button.action || "unknown"}`).join(" | ") || "none";
-      return [`- execution ${event.execution_id || "N/A"} draft ${event.draft_id || "N/A"}: ${found}`];
+      const latency = event.latency?.status || "LATENCY_UNKNOWN";
+      const duration = event.latency?.measured_ms ?? "UNKNOWN";
+      const duplicate = event.duplicate_interaction?.duplicate_detected === true ? " duplicate=true" : "";
+      return [`- execution ${event.execution_id || "N/A"} draft ${event.draft_id || "N/A"} latency=${latency} duration_ms=${duration}${duplicate}: ${found}`];
     }),
     "",
     "## DB Final",
@@ -1366,6 +1695,10 @@ function unique(values) {
 function writeSessionReport(state, reportDir) {
   fs.mkdirSync(reportDir, { recursive: true });
   state.finished_at = state.finished_at || new Date().toISOString();
+  if (!(state.events || []).length && !(state.failures || []).some((item) => item.code === "WATCHER_NO_EXECUTIONS_CAPTURED")) {
+    state.failures = state.failures || [];
+    state.failures.push(warning("WATCHER_NO_EXECUTIONS_CAPTURED", "Watcher finished without captured n8n executions"));
+  }
   state.pass = !(state.failures || []).some((item) => item.severity !== "WARN");
   const serializable = {
     ...state,
@@ -1453,10 +1786,12 @@ module.exports = {
   buildSummaryMarkdown,
   classifyExecution,
   createDbAccess,
+  detectInteractionRisks,
   detectStateButtonFailures,
   dispatchSummary,
   envAudit,
   envFailures,
+  latencyMetricsForContext,
   isProviderEmailAllowed,
   markHumanTimeout,
   parseArgs,

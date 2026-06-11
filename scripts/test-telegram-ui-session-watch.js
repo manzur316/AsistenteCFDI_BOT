@@ -6,6 +6,7 @@ const {
   classifyExecution,
   detectStateButtonFailures,
   isProviderEmailAllowed,
+  latencyMetricsForContext,
   markHumanTimeout,
   writeSessionReport,
 } = require("./qa/telegram-ui-session-watch");
@@ -111,6 +112,16 @@ function classify(sample, db, args = {}) {
     previousDraftSnapshots: new Map(),
     previousTokenSnapshots: new Map(),
     counters: {},
+  });
+}
+
+function classifyWithCounters(sample, counters, db = null, args = {}) {
+  return classifyExecution(sample, {
+    db,
+    args,
+    previousDraftSnapshots: new Map(),
+    previousTokenSnapshots: new Map(),
+    counters,
   });
 }
 
@@ -553,6 +564,241 @@ check("delivery_send_warns_db_unchanged_when_sent_ledger_is_stale", () => {
   assert(item);
   assert.strictEqual(item.details.ledger_evidence, "sent_ledger_row_outside_execution_window");
   return item.code;
+});
+
+check("classifies fast execution latency as OK", () => {
+  const metrics = latencyMetricsForContext({
+    execution_id: "exec-latency-ok",
+    started_at_ms: Date.parse("2026-06-11T12:00:00.000Z"),
+    generated_at_ms: Date.parse("2026-06-11T12:00:02.000Z"),
+  });
+  assert.strictEqual(metrics.status, "LATENCY_OK");
+  assert.strictEqual(metrics.measured_ms, 2000);
+  return metrics.status;
+});
+
+check("classifies 4-8s execution latency as WARN", () => {
+  const sample = execution({
+    id: "exec-latency-warn",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:05.000Z",
+    handle: { source_kind: "MESSAGE", chat_id: "6573879494", action: "COMMAND_APROBADAS" },
+  });
+  const result = classify(sample, null);
+  assert.strictEqual(result.event.latency.status, "LATENCY_WARN");
+  assert(failureCodes(result).includes("LATENCY_WARN"));
+  return result.event.latency.measured_ms;
+});
+
+check("classifies execution above 8s latency as FAIL", () => {
+  const sample = execution({
+    id: "exec-latency-fail",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:09.000Z",
+    handle: { source_kind: "MESSAGE", chat_id: "6573879494", action: "COMMAND_PENDIENTES" },
+  });
+  const result = classify(sample, null);
+  assert.strictEqual(result.event.latency.status, "LATENCY_FAIL");
+  assert(failureCodes(result).includes("LATENCY_FAIL"));
+  return result.event.latency.measured_ms;
+});
+
+check("detects repeated non-sensitive callback in short window", () => {
+  const counters = {};
+  const baseHandle = {
+    source_kind: "CALLBACK_QUERY",
+    callback_query_id: "cb-view-1",
+    callback_message_id: "800",
+    chat_id: "6573879494",
+    action: "VIEW_DRAFT",
+    action_token: { token: "DUPVIEWTOKEN001", draft_id: "DRAFT-WATCH-DUP", action: "VIEW_DRAFT" },
+  };
+  classifyWithCounters(execution({
+    id: "exec-dup-view-1",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:01.000Z",
+    handle: baseHandle,
+  }), counters);
+  const second = classifyWithCounters(execution({
+    id: "exec-dup-view-2",
+    startedAt: "2026-06-11T12:00:03.000Z",
+    stoppedAt: "2026-06-11T12:00:04.000Z",
+    handle: { ...baseHandle, callback_query_id: "cb-view-2" },
+  }), counters);
+  assert.strictEqual(second.event.duplicate_interaction.status, "DUPLICATE_INTERACTION_WARN");
+  assert.strictEqual(second.event.duplicate_interaction.effect, "DUPLICATE_NAVIGATION");
+  assert(failureCodes(second).includes("DUPLICATE_INTERACTION_WARN"));
+  assert(!failureCodes(second).includes("SENSITIVE_ACTION_DUPLICATE_FAIL"));
+  return second.event.duplicate_interaction.status;
+});
+
+check("fails repeated sensitive callback without confirmed protection", () => {
+  const counters = {};
+  const baseHandle = {
+    source_kind: "CALLBACK_QUERY",
+    callback_query_id: "cb-stamp-1",
+    callback_message_id: "801",
+    chat_id: "6573879494",
+    action: "STAMP_DRAFT_SANDBOX",
+    requested_sandbox_action: "sandbox.draft.stamp",
+    action_token: { token: "DUPSTAMPTOKEN01", draft_id: "DRAFT-WATCH-STAMP-DUP", action: "STAMP_DRAFT_SANDBOX" },
+  };
+  classifyWithCounters(execution({
+    id: "exec-dup-stamp-1",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:01.000Z",
+    handle: baseHandle,
+  }), counters);
+  const second = classifyWithCounters(execution({
+    id: "exec-dup-stamp-2",
+    startedAt: "2026-06-11T12:00:02.000Z",
+    stoppedAt: "2026-06-11T12:00:03.000Z",
+    handle: { ...baseHandle, callback_query_id: "cb-stamp-2" },
+  }), counters);
+  const codes = failureCodes(second);
+  assert(codes.includes("DUPLICATE_INTERACTION_WARN"));
+  assert(codes.includes("SENSITIVE_ACTION_DUPLICATE_FAIL"));
+  assert.strictEqual(second.event.duplicate_interaction.effect, "SENSITIVE_ACTION_DUPLICATE_RISK");
+  return codes.join(",");
+});
+
+check("recognizes token-used recovery as duplicate protection", () => {
+  const counters = {};
+  const actionToken = { token: "USEDSTAMPTOKEN01", draft_id: "DRAFT-WATCH-STAMP-USED", action: "STAMP_DRAFT_SANDBOX" };
+  classifyWithCounters(execution({
+    id: "exec-used-token-1",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:01.000Z",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "cb-used-token-1",
+      callback_message_id: "802",
+      chat_id: "6573879494",
+      action: "STAMP_DRAFT_SANDBOX",
+      requested_sandbox_action: "sandbox.draft.stamp",
+      action_token: actionToken,
+    },
+  }), counters);
+  const second = classifyWithCounters(execution({
+    id: "exec-used-token-2",
+    startedAt: "2026-06-11T12:00:02.000Z",
+    stoppedAt: "2026-06-11T12:00:03.000Z",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "cb-used-token-2",
+      callback_message_id: "802",
+      chat_id: "6573879494",
+      action: "CALLBACK_TOKEN_USED_RECOVERY",
+      requested_action: "STAMP_DRAFT_SANDBOX",
+      action_token: actionToken,
+      json_debug: { callback_reason: "token_usado" },
+    },
+  }), counters);
+  const codes = failureCodes(second);
+  assert(codes.includes("DUPLICATE_INTERACTION_WARN"));
+  assert(!codes.includes("SENSITIVE_ACTION_DUPLICATE_FAIL"));
+  assert.strictEqual(second.event.duplicate_interaction.protection_effective, true);
+  return second.event.duplicate_interaction.effect;
+});
+
+check("detects response ordering inversion when timestamps allow it", () => {
+  const counters = {};
+  classifyWithCounters(execution({
+    id: "exec-order-slow",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:06.000Z",
+    handle: { source_kind: "MESSAGE", chat_id: "6573879494", action: "COMMAND_APROBADAS" },
+  }), counters);
+  const second = classifyWithCounters(execution({
+    id: "exec-order-fast",
+    startedAt: "2026-06-11T12:00:01.000Z",
+    stoppedAt: "2026-06-11T12:00:02.000Z",
+    handle: { source_kind: "MESSAGE", chat_id: "6573879494", action: "COMMAND_DETALLE", draft_id: "DRAFT-WATCH-ORDER" },
+  }), counters);
+  assert.strictEqual(second.event.interaction_ordering.status, "OUT_OF_ORDER_RESPONSE_WARN");
+  assert(failureCodes(second).includes("OUT_OF_ORDER_RESPONSE_WARN"));
+  return second.event.interaction_ordering.relation;
+});
+
+check("reports UNKNOWN latency when timestamps are unavailable", () => {
+  const sample = execution({
+    id: "exec-latency-unknown",
+    handle: { source_kind: "MESSAGE", chat_id: "6573879494", action: "COMMAND_APROBADAS" },
+  });
+  const result = classify(sample, null);
+  const codes = failureCodes(result);
+  assert.strictEqual(result.event.latency.status, "LATENCY_UNKNOWN");
+  assert(!codes.includes("LATENCY_WARN"));
+  assert(!codes.includes("LATENCY_FAIL"));
+  return result.event.latency.status;
+});
+
+check("summary report includes latency and duplicate metrics", () => {
+  const reportDir = path.join(root, "runtime", "test-telegram-ui-session-watch", "latency-report");
+  fs.rmSync(reportDir, { recursive: true, force: true });
+  const state = {
+    label: "latency-summary",
+    started_at: "2026-06-11T12:00:00.000Z",
+    finished_at: "2026-06-11T12:01:00.000Z",
+    workflow_status: { workflow_active: true },
+    workflow_sync: { workflow_in_sync: true },
+    env: [],
+    timeline: [],
+    events: [{
+      execution_id: "exec-real-2822",
+      latency: { status: "LATENCY_WARN", measured_ms: 4200 },
+      duplicate_interaction: { duplicate_detected: true },
+      tokens_created: [],
+      tokens_used: [],
+      visible_actions: [],
+      dispatch: { methods: [] },
+      document_delivery_ledger: [],
+    }],
+    failures: [],
+    dbSnapshots: [],
+    tokenSnapshots: [],
+    n8nExecutions: [],
+    latestState: {},
+    draftIds: new Set(),
+    executionIds: new Set(["exec-real-2822"]),
+    human_steps: [],
+  };
+  const written = writeSessionReport(state, reportDir);
+  assert(written.summary.includes("Total executions: 1"));
+  assert(written.summary.includes("Slow executions: 1"));
+  assert(written.summary.includes("Max duration ms: 4200"));
+  assert(written.summary.includes("Duplicate callbacks/interactions: 1"));
+  fs.rmSync(path.join(root, "runtime", "test-telegram-ui-session-watch"), { recursive: true, force: true });
+  return "metrics present";
+});
+
+check("watcher report without executions marks WATCHER_NO_EXECUTIONS_CAPTURED", () => {
+  const reportDir = path.join(root, "runtime", "test-telegram-ui-session-watch", "no-executions-report");
+  fs.rmSync(reportDir, { recursive: true, force: true });
+  const state = {
+    label: "no-executions",
+    started_at: "2026-06-11T12:00:00.000Z",
+    finished_at: "2026-06-11T12:01:00.000Z",
+    workflow_status: { workflow_active: true },
+    workflow_sync: { workflow_in_sync: true },
+    env: [],
+    timeline: [],
+    events: [],
+    failures: [],
+    dbSnapshots: [],
+    tokenSnapshots: [],
+    n8nExecutions: [],
+    latestState: {},
+    draftIds: new Set(),
+    executionIds: new Set(),
+    human_steps: [],
+  };
+  const written = writeSessionReport(state, reportDir);
+  const codes = written.state.failures.map((item) => item.code);
+  assert(codes.includes("WATCHER_NO_EXECUTIONS_CAPTURED"));
+  assert(written.summary.includes("Execution IDs: N/A"));
+  fs.rmSync(path.join(root, "runtime", "test-telegram-ui-session-watch"), { recursive: true, force: true });
+  return codes.join(",");
 });
 
 check("generates summary.md without secrets", () => {
