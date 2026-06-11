@@ -4,12 +4,10 @@ const fs = require("fs");
 const path = require("path");
 
 const DEFAULT_CONFIG = {
-  N8N_INGEST_URL: "http://127.0.0.1:5678/webhook/cfdi-local-ingest",
   RUNNER_OFFSET_FILE: "runtime/runner-offset.json",
   TELEGRAM_POLL_TIMEOUT_SECONDS: "25",
   TELEGRAM_POLL_LIMIT: "10",
   N8N_INGEST_TIMEOUT_MS: "60000",
-  RUNNER_SECRET: "CAMBIAR_SECRET_LOCAL",
 };
 
 const TOKEN_PATTERN = /(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}/g;
@@ -40,25 +38,63 @@ function loadEnvFile(envFilePath = ".env.local") {
   return parseEnvText(fs.readFileSync(absolutePath, "utf8"));
 }
 
-function readConfig({ env = process.env, envFilePath = ".env.local" } = {}) {
-  const fileEnv = loadEnvFile(envFilePath);
+function loadEnvFiles(envFilePaths = [".env.local", ".env.pac.sandbox.local"]) {
+  const output = {};
+  for (const envFilePath of envFilePaths) Object.assign(output, loadEnvFile(envFilePath));
+  return output;
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    const text = String(value || "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function normalizeRunnerSecretAliases(config) {
+  const runnerSecret = firstNonEmpty(
+    config.RUNNER_SECRET,
+    config.CFDI_RUNNER_SECRET,
+    config.N8N_RUNNER_SECRET,
+  );
+  if (!runnerSecret) return { ...config };
+  return {
+    ...config,
+    RUNNER_SECRET: firstNonEmpty(config.RUNNER_SECRET, runnerSecret),
+    CFDI_RUNNER_SECRET: firstNonEmpty(config.CFDI_RUNNER_SECRET, runnerSecret),
+    N8N_RUNNER_SECRET: firstNonEmpty(config.N8N_RUNNER_SECRET, runnerSecret),
+  };
+}
+
+function readConfig({ env = process.env, envFilePath, envFilePaths } = {}) {
+  const paths = Array.isArray(envFilePaths)
+    ? envFilePaths
+    : envFilePath
+      ? [envFilePath]
+      : [".env.local", ".env.pac.sandbox.local"];
+  const fileEnv = loadEnvFiles(paths);
   const merged = { ...DEFAULT_CONFIG, ...fileEnv, ...env };
+  const normalized = normalizeRunnerSecretAliases(merged);
   const telegramBotToken = String(merged.TELEGRAM_BOT_TOKEN || "").trim();
-  const ingestUrl = String(merged.N8N_INGEST_URL || "").trim();
+  const ingestUrl = String(merged.N8N_WEBHOOK_URL || "").trim();
   const offsetFile = String(merged.RUNNER_OFFSET_FILE || DEFAULT_CONFIG.RUNNER_OFFSET_FILE).trim();
   const pollTimeoutSeconds = Math.max(1, Number(merged.TELEGRAM_POLL_TIMEOUT_SECONDS || 25) || 25);
   const pollLimit = Math.max(1, Math.min(100, Number(merged.TELEGRAM_POLL_LIMIT || 10) || 10));
   const ingestTimeoutMs = Math.max(1000, Number(merged.N8N_INGEST_TIMEOUT_MS || 60000) || 60000);
-  const runnerSecret = String(merged.RUNNER_SECRET || "").trim();
+  const runnerSecret = String(normalized.RUNNER_SECRET || "").trim();
 
   if (!telegramBotToken || telegramBotToken.startsWith("REEMPLAZAR")) {
-    throw new Error("Configura TELEGRAM_BOT_TOKEN en .env.local. No guardes tokens reales en el repo.");
+    throw new Error("Falta TELEGRAM_BOT_TOKEN. Configuralo en .env.local y no guardes tokens reales en el repo.");
+  }
+  if (!ingestUrl) {
+    throw new Error("Falta N8N_WEBHOOK_URL. Configuralo en .env.local para el webhook local de n8n.");
   }
   if (!ingestUrl.startsWith("http://127.0.0.1:") && !ingestUrl.startsWith("http://localhost:")) {
-    throw new Error("N8N_INGEST_URL debe apuntar a localhost o 127.0.0.1.");
+    throw new Error("N8N_WEBHOOK_URL debe apuntar a localhost o 127.0.0.1.");
   }
   if (!runnerSecret || runnerSecret === "CAMBIAR_SECRET_LOCAL") {
-    throw new Error("Configura RUNNER_SECRET en .env.local y en el Set Config del workflow n8n.");
+    throw new Error("Falta RUNNER_SECRET. Carga scripts/local/00_LOAD_LOCAL_ENV_V3_SAFE.ps1 o configura RUNNER_SECRET en .env.local.");
   }
 
   return {
@@ -225,6 +261,8 @@ module.exports = {
   DEFAULT_CONFIG,
   parseEnvText,
   loadEnvFile,
+  loadEnvFiles,
+  normalizeRunnerSecretAliases,
   readConfig,
   readOffset,
   writeOffset,

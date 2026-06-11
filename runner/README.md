@@ -11,19 +11,21 @@ No usa webhook publico de Telegram, ngrok, DNS ni Telegram Trigger.
 ## Configuracion
 
 1. Copia `.env.local.example` a `.env.local`.
-2. Rellena `TELEGRAM_BOT_TOKEN` y `RUNNER_SECRET`.
-3. Configura el mismo `RUNNER_SECRET` en el nodo `Set Config` del workflow `workflow/cfdi_telegram_local_ingest.n8n.json`.
+2. Rellena `TELEGRAM_BOT_TOKEN`, `N8N_WEBHOOK_URL` y `RUNNER_SECRET`.
+3. Carga `scripts/local/00_LOAD_LOCAL_ENV_V3_SAFE.ps1` para propagar `RUNNER_SECRET` a los aliases que consume n8n.
 
 Plantilla:
 
 ```text
 TELEGRAM_BOT_TOKEN=REEMPLAZAR_TELEGRAM_BOT_TOKEN_EN_N8N
-N8N_INGEST_URL=http://127.0.0.1:5678/webhook/cfdi-local-ingest
+N8N_WEBHOOK_URL=http://127.0.0.1:5678/webhook/cfdi-local-ingest
 RUNNER_OFFSET_FILE=runtime/runner-offset.json
 TELEGRAM_POLL_TIMEOUT_SECONDS=25
 TELEGRAM_POLL_LIMIT=10
 N8N_INGEST_TIMEOUT_MS=60000
 RUNNER_SECRET=CAMBIAR_SECRET_LOCAL
+CFDI_RUNNER_SECRET=CAMBIAR_SECRET_LOCAL
+N8N_RUNNER_SECRET=CAMBIAR_SECRET_LOCAL
 ```
 
 ## Arranque

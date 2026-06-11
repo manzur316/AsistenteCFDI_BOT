@@ -56,7 +56,8 @@ async function main() {
   checks.push({ name: "uses_ingest_timeout_config", pass: runnerText.includes("N8N_INGEST_TIMEOUT_MS") && envText.includes("N8N_INGEST_TIMEOUT_MS=60000"), value: "60000ms" });
   checks.push({ name: "uses_abort_controller_for_ingest", pass: runnerText.includes("AbortController") && runnerText.includes("controller.abort()"), value: "AbortController" });
   checks.push({ name: "uses_runner_secret_header", pass: runnerText.includes("X-CFDI-Runner-Secret"), value: "secret header" });
-  checks.push({ name: "uses_localhost_ingest_url", pass: envText.includes("http://127.0.0.1:5678/webhook/cfdi-local-ingest"), value: "local ingest" });
+  checks.push({ name: "uses_localhost_webhook_url", pass: envText.includes("N8N_WEBHOOK_URL=http://127.0.0.1:5678/webhook/cfdi-local-ingest"), value: "local webhook" });
+  checks.push({ name: "documents_runner_secret_aliases", pass: envText.includes("CFDI_RUNNER_SECRET=CAMBIAR_SECRET_LOCAL") && envText.includes("N8N_RUNNER_SECRET=CAMBIAR_SECRET_LOCAL"), value: "runner aliases" });
   checks.push({ name: "does_not_use_public_webhook_setup", pass: !/setWebhook|ngrok|https:\/\/[^\\s"']+webhook/i.test(runnerText), value: "no public webhook" });
   checks.push({ name: "gitignore_env_local", pass: gitignoreText.includes(".env.local"), value: ".env.local" });
   checks.push({ name: "gitignore_runner_offset", pass: gitignoreText.includes("runtime/runner-offset.json"), value: "runtime/runner-offset.json" });
@@ -94,7 +95,7 @@ async function main() {
       envFilePath: path.join(testRuntimeDir, "missing.env"),
       env: {
         TELEGRAM_BOT_TOKEN: "TEST_TOKEN_1234567890_LOCAL_ONLY",
-        N8N_INGEST_URL: "http://127.0.0.1:5678/webhook/cfdi-local-ingest",
+        N8N_WEBHOOK_URL: "http://127.0.0.1:5678/webhook/cfdi-local-ingest",
         RUNNER_SECRET: "TEST_SECRET",
         N8N_INGEST_TIMEOUT_MS: "60000",
       },
@@ -102,6 +103,33 @@ async function main() {
     checks.push({ name: "readConfig_parses_ingest_timeout", pass: parsedConfig.ingestTimeoutMs === 60000, value: `${parsedConfig.ingestTimeoutMs}` });
   } catch (error) {
     checks.push({ name: "readConfig_parses_ingest_timeout", pass: false, value: error.message });
+  }
+
+  try {
+    const parsedConfig = runner.readConfig({
+      envFilePath: path.join(testRuntimeDir, "missing.env"),
+      env: {
+        TELEGRAM_BOT_TOKEN: "TEST_TOKEN_1234567890_LOCAL_ONLY",
+        N8N_WEBHOOK_URL: "http://127.0.0.1:5678/webhook/cfdi-local-ingest",
+        CFDI_RUNNER_SECRET: "TEST_ALIAS_SECRET",
+      },
+    });
+    checks.push({ name: "readConfig_accepts_runner_secret_alias", pass: parsedConfig.runnerSecret === "TEST_ALIAS_SECRET", value: "CFDI_RUNNER_SECRET" });
+  } catch (error) {
+    checks.push({ name: "readConfig_accepts_runner_secret_alias", pass: false, value: error.message });
+  }
+
+  try {
+    runner.readConfig({
+      envFilePath: path.join(testRuntimeDir, "missing.env"),
+      env: {
+        TELEGRAM_BOT_TOKEN: "TEST_TOKEN_1234567890_LOCAL_ONLY",
+        RUNNER_SECRET: "TEST_SECRET",
+      },
+    });
+    checks.push({ name: "readConfig_requires_n8n_webhook_url", pass: false, value: "accepted missing N8N_WEBHOOK_URL" });
+  } catch (error) {
+    checks.push({ name: "readConfig_requires_n8n_webhook_url", pass: /N8N_WEBHOOK_URL/.test(error.message), value: error.message });
   }
 
   try {
