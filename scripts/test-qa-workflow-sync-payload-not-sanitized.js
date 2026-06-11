@@ -1,6 +1,7 @@
 const assert = require("assert");
 const {
   buildWorkflowUpdatePayload,
+  buildCredentialPreservationReport,
   buildWorkflowDiffReport,
 } = require("./qa/workflow-sync");
 
@@ -75,6 +76,30 @@ assert.strictEqual(payloadJson.includes('"from"'), true, "payload must preserve 
 assert.strictEqual(payloadJson.includes("false"), true, "payload must preserve false");
 assert.strictEqual(payloadJson.includes("https://api.telegram.org"), true, "payload must preserve telegram endpoint");
 
+const workflowWithRuntimeCredentials = {
+  ...repoWorkflow,
+  nodes: repoWorkflow.nodes.map((node) => (
+    node.name === "Telegram fallback sendMessage"
+      ? {
+        ...node,
+        credentials: {
+          httpHeaderAuth: {
+            id: "runtime-credential-id",
+            name: "runtime credential",
+          },
+        },
+      }
+      : node
+  )),
+};
+const credentialPayload = buildWorkflowUpdatePayload(repoWorkflow, workflowWithRuntimeCredentials);
+const credentialNode = credentialPayload.nodes.find((node) => node.name === "Telegram fallback sendMessage");
+const credentialReport = buildCredentialPreservationReport(repoWorkflow, workflowWithRuntimeCredentials, credentialPayload);
+assert.strictEqual(Boolean(repoWorkflow.nodes[0].credentials), false, "repo workflow fixture must not contain credentials");
+assert.strictEqual(Boolean(credentialNode.credentials?.httpHeaderAuth), true, "payload should preserve runtime n8n credentials");
+assert.strictEqual(credentialReport.credentials_preserved, true, "credential report should confirm preservation");
+assert.strictEqual(credentialReport.lost_credential_nodes.length, 0, "no runtime credentials should be lost");
+
 const n8nWorkflow = {
   ...repoWorkflow,
   nodes: [
@@ -103,5 +128,6 @@ console.log("QA Workflow Sync Payload Not Sanitized Tests");
 console.log(" - workflow_update_payload_uses_raw_fields: PASS");
 console.log(" - workflow_update_payload_rejects_managed_keys: PASS");
 console.log(" - workflow_update_payload_preserves_normal_words_and_code: PASS");
+console.log(" - workflow_update_payload_preserves_runtime_credentials: PASS");
 console.log(" - workflow_diff_report_still_sanitized: PASS");
-console.log("\nPASS total: 4/4");
+console.log("\nPASS total: 5/5");

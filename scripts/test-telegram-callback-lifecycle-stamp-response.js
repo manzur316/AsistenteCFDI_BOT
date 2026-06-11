@@ -86,6 +86,7 @@ check("stamp_action_summary_builds_visible_response_and_buttons", () => {
         mode: "live",
         uuid_present: true,
         pac_invoice_id_present: true,
+        artifact_status: "DOWNLOAD_READY",
         xml_provider_available: true,
         pdf_provider_available: true,
       },
@@ -103,6 +104,8 @@ check("stamp_action_summary_builds_visible_response_and_buttons", () => {
   assert(callbacks.some((item) => item.startsWith("cfdi:")), "fresh action tokens missing");
   assert(callbacks.includes("cfdi_sbx:latest"), "latest callback missing");
   assert(callbacks.includes("cfdi_nav:menu"), "menu callback missing");
+  assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "fresh download token insert missing");
+  assert(!result.persistence_sql.includes("'STAMP_DRAFT_SANDBOX'"), "post-stamp summary must not create stamp token");
   return result.sandbox_draft_status;
 });
 

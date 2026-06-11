@@ -139,6 +139,38 @@ function primaryEmailFromDraft(draft = {}) {
   return text(client.email || client.correo || draft.client_email);
 }
 
+function parseEnvFlag(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
+}
+
+function normalizedEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function providerEmailAllowlist(env = process.env) {
+  return String(env.SATBOT_PROVIDER_EMAIL_ALLOWLIST || "")
+    .split(/[,\s;]+/)
+    .map(normalizedEmail)
+    .filter(Boolean);
+}
+
+function providerEmailRealSendGuard(email, env = process.env) {
+  if (!parseEnvFlag(env.SATBOT_PROVIDER_EMAIL_REAL_SEND_ENABLED)) {
+    return {
+      code: "PROVIDER_EMAIL_REAL_SEND_DISABLED",
+      message: "Provider email real-send bloqueado por env.",
+    };
+  }
+  const allowlist = providerEmailAllowlist(env);
+  if (!allowlist.includes(normalizedEmail(email))) {
+    return {
+      code: "PROVIDER_EMAIL_OUTSIDE_ALLOWLIST",
+      message: "Provider email fuera de allowlist.",
+    };
+  }
+  return null;
+}
+
 function emailConfirmedFromDraft(draft = {}) {
   const client = clientFromDraft(draft);
   return client.email_confirmed === true || client.emailConfirmed === true || draft.email_confirmed === true;
@@ -1066,6 +1098,23 @@ async function runProviderEmailDelivery(options = {}) {
         ...(providerEmailSyncStatus === "NEEDS_SYNC" ? ["PROVIDER_EMAIL_SYNC_REQUIRED_DRY_RUN_ONLY"] : []),
       ],
       errors: [],
+    };
+  }
+  const realSendGuard = providerEmailRealSendGuard(email, options.env || process.env);
+  if (realSendGuard) {
+    return {
+      status: realSendGuard.code,
+      output: {
+        draft_id: text(draft.draft_id || options.draftId),
+        channel: DOCUMENT_DELIVERY_CHANNELS.PROVIDER_EMAIL,
+        client_email_present: true,
+        client_email_redacted: redactEmail(email),
+        client_email_confirmed: emailConfirmed,
+        provider_email_sync_status: providerEmailSyncStatus,
+        blocker: realSendGuard.code,
+      },
+      warnings: [realSendGuard.message],
+      errors: [realSendGuard.code],
     };
   }
   const adapter = options.adapter || new FacturaComSandboxAdapter({ env: options.env || process.env });

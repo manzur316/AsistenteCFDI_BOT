@@ -157,7 +157,7 @@ function clientDecisionState() {
   };
 }
 
-function draft(draftId, status = "PENDIENTE") {
+function draft(draftId, status = "PENDIENTE", overrides = {}) {
   return {
     draft_id: draftId,
     chat_id: chatId,
@@ -181,6 +181,7 @@ function draft(draftId, status = "PENDIENTE") {
     total: 832.67,
     tax_summary: { warning: "BORRADOR SUJETO A REVISION HUMANA" },
     tax_review_required: true,
+    ...overrides,
   };
 }
 
@@ -298,6 +299,28 @@ if (handleCode) {
   const pending = draft("DRAFT-PEND-1", "PENDIENTE");
   const pending2 = draft("DRAFT-PEND-2", "PENDIENTE");
   const approved = draft("DRAFT-APROB-1", "APROBADO");
+  const sandboxDownloadReady = draft("DRAFT-SBX-DL-1", "APROBADO", {
+    invoice_status: "SANDBOX_TIMBRADO",
+    sandbox_status: "APROBADO",
+    sandbox_pac_summary: {
+      artifact_status: "DOWNLOAD_READY",
+      xml_downloaded: false,
+      pdf_downloaded: false,
+      xml_content_valid: false,
+      pdf_content_valid: false,
+    },
+  });
+  const sandboxDownloaded = draft("DRAFT-SBX-DL-2", "APROBADO", {
+    invoice_status: "SANDBOX_TIMBRADO",
+    sandbox_status: "APROBADO",
+    sandbox_pac_summary: {
+      artifact_status: "DOWNLOADED",
+      xml_downloaded: true,
+      pdf_downloaded: true,
+      xml_content_valid: true,
+      pdf_content_valid: true,
+    },
+  });
 
   const cases = [
     {
@@ -326,6 +349,25 @@ if (handleCode) {
       expect: (result) => result.action === "COMMAND_DETALLE" && hasButtons(result, ["Aprobar", "Descartar", "Volver a pendientes", "Ver resumen"]) && callbacksSafe(result),
     },
     {
+      name: "detalle_timbrado_download_ready_muestra_descarga_y_no_timbrado",
+      run: () => executeCode(handleCode, baseInput("/detalle DRAFT-SBX-DL-1", { update_id: 93041, recent_drafts: [sandboxDownloadReady] })),
+      expect: (result) => {
+        const texts = buttonTexts(result);
+        return result.action === "COMMAND_DETALLE"
+          && texts.includes("Descargar XML/PDF sandbox")
+          && !texts.includes("Timbrar sandbox")
+          && callbacksSafe(result);
+      },
+    },
+    {
+      name: "detalle_timbrado_downloaded_mantiene_descarga_disponible",
+      run: () => executeCode(handleCode, baseInput("/detalle DRAFT-SBX-DL-2", { update_id: 93042, recent_drafts: [sandboxDownloaded] })),
+      expect: (result) => {
+        const texts = buttonTexts(result);
+        return result.action === "COMMAND_DETALLE" && texts.includes("Descargar XML/PDF sandbox") && callbacksSafe(result);
+      },
+    },
+    {
       name: "aprobadas_tiene_ver_detalle_y_nav",
       run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 9305, recent_drafts: [pending, approved] })),
       expect: (result) => result.action === "COMMAND_APROBADAS" && hasButtons(result, ["Ver 1", "Pendientes", "Menu"]) && callbacksSafe(result),
@@ -333,7 +375,12 @@ if (handleCode) {
     {
       name: "token_expirado_tiene_recuperacion",
       run: () => executeCode(handleCode, callbackInput("CONFIRM", { draft_id: "DRAFT-PEND-1" }, { update_id: 9306, expires_at: "2020-01-01T00:00:00.000Z", chat_state: previewState(), recent_drafts: [pending] })),
-      expect: (result) => result.action === "CALLBACK_TOKEN_INVALID" && hasButtons(result, ["Ver pendientes", "Crear nuevo borrador", "Ayuda"]) && callbacksSafe(result),
+      expect: (result) => result.action === "CALLBACK_TOKEN_CONTEXT_RECOVERED"
+        && result.json_debug?.callback_reason === "token_expirado"
+        && result.json_debug?.action_executed === false
+        && !/status = 'APROBADO'|status = 'DESCARTADO'|INSERT INTO cfdi_drafts/.test(String(result.persistence_sql || ""))
+        && hasButtons(result, ["Aprobar", "Descartar", "Volver a pendientes", "Ver resumen"])
+        && callbacksSafe(result),
     },
     {
       name: "help_menu_start_ayuda_unknown",

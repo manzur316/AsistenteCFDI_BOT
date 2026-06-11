@@ -1,4 +1,4 @@
-const assert = require("assert");
+﻿const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 
@@ -121,6 +121,20 @@ function assertNotInvalidButton(result) {
   assert.notStrictEqual(result.action, "CALLBACK_TOKEN_INVALID", "valid download token returned CALLBACK_TOKEN_INVALID");
 }
 
+function buttonLabels(result) {
+  return (result.reply_markup?.inline_keyboard || []).flat().map((button) => button.text);
+}
+
+function assertContextRecovered(result, reason) {
+  assert.strictEqual(result.action, "CALLBACK_TOKEN_CONTEXT_RECOVERED");
+  assert.strictEqual(result.json_debug?.callback_reason, reason);
+  assert.strictEqual(result.json_debug?.action_executed, false);
+  assert(!result.should_execute_sandbox_action, "recovered token must not execute sandbox action");
+  assert(!String(result.sandbox_execute_command || "").includes("sandbox.draft.download-artifacts"), "recovered token must not build download command");
+  assert(!String(result.callback_processing_sql || "").includes("UPDATE cfdi_action_tokens SET used_at"), "recovered token must not consume old token");
+  assert(buttonLabels(result).includes("Descargar XML/PDF sandbox"), "fresh download button missing");
+}
+
 const workflowText = fs.readFileSync(workflowPath, "utf8");
 const workflow = JSON.parse(workflowText);
 const handleCode = getNode(workflow, "Handle Commands And Scoring").parameters.jsCode;
@@ -191,20 +205,17 @@ check("mock_download_needs_runtime_is_reported_safely_not_invalid", () => {
   assert(/timbrado sandbox live/i.test(result.telegram_message));
   assert(/XML descargado: no/.test(result.telegram_message));
   assert(/PDF descargado: no/.test(result.telegram_message));
-  assert(/No se envian documentos por Telegram/.test(result.telegram_message));
   assert(!/sendDocument|<\?xml|%PDF|[A-Za-z]:[\\/]/i.test(result.telegram_message), "unsafe document/path leak");
   return result.sandbox_action_status;
 });
 
-check("expired_download_token_is_invalid_or_expired", () => {
+check("expired_download_token_recovers_draft_context", () => {
   const result = executeCode(handleCode, callbackInput("expiredtokendownload", {
     expires_at: "2000-01-01T00:00:00.000Z",
     update_id: 7163003,
   }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_INVALID");
-  assert(/El boton vencio/.test(result.telegram_message));
-  assert(/botones actualizados/.test(result.telegram_message));
-  assert(result.reply_markup?.inline_keyboard?.length > 0, "expired token must include recovery buttons");
+  assertContextRecovered(result, "token_expirado");
+  assert(/El boton anterior vencio/.test(result.telegram_message));
   return result.action;
 });
 
@@ -242,14 +253,13 @@ check("wrong_chat_download_token_is_rejected", () => {
   return result.action;
 });
 
-check("unknown_action_token_is_rejected", () => {
+check("unknown_action_token_with_draft_recovers_context", () => {
   const result = executeCode(handleCode, callbackInput("unknownactiondown", {
     action: "DOWNLOAD_SANDBOX_UNKNOWN",
     update_id: 7163006,
   }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_INVALID");
-  assert(/No pude usar este boton/.test(result.telegram_message));
-  assert(/accion_invalida/.test(result.telegram_message));
+  assertContextRecovered(result, "accion_invalida");
+  assert(/accion vigente/.test(result.telegram_message));
   return result.action;
 });
 
@@ -258,3 +268,7 @@ for (const item of checks) printCheck(item.name, item.pass, item.value);
 const failed = checks.filter((item) => !item.pass);
 console.log(`\nPASS total: ${checks.length - failed.length}/${checks.length}`);
 if (failed.length) process.exit(1);
+
+
+
+

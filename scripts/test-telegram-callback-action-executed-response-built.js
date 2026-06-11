@@ -1,6 +1,7 @@
 const assert = require("assert");
 
 const {
+  allCallbackData,
   baseSource,
   executeCode,
   getNodeCode,
@@ -106,6 +107,59 @@ check("delivery_prepare_action_executed_creates_confirm_token_and_response", () 
   assert(/Confirmar envio por correo/.test(result.telegram_message));
   assert(result.reply_markup?.inline_keyboard?.flat().some((button) => /Confirmar envio correo/.test(button.text)), "confirm button missing");
   return result.sandbox_action_status;
+});
+
+check("delivery_send_action_executed_refreshes_documentary_menu_tokens", () => {
+  const stdout = JSON.stringify({
+    schema_version: "sandbox_action_result.v1",
+    action: "sandbox.documents.delivery.send",
+    status: "OK",
+    ok: true,
+    duration_ms: 120,
+    artifacts: [],
+    warnings: [],
+    errors: [],
+    sensitive_findings: [],
+    output: {
+      draft_id: "DRAFT-ACTION-BUILT-DELIVERY-SEND",
+      client_id: "CLI-REAL-BILBAO",
+      channel: "TELEGRAM_DOCUMENT_CHANNEL",
+      status: "SENT",
+      delivery_ledger: {
+        delivery_id: "DELIV-ACTION-BUILT-DELIVERY-SEND",
+        delivery_status: "SENT",
+        channel: "TELEGRAM_DOCUMENT_CHANNEL",
+        recipient_redacted: "[REDACTED_CHAT_ID len=9]",
+        sent_at: "2026-06-11T12:00:00.000Z",
+      },
+    },
+  });
+  const staleMarkup = {
+    inline_keyboard: [[{ text: "Enviar a canal documentos", callback_data: "cfdi:STALEDELIVERYTOKEN001" }]],
+  };
+  const result = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({
+    draft_id: "DRAFT-ACTION-BUILT-DELIVERY-SEND",
+    source_kind: "CALLBACK_QUERY",
+    callback_query_id: "CALLBACK-DELIVERY-SEND-001",
+    callback_message_id: "712",
+    sandbox_delivery_channel: "TELEGRAM_DOCUMENT_CHANNEL",
+    sandbox_reply_markup: staleMarkup,
+    reply_markup: staleMarkup,
+  }) }]);
+  assertResponseBuilt(result, "sandbox.documents.delivery.send");
+  assert(/Documentos enviados a canal/.test(result.telegram_message));
+  const labels = (result.reply_markup.inline_keyboard || []).flat().map((button) => button.text);
+  assert(labels.includes("Ver estado documental"), "delivery status button missing after send");
+  assert(labels.includes("Enviar a canal documentos"), "telegram prepare button missing after send");
+  assert(labels.includes("Enviar por correo"), "provider prepare button missing after send");
+  assert(labels.includes("Ver factura"), "view draft button missing after send");
+  assert(labels.includes("Menu principal"), "menu button missing after send");
+  assert(result.persistence_sql.includes("DELIVERY_STATUS"), "delivery status token insert missing after send");
+  assert(result.persistence_sql.includes("DELIVERY_PREPARE_TELEGRAM_CHANNEL"), "telegram prepare token insert missing after send");
+  assert(result.persistence_sql.includes("DELIVERY_PREPARE_PROVIDER_EMAIL"), "provider prepare token insert missing after send");
+  assert(!allCallbackData(result.reply_markup).includes("cfdi:STALEDELIVERYTOKEN001"), "post-send reused stale callback_data");
+  assert(allCallbackData(result.reply_markup).every((value) => /^cfdi:[A-Za-z0-9_-]{12,40}$/.test(value)), "post-send callback_data not backed by fresh token");
+  return labels.length;
 });
 
 console.log("Telegram Callback Action Executed Response Built Tests");

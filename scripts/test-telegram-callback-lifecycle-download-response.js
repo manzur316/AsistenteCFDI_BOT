@@ -52,6 +52,14 @@ check("download_action_summary_builds_visible_response_and_delivery_buttons", ()
     draft: sandboxStampedDraft("DRAFT-DOWNLOAD-LIFECYCLE-001"),
     update_id: 7173102,
   }));
+  const restoreSource = {
+    ...source,
+    chat_id: "",
+    sandbox_draft_context: {
+      ...(source.sandbox_draft_context || {}),
+    },
+  };
+  delete restoreSource.sandbox_draft_context.chat_id;
   const stdout = JSON.stringify({
     schema_version: "sandbox_action_result.v1",
     action: "sandbox.draft.download-artifacts",
@@ -77,7 +85,11 @@ check("download_action_summary_builds_visible_response_and_delivery_buttons", ()
       persistence_status: "UPDATED",
     },
   });
-  const result = executeCode(summaryCode, { stdout }, () => [{ json: source }]);
+  const result = executeCode(summaryCode, { stdout }, (nodeName) => {
+    if (nodeName === "Restore Processing Lock Context") return [{ json: restoreSource }];
+    if (nodeName === "Handle Commands And Scoring") return [{ json: source }];
+    return [];
+  });
   assert.strictEqual(result.should_send_telegram, true);
   assert(/Descarga sandbox completada/.test(result.telegram_message));
   assert(/XML descargado: si/.test(result.telegram_message));
@@ -97,6 +109,8 @@ check("download_action_summary_builds_visible_response_and_delivery_buttons", ()
   assert(labels.includes("Menu principal"), "menu button missing after download");
   assert(result.persistence_sql.includes("DELIVERY_PREPARE_PROVIDER_EMAIL"), "provider delivery token SQL missing after download");
   assert(result.persistence_sql.includes("DELIVERY_PREPARE_TELEGRAM_CHANNEL"), "telegram delivery token SQL missing after download");
+  assert(/VALUES \('[A-Za-z0-9_-]+', '6573879494', 'DRAFT-DOWNLOAD-LIFECYCLE-001'/.test(result.persistence_sql), "delivery token SQL must use recovered chat_id");
+  assert(!/VALUES \('[A-Za-z0-9_-]+', '', 'DRAFT-DOWNLOAD-LIFECYCLE-001'/.test(result.persistence_sql), "delivery token SQL must not use empty chat_id");
   return result.sandbox_action_status;
 });
 

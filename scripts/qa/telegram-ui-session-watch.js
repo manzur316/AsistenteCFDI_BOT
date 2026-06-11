@@ -1,0 +1,1467 @@
+#!/usr/bin/env node
+"use strict";
+
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+
+const { createN8nApiClient } = require("./n8n-api-client");
+const { createPostgresQaClient, sqlQuote } = require("./postgres-qa-client");
+const {
+  analyzeExecution,
+  dispatchNodesExecuted,
+  getNodeJsonItems,
+  latestNodeJson,
+  listExecutedNodes,
+  nodeExecuted,
+} = require("./qa-assertions");
+const { sanitizeReport } = require("./sanitize-report");
+const { runScenario } = require("./satbot-e2e-harness");
+const { runPsqlJson } = require("../lib/local-db-psql-runner");
+const {
+  draftState,
+  extractArtifactPaths,
+  extractVisibleButtons,
+  getExecutionSignals,
+  runAcceptance,
+} = require("./telegram-ui-button-acceptance");
+
+const ROOT = path.resolve(__dirname, "../..");
+const DEFAULT_TIMEOUT_MS = 120000;
+const DEFAULT_POLL_MS = 2500;
+const WATCH_LIMIT = 20;
+
+const REQUIRED_ENV_KEYS = [
+  "N8N_API_KEY",
+  "N8N_BASE_URL",
+  "N8N_WEBHOOK_URL",
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_DOCUMENT_DELIVERY_CHAT_ID",
+  "SATBOT_TELEGRAM_UI_TEST_CHAT_ID",
+  "FACTURACOM_API_KEY",
+  "FACTURACOM_SECRET_KEY",
+];
+
+const SECRET_LENGTH_KEYS = new Set([
+  "N8N_API_KEY",
+  "TELEGRAM_BOT_TOKEN",
+  "FACTURACOM_API_KEY",
+  "FACTURACOM_SECRET_KEY",
+]);
+
+const ROUTE_EXPECTATIONS = Object.freeze({
+  DOWNLOAD_SANDBOX_ARTIFACTS: "sandbox.draft.download-artifacts",
+  STAMP_DRAFT_SANDBOX: "sandbox.draft.stamp",
+  DELIVERY_PREPARE_TELEGRAM_CHANNEL: "sandbox.documents.delivery.prepare",
+  DELIVERY_PREPARE_PROVIDER_EMAIL: "sandbox.documents.delivery.prepare",
+  DELIVERY_CONFIRM_TELEGRAM_CHANNEL: "sandbox.documents.delivery.send",
+  DELIVERY_CONFIRM_PROVIDER_EMAIL: "sandbox.documents.delivery.send",
+  DELIVERY_FORCE_TELEGRAM_CHANNEL: "sandbox.documents.delivery.send",
+  DELIVERY_FORCE_PROVIDER_EMAIL: "sandbox.documents.delivery.send",
+});
+
+function parseBool(value) {
+  return value === true || value === "1" || value === 1 || String(value || "").toLowerCase() === "true";
+}
+
+function parseNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseArgs(argv) {
+  const args = {
+    watch: false,
+    guided: false,
+    last: false,
+    report: "",
+    label: "session",
+    flow: "",
+    draftId: "",
+    executionId: "",
+    timeoutMs: DEFAULT_TIMEOUT_MS,
+    pollMs: DEFAULT_POLL_MS,
+    sinceExecutionId: "",
+    sinceNow: false,
+    failFast: false,
+    json: false,
+    markdown: false,
+    allowTelegramChannelSend: false,
+    allowProviderEmailSend: false,
+    maxProviderEmailSend: 1,
+    dbExecMode: "",
+    allowRemoteN8n: false,
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--help" || arg === "-h") args.help = true;
+    else if (arg === "--watch") args.watch = true;
+    else if (arg === "--guided") args.guided = true;
+    else if (arg === "--last") args.last = true;
+    else if (arg === "--since-now") args.sinceNow = true;
+    else if (arg === "--fail-fast") args.failFast = true;
+    else if (arg === "--json") args.json = true;
+    else if (arg === "--markdown") args.markdown = true;
+    else if (arg === "--allow-telegram-channel-send") args.allowTelegramChannelSend = true;
+    else if (arg === "--allow-provider-email-send") args.allowProviderEmailSend = true;
+    else if (arg.startsWith("--")) {
+      const key = arg.slice(2).replace(/-([a-z])/g, (_match, char) => char.toUpperCase());
+      const next = argv[index + 1];
+      if (next === undefined || next.startsWith("--")) {
+        args[key] = true;
+      } else {
+        args[key] = next;
+        index += 1;
+      }
+    }
+  }
+  args.timeoutMs = parseNumber(args.timeoutMs, DEFAULT_TIMEOUT_MS);
+  args.pollMs = parseNumber(args.pollMs, DEFAULT_POLL_MS);
+  args.maxProviderEmailSend = parseNumber(args.maxProviderEmailSend || process.env.SATBOT_PROVIDER_EMAIL_MAX_PER_RUN, 1);
+  args.label = String(args.label || "session").trim() || "session";
+  args.flow = String(args.flow || "").trim();
+  args.draftId = String(args.draftId || "").trim();
+  args.executionId = String(args.executionId || "").trim();
+  args.sinceExecutionId = String(args.sinceExecutionId || "").trim();
+  return args;
+}
+
+function printHelp() {
+  console.log([
+    "SATBOT Telegram UI Session Watch",
+    "",
+    "Usage:",
+    "  node scripts/qa/telegram-ui-session-watch.js --watch --label <label>",
+    "  node scripts/qa/telegram-ui-session-watch.js --guided --flow full-sandbox --label <label>",
+    "  node scripts/qa/telegram-ui-session-watch.js --watch --draft-id <DRAFT_ID> --label <label>",
+    "  node scripts/qa/telegram-ui-session-watch.js --last --execution-id <ID>",
+    "  node scripts/qa/telegram-ui-session-watch.js --report <REPORT_DIR>",
+    "",
+    "Options:",
+    "  --timeout-ms <ms>",
+    "  --poll-ms <ms>",
+    "  --since-execution-id <id>",
+    "  --since-now",
+    "  --fail-fast",
+    "  --json",
+    "  --markdown",
+    "  --allow-telegram-channel-send",
+    "  --allow-provider-email-send",
+    "  --max-provider-email-send 1",
+  ].join("\n"));
+}
+
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const match = line.match(/^\s*([^#][^=]+)=(.*)$/);
+    if (!match) continue;
+    const key = match[1].trim();
+    const value = match[2].trim().replace(/^"|"$/g, "");
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
+
+function loadLocalEnv() {
+  loadEnvFile(path.join(ROOT, ".env.local"));
+  loadEnvFile(path.join(ROOT, ".env.pac.sandbox.local"));
+}
+
+function envAudit(env = process.env) {
+  const keys = [
+    "N8N_API_KEY",
+    "N8N_BASE_URL",
+    "N8N_WEBHOOK_URL",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_DOCUMENT_DELIVERY_CHAT_ID",
+    "SATBOT_TELEGRAM_UI_TEST_CHAT_ID",
+    "SATBOT_TELEGRAM_UI_ACCEPTANCE_ENABLED",
+    "SATBOT_PROVIDER_EMAIL_REAL_SEND_ENABLED",
+    "SATBOT_PROVIDER_EMAIL_ALLOWLIST",
+    "SATBOT_PROVIDER_EMAIL_MAX_PER_RUN",
+    "FACTURACOM_API_KEY",
+    "FACTURACOM_SECRET_KEY",
+    "RUNNER_SECRET",
+    "CFDI_RUNNER_SECRET",
+    "N8N_RUNNER_SECRET",
+    "N8N_BLOCK_ENV_ACCESS_IN_NODE",
+  ];
+  return keys.map((key) => {
+    const value = String(env[key] || "");
+    return {
+      key,
+      status: value ? "PRESENT" : "MISSING",
+      length: SECRET_LENGTH_KEYS.has(key) && value ? value.length : undefined,
+    };
+  });
+}
+
+function envFailures(audit) {
+  const failures = [];
+  const present = new Map((audit || []).map((item) => [item.key, item.status === "PRESENT"]));
+  for (const key of REQUIRED_ENV_KEYS) {
+    if (!present.get(key)) failures.push(failure("ENV_REQUIRED_MISSING", `${key} missing`, { key }));
+  }
+  if (!present.get("RUNNER_SECRET") && !present.get("CFDI_RUNNER_SECRET") && !present.get("N8N_RUNNER_SECRET")) {
+    failures.push(failure("RUNNER_SECRET_MISSING", "runner secret missing"));
+  }
+  return failures;
+}
+
+function hashText(value) {
+  const text = String(value || "");
+  if (!text) return "";
+  return crypto.createHash("sha256").update(text).digest("hex").slice(0, 10);
+}
+
+function redactId(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return `redacted:${text.length}:${hashText(text)}`;
+}
+
+function redactEmail(value) {
+  const text = String(value || "").trim();
+  if (!text || !text.includes("@")) return text ? "[email-redacted]" : "";
+  const [local, domain] = text.split("@");
+  const safeLocal = local ? `${local.slice(0, 1)}***` : "***";
+  return `${safeLocal}@${domain}`;
+}
+
+function maskToken(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text.length > 8 ? `${text.slice(0, 4)}...${text.slice(-4)}` : `${text.slice(0, 2)}...`;
+}
+
+function slug(value) {
+  return String(value || "session").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "session";
+}
+
+function timestampSlug(date = new Date()) {
+  return date.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+}
+
+function reportDirFor(label, now = new Date()) {
+  return path.join("runtime", "qa-reports", `${timestampSlug(now)}-telegram-ui-session-${slug(label)}`);
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+  }
+  return "";
+}
+
+function firstValidTimeMs(...values) {
+  for (const value of values) {
+    if (!value) continue;
+    const parsed = new Date(value).getTime();
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function failure(code, message, details = {}, severity = "FAIL") {
+  return {
+    code,
+    severity,
+    message,
+    details,
+    created_at: new Date().toISOString(),
+  };
+}
+
+function warning(code, message, details = {}) {
+  return failure(code, message, details, "WARN");
+}
+
+function createDbAccess(args = {}) {
+  const dbOptions = {
+    env: process.env,
+    dbExecMode: args.dbExecMode || process.env.CFDI_DB_EXEC_MODE || "docker",
+  };
+  const qa = createPostgresQaClient(dbOptions);
+  function queryJson(sql) {
+    return runPsqlJson(sql, dbOptions);
+  }
+  return {
+    ...qa,
+    queryJson,
+    getDraftFull(draftId) {
+      if (!draftId) return null;
+      return queryJson(`SELECT to_jsonb(d) FROM cfdi_drafts d WHERE d.draft_id = ${sqlQuote(draftId)} LIMIT 1;`);
+    },
+    getTokensForDraft(draftId) {
+      if (!draftId) return [];
+      return queryJson(`SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY created_at DESC), '[]'::jsonb) FROM (SELECT token, chat_id, draft_id, action, expires_at, used_at, payload, created_at FROM cfdi_action_tokens WHERE draft_id = ${sqlQuote(draftId)} ORDER BY created_at DESC LIMIT 100) t;`) || [];
+    },
+    getRecentTokens(chatId) {
+      if (!chatId) return [];
+      return queryJson(`SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY created_at DESC), '[]'::jsonb) FROM (SELECT token, chat_id, draft_id, action, expires_at, used_at, payload, created_at FROM cfdi_action_tokens WHERE chat_id = ${sqlQuote(chatId)} ORDER BY created_at DESC LIMIT 100) t;`) || [];
+    },
+    getLedgerFull(draftId) {
+      if (!draftId) return [];
+      return queryJson(`SELECT COALESCE(jsonb_agg(to_jsonb(l) ORDER BY created_at DESC), '[]'::jsonb) FROM (SELECT * FROM document_delivery_ledger WHERE draft_id = ${sqlQuote(draftId)} ORDER BY created_at DESC LIMIT 100) l;`) || [];
+    },
+    getSendLogs({ chatId, updateId } = {}) {
+      const filters = [];
+      if (chatId) filters.push(`chat_id = ${sqlQuote(chatId)}`);
+      if (updateId) filters.push(`update_id = ${Number(updateId) || 0}`);
+      const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+      return queryJson(`SELECT COALESCE(jsonb_agg(to_jsonb(s) ORDER BY created_at DESC), '[]'::jsonb) FROM (SELECT send_log_id, chat_id, update_id, ok, error, payload, created_at FROM send_logs ${where} ORDER BY created_at DESC LIMIT 30) s;`) || [];
+    },
+    findDraftByState({ draftId, chatId, invoiceStatus, artifactStatus }) {
+      if (draftId) return this.getDraftFull(draftId);
+      const filters = [];
+      if (chatId) filters.push(`chat_id = ${sqlQuote(chatId)}`);
+      if (invoiceStatus) filters.push(`invoice_status = ${sqlQuote(invoiceStatus)}`);
+      if (artifactStatus) filters.push(`COALESCE(sandbox_pac_summary->>'artifact_status', '') = ${sqlQuote(artifactStatus)}`);
+      const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+      return queryJson(`SELECT to_jsonb(d) FROM cfdi_drafts d ${where} ORDER BY updated_at DESC LIMIT 1;`);
+    },
+  };
+}
+
+function safeToken(row) {
+  return {
+    token: maskToken(row?.token),
+    action: row?.action || null,
+    draft_id: row?.draft_id || row?.payload?.draft_id || null,
+    chat_id_present: Boolean(row?.chat_id),
+    chat_id_redacted: row?.chat_id ? redactId(row.chat_id) : "",
+    used: Boolean(row?.used_at),
+    expires_at: row?.expires_at || null,
+    created_at: row?.created_at || null,
+    channel: row?.payload?.channel || null,
+  };
+}
+
+function safeLedger(row) {
+  return {
+    channel: row?.channel || null,
+    delivery_status: row?.delivery_status || null,
+    delivery_action: row?.delivery_action || null,
+    sent_at_present: Boolean(row?.sent_at),
+    documents_valid: row?.documents_valid === true,
+    xml_content_valid: row?.xml_content_valid === true,
+    pdf_content_valid: row?.pdf_content_valid === true,
+    recipient_present: row?.recipient_present === true,
+    recipient_redacted: row?.recipient_redacted || null,
+    created_at: row?.created_at || null,
+  };
+}
+
+function safeSendLog(row) {
+  return {
+    send_log_id: row?.send_log_id || null,
+    chat_id_present: Boolean(row?.chat_id),
+    chat_id_redacted: row?.chat_id ? redactId(row.chat_id) : "",
+    update_id: row?.update_id || null,
+    ok: row?.ok === true,
+    error: row?.error ? String(row.error).slice(0, 300) : null,
+    created_at: row?.created_at || null,
+  };
+}
+
+function safeDraftSnapshot(draft) {
+  const state = draftState(draft || {});
+  return {
+    ...state,
+    chat_id_present: Boolean(draft?.chat_id),
+    chat_id_redacted: draft?.chat_id ? redactId(draft.chat_id) : "",
+    updated_at: draft?.updated_at || null,
+  };
+}
+
+function buttonSummary(button) {
+  return {
+    text: button?.text || "",
+    action: button?.action || null,
+    token: button?.token_masked || maskToken(button?.token),
+    draft_id: button?.draft_id || null,
+    callback_data_present: button?.callback_data_present === true,
+  };
+}
+
+function extractDraftIdFromExecution(execution, signals = {}) {
+  const handle = signals.handle || latestNodeJson(execution, "Handle Commands And Scoring") || {};
+  const summary = signals.summary || latestNodeJson(execution, "Build PAC Sandbox Action Summary") || {};
+  const plan = signals.plan || latestNodeJson(execution, "Build Telegram Dispatch Plan") || {};
+  const direct = firstNonEmpty(
+    handle.draft_id,
+    handle.sandbox_draft_id,
+    handle.action_token?.draft_id,
+    handle.action_token?.payload?.draft_id,
+    handle.sandbox_draft_context?.draft_id,
+    summary.draft_id,
+    summary.sandbox_draft_id,
+    summary.sandbox_draft_context?.draft_id,
+    summary.sandbox_action_summary?.draft_id,
+    summary.sandbox_action_summary?.pac_result?.draft_id,
+    summary.json_debug?.draft_id,
+    plan.draft_id,
+    plan.sandbox_draft_id,
+    plan.sandbox_draft_context?.draft_id,
+  );
+  if (direct) return direct;
+  const found = findInJson(execution, (value) => {
+    if (typeof value !== "string") return "";
+    const match = value.match(/\bDRAFT-[A-Za-z0-9_-]+\b/);
+    return match ? match[0] : "";
+  });
+  return found || "";
+}
+
+function findInJson(value, predicate, seen = new Set()) {
+  const direct = predicate(value);
+  if (direct) return direct;
+  if (!value || typeof value !== "object") return "";
+  if (seen.has(value)) return "";
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findInJson(item, predicate, seen);
+      if (found) return found;
+    }
+    return "";
+  }
+  for (const child of Object.values(value)) {
+    const found = findInJson(child, predicate, seen);
+    if (found) return found;
+  }
+  return "";
+}
+
+function deriveExecutionContext(execution) {
+  const signals = getExecutionSignals(execution);
+  const handle = signals.handle || latestNodeJson(execution, "Handle Commands And Scoring") || {};
+  const summary = signals.summary || latestNodeJson(execution, "Build PAC Sandbox Action Summary") || {};
+  const plan = signals.plan || latestNodeJson(execution, "Build Telegram Dispatch Plan") || {};
+  const load = latestNodeJson(execution, "Postgres Load Context") || latestNodeJson(execution, "Build Load Context SQL") || {};
+  const updateId = firstNonEmpty(handle.update_id, summary.update_id, plan.update_id, load.update_id);
+  const chatId = firstNonEmpty(handle.chat_id, summary.chat_id, plan.chat_id, load.chat_id, handle.action_token?.chat_id);
+  const sourceKind = firstNonEmpty(handle.source_kind, summary.source_kind, plan.source_kind, load.source_kind);
+  const action = firstNonEmpty(signals.action, handle.callback_action, handle.action_token?.action, handle.action);
+  const route = firstNonEmpty(signals.route, handle.requested_sandbox_action, summary.requested_sandbox_action, summary.sandbox_action_summary?.action);
+  return {
+    execution_id: execution?.id || execution?.executionId || null,
+    workflow_id: execution?.workflowId || execution?.workflow_id || execution?.workflowData?.id || null,
+    status: execution?.status || (execution?.finished ? "finished" : "unknown"),
+    started_at_ms: firstValidTimeMs(execution?.startedAt, execution?.createdAt),
+    generated_at_ms: firstValidTimeMs(execution?.stoppedAt, execution?.finishedAt, execution?.updatedAt, execution?.startedAt),
+    source_kind: sourceKind || null,
+    callback_query_id_present: Boolean(firstNonEmpty(handle.callback_query_id, plan.callback_query_id, load.callback_query_id)),
+    callback_message_id_present: Boolean(firstNonEmpty(handle.callback_message_id, plan.callback_message_id, load.callback_message_id)),
+    callback_message_id: firstNonEmpty(handle.callback_message_id, plan.callback_message_id, load.callback_message_id) || null,
+    chat_id_present: Boolean(chatId),
+    chat_id_redacted: chatId ? redactId(chatId) : "",
+    chat_id_raw: chatId,
+    update_id: updateId || null,
+    draft_id: extractDraftIdFromExecution(execution, signals),
+    action: action || null,
+    route: route || null,
+    requested_action: firstNonEmpty(handle.requested_action, summary.requested_action, plan.requested_action) || null,
+    requested_sandbox_action: firstNonEmpty(handle.requested_sandbox_action, summary.requested_sandbox_action, plan.requested_sandbox_action) || null,
+    callback_reason: firstNonEmpty(handle.json_debug?.callback_reason, summary.json_debug?.callback_reason) || null,
+    should_execute_sandbox_action: handle.should_execute_sandbox_action === true,
+    sandbox_status: summary.sandbox_action_status || summary.sandbox_action_summary?.status || null,
+    sandbox_errors: summary.sandbox_action_summary?.errors || summary.errors || [],
+    sandbox_warnings: summary.sandbox_action_summary?.warnings || summary.warnings || [],
+    nodes_executed: listExecutedNodes(execution),
+    dispatch_nodes: dispatchNodesExecuted(execution),
+    signals,
+    handle,
+    summary,
+    plan,
+  };
+}
+
+function telegramNodeResult(execution, nodeName) {
+  const items = getNodeJsonItems(execution, nodeName);
+  if (!items.length) return null;
+  const ok = items.some((item) => item?.ok === true || item?.body?.ok === true || item?.result || item?.message_id);
+  const failed = items.some((item) => item?.ok === false || item?.body?.ok === false || item?.error);
+  return { node: nodeName, ok: ok || !failed, failed, item_count: items.length };
+}
+
+function dispatchSummary(execution, context) {
+  const methods = ["Telegram editMessageText", "Telegram sendMessage", "Telegram fallback sendMessage", "Telegram sendDocument"]
+    .map((nodeName) => telegramNodeResult(execution, nodeName))
+    .filter(Boolean);
+  const plan = context.plan || {};
+  return {
+    attempted: methods.length > 0,
+    ok: methods.some((item) => item.ok === true),
+    methods,
+    dispatch_plan: {
+      method: plan.telegram_dispatch_method || null,
+      payload_built: plan.telegram_dispatch_payload_built === true,
+      blocked_reason: plan.telegram_dispatch_blocked_reason || null,
+      should_send_telegram: plan.should_send_telegram === true,
+    },
+  };
+}
+
+function extractGeneratedVisibleButtons(execution, tokenRows, context = {}) {
+  const sources = [
+    context.plan,
+    context.summary,
+    ...getNodeJsonItems(execution, "Build Telegram Dispatch Plan"),
+    ...getNodeJsonItems(execution, "Build PAC Sandbox Action Summary"),
+    ...getNodeJsonItems(execution, "Telegram editMessageText"),
+    ...getNodeJsonItems(execution, "Telegram sendMessage"),
+    ...getNodeJsonItems(execution, "Telegram fallback sendMessage"),
+    ...getNodeJsonItems(execution, "Telegram sendDocument"),
+  ].filter(Boolean);
+  const seen = new Set();
+  const buttons = [];
+  for (const source of sources) {
+    for (const button of extractVisibleButtons(source, tokenRows)) {
+      const key = `${button.text}\u0000${button.callback_data}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      buttons.push(button);
+    }
+  }
+  return buttons;
+}
+
+function tokenDiff(before = [], after = []) {
+  const beforeMap = new Map(before.map((row) => [String(row.token || ""), row]));
+  const afterMap = new Map(after.map((row) => [String(row.token || ""), row]));
+  const created = [];
+  const used = [];
+  for (const [token, row] of afterMap) {
+    if (!beforeMap.has(token)) created.push(row);
+    const prior = beforeMap.get(token);
+    if (prior && !prior.used_at && row.used_at) used.push(row);
+  }
+  return { created, used };
+}
+
+function tokenChangesFromExecutionWindow(tokens = [], context = {}) {
+  const end = Number.isFinite(context.generated_at_ms) ? context.generated_at_ms : null;
+  if (!end) return { created: [], used: [] };
+  const start = Number.isFinite(context.started_at_ms) ? context.started_at_ms : end - 120000;
+  const slackMs = 5000;
+  const inWindow = (value) => {
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) && parsed >= start - slackMs && parsed <= end + slackMs;
+  };
+  return {
+    created: tokens.filter((row) => inWindow(row?.created_at)),
+    used: tokens.filter((row) => inWindow(row?.used_at)),
+  };
+}
+
+function dbStateChanged(before, after) {
+  if (!before || !after) return false;
+  const left = JSON.stringify(safeDraftSnapshot(before));
+  const right = JSON.stringify(safeDraftSnapshot(after));
+  return left !== right;
+}
+
+function timeInExecutionWindow(value, context = {}, slackMs = 5000) {
+  const parsed = new Date(value || "").getTime();
+  if (!Number.isFinite(parsed)) return false;
+  const end = Number.isFinite(context.generated_at_ms) ? context.generated_at_ms : null;
+  if (!end) return false;
+  const start = Number.isFinite(context.started_at_ms) ? context.started_at_ms : end - 120000;
+  return parsed >= start - slackMs && parsed <= end + slackMs;
+}
+
+function expectedDeliveryChannel(context = {}) {
+  const action = String(context.action || "").toUpperCase();
+  if (action.includes("PROVIDER_EMAIL")) return "PROVIDER_EMAIL";
+  if (action.includes("TELEGRAM_CHANNEL")) return "TELEGRAM_DOCUMENT_CHANNEL";
+  return "";
+}
+
+function deliverySendLedgerEvidence(ledgerRows = [], context = {}) {
+  const expectedChannel = expectedDeliveryChannel(context);
+  const sentRows = (ledgerRows || []).filter((row) => {
+    if (String(row?.delivery_status || "").toUpperCase() !== "SENT") return false;
+    if (context.draft_id && row?.draft_id && String(row.draft_id) !== String(context.draft_id)) return false;
+    if (expectedChannel && String(row?.channel || "").toUpperCase() !== expectedChannel) return false;
+    return true;
+  });
+  const recent = sentRows.find((row) => (
+    timeInExecutionWindow(row?.sent_at, context)
+    || timeInExecutionWindow(row?.updated_at, context)
+    || timeInExecutionWindow(row?.created_at, context)
+  ));
+  if (recent) {
+    return {
+      changed: true,
+      reason: "sent_ledger_row_in_execution_window",
+      channel: recent.channel || expectedChannel || null,
+      delivery_id_present: Boolean(recent.delivery_id),
+      sent_at_present: Boolean(recent.sent_at),
+    };
+  }
+  if (!Number.isFinite(context.generated_at_ms) && sentRows.length) {
+    return {
+      changed: true,
+      reason: "sent_ledger_row_present_without_execution_window",
+      channel: sentRows[0].channel || expectedChannel || null,
+      delivery_id_present: Boolean(sentRows[0].delivery_id),
+      sent_at_present: Boolean(sentRows[0].sent_at),
+    };
+  }
+  return { changed: false, reason: sentRows.length ? "sent_ledger_row_outside_execution_window" : "sent_ledger_row_absent" };
+}
+
+function dbSnapshotNewerThanExecution(draft, context) {
+  const updatedAt = new Date(draft?.updated_at || "").getTime();
+  const generatedAt = context?.generated_at_ms;
+  return Number.isFinite(updatedAt) && Number.isFinite(generatedAt) && updatedAt > generatedAt + 5000;
+}
+
+function isExpiredToken(row, now = Date.now()) {
+  const expiresAt = new Date(row?.expires_at).getTime();
+  return Number.isFinite(expiresAt) && expiresAt <= now;
+}
+
+function isUsedAtGeneration(row, generatedAtMs) {
+  if (!row?.used_at) return false;
+  if (!Number.isFinite(generatedAtMs)) return true;
+  const usedAt = new Date(row.used_at).getTime();
+  return !Number.isFinite(usedAt) || usedAt <= generatedAtMs;
+}
+
+function isProviderEmailAllowed(email, env = process.env) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) return false;
+  const allowlist = String(env.SATBOT_PROVIDER_EMAIL_ALLOWLIST || "")
+    .split(/[,\s;]+/)
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return allowlist.includes(normalized);
+}
+
+function isDeliveryActionSurface(context = {}) {
+  const route = String(context.route || "").trim();
+  const action = String(context.action || "").toUpperCase();
+  return route.startsWith("sandbox.documents.delivery.")
+    || action === "DOCUMENT_DELIVERY_ACTION_REQUESTED"
+    || action === "DELIVERY_STATUS"
+    || action.startsWith("DELIVERY_PREPARE_")
+    || action.startsWith("DELIVERY_CONFIRM_")
+    || action.startsWith("DELIVERY_FORCE_");
+}
+
+function shouldAuditDraftStateButtons(context = {}, buttons = []) {
+  const route = String(context.route || "").trim();
+  const action = String(context.action || "").toUpperCase();
+  const responseText = String(context.handle?.telegram_message || context.summary?.telegram_message || context.dispatch_plan?.telegram_message || context.plan?.telegram_message || "");
+  if (/No encontre ese borrador/i.test(responseText)) return false;
+  if (route.startsWith("sandbox.")) return true;
+  if ([
+    "COMMAND_DETALLE",
+    "COMMAND_APROBAR",
+    "COMMAND_REGRESAR_BORRADOR",
+    "DRAFT_CONFIRMED",
+    "CALLBACK_TOKEN_CONTEXT_RECOVERED",
+    "CALLBACK_TOKEN_USED_RECOVERY",
+    "DELIVERY_STATUS",
+    "DOCUMENT_DELIVERY_ACTION_REQUESTED",
+    "PAC_SANDBOX_ACTION_RESULT",
+  ].includes(action)) return true;
+  if (action.startsWith("DRAFT_")) return true;
+  if (action.startsWith("PRODUCT_") || [
+    "COMMAND_PENDIENTES",
+    "COMMAND_APROBADAS",
+    "CALLBACK_DUPLICATE_BLOCKED",
+    "CALLBACK_TOKEN_INVALID",
+    "NEEDS_CONFIRM_DRAFT",
+  ].includes(action)) return false;
+  const draftSpecificActions = new Set([
+    "APPROVE_DRAFT",
+    "DISCARD_DRAFT",
+    "RESTORE_DRAFT",
+    "VIEW_DRAFT",
+    "VIEW_SUMMARY",
+    "STAMP_DRAFT_SANDBOX",
+    "DOWNLOAD_SANDBOX_ARTIFACTS",
+    "DELIVERY_STATUS",
+    "DELIVERY_PREPARE_TELEGRAM_CHANNEL",
+    "DELIVERY_PREPARE_PROVIDER_EMAIL",
+    "DELIVERY_CONFIRM_TELEGRAM_CHANNEL",
+    "DELIVERY_CONFIRM_PROVIDER_EMAIL",
+    "DELIVERY_FORCE_TELEGRAM_CHANNEL",
+    "DELIVERY_FORCE_PROVIDER_EMAIL",
+    "REQUEST_CANCEL_SANDBOX",
+    "CONFIRM_CANCEL_SANDBOX",
+    "MARK_PAYMENT_PENDING",
+    "MARK_PAYMENT_PAID",
+    "MARK_PAYMENT_PARTIAL",
+    "MARK_PAYMENT_OVERDUE",
+  ]);
+  return (buttons || []).some((button) => draftSpecificActions.has(String(button.action || "").toUpperCase()));
+}
+
+function detectStateButtonFailures({ state, buttons, context = {} }) {
+  const failures = [];
+  const actions = buttons.map((button) => String(button.action || "").toUpperCase()).filter(Boolean);
+  const has = (action) => actions.includes(action);
+  const invoiceStatus = String(state.invoice_status || "").toUpperCase();
+  const artifactStatus = String(state.artifact_status || "").toUpperCase();
+  const legacyStatus = String(state.status || "").toUpperCase();
+
+  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOAD_READY") {
+    if (!has("DOWNLOAD_SANDBOX_ARTIFACTS")) {
+      failures.push(failure("DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON", "Draft DOWNLOAD_READY without DOWNLOAD_SANDBOX_ARTIFACTS", { draft_id: state.draft_id }));
+    }
+    if (has("STAMP_DRAFT_SANDBOX")) {
+      failures.push(failure("DOWNLOAD_READY_SHOWS_STAMP", "Draft DOWNLOAD_READY shows STAMP_DRAFT_SANDBOX", { draft_id: state.draft_id }));
+    }
+  }
+  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOADED" && !isDeliveryActionSurface(context)) {
+    for (const action of ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL"]) {
+      if (!has(action)) failures.push(failure("DOWNLOADED_MISSING_DELIVERY_BUTTON", `Draft DOWNLOADED missing ${action}`, { draft_id: state.draft_id, action }));
+    }
+  }
+  if (invoiceStatus === "APROBADO" || legacyStatus === "APROBADO") {
+    if (artifactStatus !== "DOWNLOAD_READY" && artifactStatus !== "DOWNLOADED" && has("DOWNLOAD_SANDBOX_ARTIFACTS")) {
+      failures.push(failure("APPROVED_BEFORE_STAMP_SHOWS_DOWNLOAD", "Draft approved before stamp shows download", { draft_id: state.draft_id }));
+    }
+  }
+  if (legacyStatus !== "APROBADO" && (invoiceStatus === "BORRADOR" || legacyStatus === "PENDIENTE") && has("STAMP_DRAFT_SANDBOX")) {
+    failures.push(failure("DRAFT_BEFORE_APPROVAL_SHOWS_STAMP", "Draft before approval shows stamp", { draft_id: state.draft_id }));
+  }
+  return failures;
+}
+
+function isFreshTokenForExecution(row, context) {
+  const generatedAtMs = Number(context?.generated_at_ms);
+  if (!Number.isFinite(generatedAtMs)) return true;
+  const createdAtMs = new Date(row?.created_at || "").getTime();
+  if (!Number.isFinite(createdAtMs)) return true;
+  return createdAtMs >= generatedAtMs - 10000 && createdAtMs <= generatedAtMs + 60000;
+}
+
+function detectTokenFailures({ context, tokens, buttons }) {
+  const failures = [];
+  const handle = context.handle || {};
+  const actionName = String(context.action || handle.action || "").toUpperCase();
+  const tokenRecord = handle.action_token && typeof handle.action_token === "object" ? handle.action_token : null;
+  const tokenReason = String(context.callback_reason || "").toLowerCase();
+  const recoverable = Boolean(tokenRecord?.draft_id || tokenRecord?.payload?.draft_id) && (!tokenRecord?.chat_id || !context.chat_id_raw || String(tokenRecord.chat_id) === String(context.chat_id_raw));
+
+  if (actionName === "CALLBACK_TOKEN_INVALID" && recoverable) {
+    failures.push(failure("CALLBACK_TOKEN_INVALID_RECOVERABLE_CONTEXT", "CALLBACK_TOKEN_INVALID with recoverable draft context", { draft_id: tokenRecord?.draft_id || tokenRecord?.payload?.draft_id || null }));
+  }
+  if (tokenReason === "token_usado" && !["CALLBACK_TOKEN_USED_RECOVERY", "CALLBACK_TOKEN_CONTEXT_RECOVERED"].includes(actionName)) {
+    failures.push(failure("CALLBACK_TOKEN_USED_WITHOUT_RECOVERY", "Used token did not recover safely", { action: actionName }));
+  }
+  if (tokenReason === "token_expirado" && actionName !== "CALLBACK_TOKEN_CONTEXT_RECOVERED" && recoverable) {
+    failures.push(failure("EXPIRED_TOKEN_WITHOUT_RECOVERY", "Expired token did not refresh recoverable container", { draft_id: tokenRecord?.draft_id || tokenRecord?.payload?.draft_id || null }));
+  }
+  for (const row of tokens || []) {
+    if (!row?.chat_id && ["DOWNLOAD_SANDBOX_ARTIFACTS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL", "DELIVERY_CONFIRM_TELEGRAM_CHANNEL", "DELIVERY_CONFIRM_PROVIDER_EMAIL"].includes(String(row?.action || "").toUpperCase())) {
+      if (isFreshTokenForExecution(row, context)) failures.push(failure("FRESH_TOKEN_EMPTY_CHAT_ID", "Action token created with empty chat_id", { action: row.action, draft_id: row.draft_id || row.payload?.draft_id || null }));
+    }
+  }
+  for (const button of buttons || []) {
+    const row = button.token_record;
+    if (!row) continue;
+    const generatedAtMs = Number.isFinite(context.generated_at_ms) ? context.generated_at_ms : null;
+    const usedAtGeneration = isUsedAtGeneration(row, generatedAtMs);
+    const expiredAtGeneration = isExpiredToken(row, generatedAtMs || Date.now());
+    if (usedAtGeneration || expiredAtGeneration) {
+      failures.push(failure("REPLY_MARKUP_REUSES_OLD_CALLBACK_DATA", "reply_markup references used or expired token", {
+        action: row.action,
+        draft_id: row.draft_id || row.payload?.draft_id || null,
+        used: usedAtGeneration,
+        expired: expiredAtGeneration,
+      }));
+    }
+  }
+  return failures;
+}
+
+function detectDispatchFailures({ execution, context, dispatch }) {
+  const failures = [];
+  const addedCodes = new Set();
+  const addDispatchFailure = (code, message, details) => {
+    addedCodes.add(code);
+    failures.push(failure(code, message, details));
+  };
+  const analysis = analyzeExecution(execution);
+  for (const message of analysis.failures || []) {
+    addDispatchFailure("TELEGRAM_DISPATCH_ANALYSIS_FAIL", message, { execution_id: context.execution_id });
+  }
+  for (const method of dispatch.methods || []) {
+    if (!method.failed) continue;
+    const code = method.node === "Telegram editMessageText"
+      ? "TELEGRAM_EDIT_MESSAGE_TEXT_FAILED"
+      : method.node === "Telegram sendMessage"
+      ? "TELEGRAM_SEND_MESSAGE_FAILED"
+      : method.node === "Telegram sendDocument"
+        ? "TELEGRAM_SEND_DOCUMENT_FAILED"
+        : method.node === "Telegram fallback sendMessage"
+          ? "TELEGRAM_FALLBACK_SEND_MESSAGE_FAILED"
+          : "TELEGRAM_DISPATCH_METHOD_FAILED";
+    addDispatchFailure(code, `${method.node} failed`, { execution_id: context.execution_id });
+  }
+  const edit = telegramNodeResult(execution, "Telegram editMessageText");
+  if (edit?.failed && !addedCodes.has("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED")) {
+    addDispatchFailure("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED", "Telegram editMessageText failed", { execution_id: context.execution_id });
+  }
+  if (!dispatch.attempted && (context.handle?.telegram_message || context.summary?.telegram_message || context.signals?.action_executed)) {
+    failures.push(failure("TELEGRAM_DISPATCH_MISSING", "Telegram dispatch did not occur", { execution_id: context.execution_id }));
+  }
+  if (dispatch.dispatch_plan.method === "editMessageText" && !context.callback_message_id_present) {
+    failures.push(failure("CALLBACK_MESSAGE_ID_MISSING_FOR_EDIT", "callback_message_id absent when editMessageText planned", { execution_id: context.execution_id }));
+  }
+  return failures;
+}
+
+function detectActionFailures({ execution, context, draftBefore, draftAfter, ledgerRows, artifactPaths }) {
+  const failures = [];
+  const route = String(context.route || "").trim();
+  const action = String(context.action || "").toUpperCase();
+  const expectedRoute = ROUTE_EXPECTATIONS[action] || "";
+  const stateAfter = draftState(draftAfter || {});
+
+  if (expectedRoute && route && route !== expectedRoute) {
+    failures.push(failure("CALLBACK_EXECUTED_UNEXPECTED_ROUTE", `Callback expected ${expectedRoute} but routed ${route}`, { execution_id: context.execution_id, action, route }));
+  }
+  if (context.should_execute_sandbox_action && !nodeExecuted(execution, "Execute PAC Sandbox Action")) {
+    failures.push(failure("PAC_ACTION_NOT_EXECUTED", "Expected Execute PAC Sandbox Action but node did not run", { execution_id: context.execution_id, route }));
+  }
+  if (nodeExecuted(execution, "Execute PAC Sandbox Action") && context.sandbox_status && context.sandbox_status !== "OK") {
+    const hasUsefulMessage = Boolean(context.summary?.telegram_message || context.summary?.send_text || (context.sandbox_errors || []).length || (context.sandbox_warnings || []).length);
+    if (!hasUsefulMessage) failures.push(failure("PAC_ACTION_FAILED_WITHOUT_USEFUL_MESSAGE", "PAC action failed without useful message", { execution_id: context.execution_id, status: context.sandbox_status }));
+  }
+  if (route === "sandbox.draft.download-artifacts") {
+    if (stateAfter.artifact_status !== "DOWNLOADED" || stateAfter.xml_content_valid !== true || stateAfter.pdf_content_valid !== true) {
+      failures.push(failure("DOWNLOAD_ACTION_DB_NOT_DOWNLOADED", "Download action did not leave DB DOWNLOADED with valid XML/PDF", { draft_id: context.draft_id, state: stateAfter }));
+    }
+  }
+  if (route === "sandbox.documents.delivery.send") {
+    const sentRows = (ledgerRows || []).filter((row) => String(row.delivery_status || "").toUpperCase() === "SENT");
+    if (!sentRows.length) failures.push(failure("DOCUMENT_LEDGER_ABSENT_AFTER_SEND", "document_delivery_ledger missing SENT row after real send", { draft_id: context.draft_id }));
+  }
+  if (stateAfter.artifact_status === "DOWNLOADED") {
+    const xmlExists = artifactPaths?.xml ? fs.existsSync(path.join(ROOT, artifactPaths.xml)) : false;
+    const pdfExists = artifactPaths?.pdf ? fs.existsSync(path.join(ROOT, artifactPaths.pdf)) : false;
+    if (!xmlExists || !pdfExists) failures.push(failure("DOWNLOADED_FILES_MISSING", "DB says DOWNLOADED but XML/PDF files are missing", { draft_id: context.draft_id, xml_exists: xmlExists, pdf_exists: pdfExists }));
+  }
+  if (context.signals?.action_executed && draftBefore && draftAfter && route) {
+    const draftChanged = dbStateChanged(draftBefore, draftAfter);
+    const ledgerEvidence = route === "sandbox.documents.delivery.send"
+      ? deliverySendLedgerEvidence(ledgerRows, context)
+      : { changed: false };
+    if (!draftChanged && !ledgerEvidence.changed) {
+      failures.push(warning("DB_UNCHANGED_AFTER_ACTION", "DB snapshot did not change after action", {
+        draft_id: context.draft_id,
+        route,
+        ledger_evidence: ledgerEvidence.reason || null,
+      }));
+    }
+  }
+  return failures;
+}
+
+function providerEmailFailures({ context, args, ledgerRows, env = process.env, state }) {
+  const failures = [];
+  const action = String(context.action || "").toUpperCase();
+  const route = String(context.route || "");
+  const isProviderAction = action.includes("PROVIDER_EMAIL") || (route === "sandbox.documents.delivery.send" && (ledgerRows || []).some((row) => String(row.channel || "").toUpperCase() === "PROVIDER_EMAIL"));
+  if (!isProviderAction) return failures;
+  if (args.allowProviderEmailSend && parseBool(env.SATBOT_PROVIDER_EMAIL_REAL_SEND_ENABLED) !== true) {
+    failures.push(failure("PROVIDER_EMAIL_REAL_SEND_ENV_DISABLED", "Provider email real send requested but env guard is disabled"));
+  }
+  const email = firstNonEmpty(
+    state?.provider_email,
+    state?.provider_email_address,
+    state?.client_email,
+    state?.client_snapshot?.provider_email,
+    state?.client_snapshot?.email,
+  );
+  if (email && !isProviderEmailAllowed(email, env)) {
+    failures.push(failure("PROVIDER_EMAIL_OUTSIDE_ALLOWLIST", "Provider email outside allowlist", { email: redactEmail(email) }));
+  }
+  return failures;
+}
+
+function classifyExecution(execution, options = {}) {
+  const counters = options.counters || {};
+  const context = deriveExecutionContext(execution);
+  const db = options.db || null;
+  const priorDraft = context.draft_id ? options.previousDraftSnapshots?.get(context.draft_id) || null : null;
+  const draft = context.draft_id && db ? db.getDraftFull(context.draft_id) : null;
+  const state = safeDraftSnapshot(draft || {});
+  const tokens = context.draft_id && db ? db.getTokensForDraft(context.draft_id) : [];
+  const hasPreviousTokens = Boolean(context.draft_id && options.previousTokenSnapshots?.has(context.draft_id));
+  const previousTokens = hasPreviousTokens ? options.previousTokenSnapshots.get(context.draft_id) || [] : [];
+  const ledgerRows = context.draft_id && db ? db.getLedgerFull(context.draft_id) : [];
+  const sendLogs = db ? db.getSendLogs({ chatId: context.chat_id_raw, updateId: context.update_id }) : [];
+  const visibleButtons = extractGeneratedVisibleButtons(execution, tokens, context);
+  const artifactPaths = extractArtifactPaths(draft || {}, ledgerRows);
+  const dispatch = dispatchSummary(execution, context);
+  const tokenChanges = hasPreviousTokens
+    ? tokenDiff(previousTokens, tokens)
+    : tokenChangesFromExecutionWindow(tokens, context);
+  const staleDbSnapshot = dbSnapshotNewerThanExecution(draft, context);
+
+  let failures = [];
+  if (!staleDbSnapshot && shouldAuditDraftStateButtons(context, visibleButtons)) {
+    failures = failures.concat(detectStateButtonFailures({ state, buttons: visibleButtons, context }));
+  }
+  failures = failures.concat(detectTokenFailures({ context, tokens, buttons: visibleButtons }));
+  failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
+  failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));
+  failures = failures.concat(providerEmailFailures({ context, args: options.args || {}, ledgerRows, env: process.env, state: draft || {} }));
+
+  const providerEmailSentRows = (ledgerRows || []).filter((row) => String(row.channel || "").toUpperCase() === "PROVIDER_EMAIL" && String(row.delivery_status || "").toUpperCase() === "SENT");
+  const telegramChannelSentRows = (ledgerRows || []).filter((row) => String(row.channel || "").toUpperCase() === "TELEGRAM_DOCUMENT_CHANNEL" && String(row.delivery_status || "").toUpperCase() === "SENT");
+  counters.providerEmailDeliveryIds = counters.providerEmailDeliveryIds || new Set();
+  counters.telegramChannelDeliveryIds = counters.telegramChannelDeliveryIds || new Set();
+  for (const row of providerEmailSentRows) {
+    const key = String(row.delivery_id || `${row.draft_id || context.draft_id || "draft"}:PROVIDER_EMAIL:${row.sent_at || row.created_at || ""}`);
+    if (!counters.providerEmailDeliveryIds.has(key)) {
+      counters.providerEmailDeliveryIds.add(key);
+      counters.providerEmailSendCount = (counters.providerEmailSendCount || 0) + 1;
+    }
+  }
+  for (const row of telegramChannelSentRows) {
+    const key = String(row.delivery_id || `${row.draft_id || context.draft_id || "draft"}:TELEGRAM_DOCUMENT_CHANNEL:${row.sent_at || row.created_at || ""}`);
+    if (!counters.telegramChannelDeliveryIds.has(key)) {
+      counters.telegramChannelDeliveryIds.add(key);
+      counters.telegramChannelSendCount = (counters.telegramChannelSendCount || 0) + 1;
+    }
+  }
+  const providerEmailSent = providerEmailSentRows.length > 0;
+  const telegramChannelSent = telegramChannelSentRows.length > 0;
+  if ((counters.providerEmailSendCount || 0) > Number(options.args?.maxProviderEmailSend || 1)) {
+    failures.push(failure("PROVIDER_EMAIL_REAL_SEND_LIMIT_EXCEEDED", "Provider email send exceeded per-run limit", { count: counters.providerEmailSendCount }));
+  }
+  if (telegramChannelSent && options.args?.allowTelegramChannelSend !== true) {
+    failures.push(warning("TELEGRAM_CHANNEL_SEND_OBSERVED", "Telegram channel send observed without explicit watcher allow flag", { draft_id: context.draft_id }));
+  }
+
+  const event = {
+    type: failures.some((item) => item.severity === "FAIL") ? "BREAK_DETECTED" : "EXECUTION_OK",
+    observed_at: new Date().toISOString(),
+    execution_id: context.execution_id,
+    workflow_id: context.workflow_id,
+    status: context.status,
+    source_kind: context.source_kind,
+    callback_query_id_present: context.callback_query_id_present,
+    callback_message_id_present: context.callback_message_id_present,
+    chat_id_present: context.chat_id_present,
+    chat_id_redacted: context.chat_id_redacted,
+    update_id: context.update_id,
+    route: context.route,
+    requested_action: context.requested_action,
+    requested_sandbox_action: context.requested_sandbox_action,
+    action: context.action,
+    draft_id: context.draft_id || null,
+    invoice_status: state.invoice_status || null,
+    artifact_status: state.artifact_status || null,
+    tokens_created: tokenChanges.created.map(safeToken),
+    tokens_used: tokenChanges.used.map(safeToken),
+    token_expired_or_invalid_reason: context.callback_reason || null,
+    reply_markup_generated: visibleButtons.length > 0,
+    visible_actions: visibleButtons.map(buttonSummary),
+    dispatch,
+    telegram_method: dispatch.methods.map((item) => item.node).join(", ") || null,
+    telegram_dispatch_ok: dispatch.ok,
+    db_state_before: priorDraft ? safeDraftSnapshot(priorDraft) : null,
+    db_state_after: state,
+    db_snapshot_newer_than_execution: staleDbSnapshot,
+    runtime_artifacts: {
+      xml_path: artifactPaths.xml || null,
+      pdf_path: artifactPaths.pdf || null,
+      manifest_path: artifactPaths.manifest || null,
+      xml_exists: artifactPaths.xml ? fs.existsSync(path.join(ROOT, artifactPaths.xml)) : false,
+      pdf_exists: artifactPaths.pdf ? fs.existsSync(path.join(ROOT, artifactPaths.pdf)) : false,
+    },
+    document_delivery_ledger: ledgerRows.map(safeLedger),
+    send_logs: sendLogs.map(safeSendLog),
+    nodes_executed: context.nodes_executed,
+    errors: context.sandbox_errors || [],
+    warnings: context.sandbox_warnings || [],
+    failures,
+  };
+
+  return {
+    pass: !failures.some((item) => item.severity === "FAIL"),
+    event,
+    context,
+    db_snapshot: {
+      draft_id: context.draft_id || null,
+      draft: state,
+      ledger: ledgerRows.map(safeLedger),
+      send_logs: sendLogs.map(safeSendLog),
+      runtime_artifacts: event.runtime_artifacts,
+    },
+    token_snapshot: {
+      draft_id: context.draft_id || null,
+      tokens: tokens.map(safeToken),
+    },
+    raw_execution: execution,
+    draft,
+    tokens,
+    stale_db_snapshot: staleDbSnapshot,
+  };
+}
+
+function createSessionState(args, reportDir) {
+  return {
+    label: args.label,
+    report_dir: reportDir,
+    started_at: new Date().toISOString(),
+    finished_at: null,
+    pass: true,
+    env: envAudit(),
+    workflow_status: null,
+    workflow_sync: null,
+    services_detected: {},
+    timeline: [],
+    events: [],
+    failures: [],
+    dbSnapshots: [],
+    tokenSnapshots: [],
+    n8nExecutions: [],
+    latestState: {},
+    draftIds: new Set(),
+    executionIds: new Set(),
+    previousDraftSnapshots: new Map(),
+    previousTokenSnapshots: new Map(),
+    counters: {
+      providerEmailSendCount: 0,
+      telegramChannelSendCount: 0,
+    },
+    human_steps: [],
+  };
+}
+
+async function runWorkflowChecks(args, state) {
+  try {
+    state.workflow_status = await runScenario({ scenario: "workflow-status", safe: true, noRealSend: true, allowRemoteN8n: args.allowRemoteN8n === true });
+  } catch (error) {
+    state.workflow_status = { pass: false, failures: [error.message] };
+    state.failures.push(failure("WORKFLOW_STATUS_FAILED", error.message));
+  }
+  try {
+    state.workflow_sync = await runScenario({ scenario: "workflow-sync-check", safe: true, noRealSend: true, allowRemoteN8n: args.allowRemoteN8n === true });
+  } catch (error) {
+    state.workflow_sync = { pass: false, failures: [error.message] };
+    state.failures.push(failure("WORKFLOW_SYNC_CHECK_FAILED", error.message));
+  }
+  if (state.workflow_sync && state.workflow_sync.workflow_in_sync === false) {
+    state.failures.push(failure("WORKFLOW_OUT_OF_SYNC", "workflow-sync-check reports out-of-sync"));
+  }
+}
+
+function updateStateFromClassified(state, classified) {
+  const event = classified.event;
+  state.timeline.push({
+    observed_at: event.observed_at,
+    execution_id: event.execution_id,
+    draft_id: event.draft_id,
+    action: event.action,
+    route: event.route,
+    type: event.type,
+  });
+  state.events.push(event);
+  state.n8nExecutions.push(sanitizeReport(classified.raw_execution));
+  state.dbSnapshots.push(classified.db_snapshot);
+  state.tokenSnapshots.push(classified.token_snapshot);
+  if (event.draft_id) {
+    state.draftIds.add(event.draft_id);
+    if (classified.stale_db_snapshot !== true) {
+      state.previousDraftSnapshots.set(event.draft_id, classified.draft || null);
+      state.previousTokenSnapshots.set(event.draft_id, classified.tokens || []);
+      state.latestState[event.draft_id] = classified.db_snapshot;
+    }
+  }
+  if (event.execution_id) state.executionIds.add(String(event.execution_id));
+  for (const item of event.failures || []) state.failures.push(item);
+  if ((event.failures || []).some((item) => item.severity === "FAIL")) state.pass = false;
+}
+
+async function inspectExecutionById({ n8nClient, db, args, state, executionId }) {
+  const execution = await n8nClient.getExecution({ executionId, includeData: true });
+  const classified = classifyExecution(execution, {
+    db,
+    args,
+    previousDraftSnapshots: state.previousDraftSnapshots,
+    previousTokenSnapshots: state.previousTokenSnapshots,
+    counters: state.counters,
+  });
+  updateStateFromClassified(state, classified);
+  return classified;
+}
+
+function compareExecutionIds(a, b) {
+  const na = Number(a);
+  const nb = Number(b);
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+  return String(a).localeCompare(String(b));
+}
+
+function isAfterExecutionId(id, sinceId) {
+  if (!sinceId) return true;
+  return compareExecutionIds(id, sinceId) > 0;
+}
+
+async function runWatch({ args, n8nClient, db, state }) {
+  const start = Date.now();
+  const seen = new Set();
+  let sinceId = args.sinceExecutionId || "";
+  if (args.sinceNow) {
+    const list = await n8nClient.listExecutions({ limit: 1 });
+    const latest = firstExecutionFromList(list);
+    sinceId = latest?.id || latest?.executionId || "";
+  }
+  while (Date.now() - start <= args.timeoutMs) {
+    const list = await n8nClient.listExecutions({ limit: WATCH_LIMIT });
+    const items = executionsFromList(list)
+      .map((item) => ({ id: String(item.id || item.executionId || ""), item }))
+      .filter((item) => item.id && !seen.has(item.id) && isAfterExecutionId(item.id, sinceId))
+      .sort((a, b) => compareExecutionIds(a.id, b.id));
+    for (const entry of items) {
+      seen.add(entry.id);
+      const classified = await inspectExecutionById({ n8nClient, db, args, state, executionId: entry.id });
+      printEventLine(classified.event);
+      if (classified.event.type === "BREAK_DETECTED") {
+        console.log(`BREAK DETECTED execution=${entry.id} cause=${classified.event.failures.map((item) => item.code).join(",")}`);
+        if (args.failFast) return;
+      }
+    }
+    await sleep(args.pollMs);
+  }
+}
+
+function executionsFromList(list) {
+  if (Array.isArray(list?.data)) return list.data;
+  if (Array.isArray(list?.results)) return list.results;
+  if (Array.isArray(list)) return list;
+  return [];
+}
+
+function firstExecutionFromList(list) {
+  return executionsFromList(list)[0] || null;
+}
+
+function printEventLine(event) {
+  const status = event.type === "BREAK_DETECTED" ? "BREAK" : "OK";
+  const bits = [
+    status,
+    `execution=${event.execution_id || "N/A"}`,
+    `action=${event.action || "N/A"}`,
+    `route=${event.route || "N/A"}`,
+    `draft=${event.draft_id || "N/A"}`,
+    `dispatch=${event.telegram_dispatch_ok === true}`,
+  ];
+  console.log(bits.join(" "));
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function markHumanTimeout(state, details = {}) {
+  const item = failure("TIMEOUT_WAITING_FOR_HUMAN_CLICK", "User did not click before timeout", details, "WARN");
+  state.failures.push(item);
+  state.human_steps.push({ type: "timeout", ...details, created_at: new Date().toISOString() });
+  return item;
+}
+
+async function runGuided({ args, n8nClient, db, state }) {
+  const flow = args.flow || "full-sandbox";
+  if (flow === "full-sandbox") {
+    state.human_steps.push({
+      type: "guided-info",
+      message: "Use Telegram normally: create, confirm, approve, stamp, detail, download, delivery prepare/send. Watcher will audit new executions.",
+      created_at: new Date().toISOString(),
+    });
+    console.log("Guided full-sandbox: navega normalmente en Telegram; el watcher auditara ejecuciones nuevas.");
+    return runWatch({ args: { ...args, watch: true, sinceNow: true }, n8nClient, db, state });
+  }
+
+  const flowToCase = {
+    "download-ready": "download-ready",
+    "downloaded-delivery": "downloaded-delivery",
+    "expired-token-recovery": "expired-token-recovery",
+  };
+  const acceptanceCase = flowToCase[flow];
+  if (!acceptanceCase) throw new Error(`NEEDS_INPUT: --flow invalido: ${flow}`);
+  const guidedDraft = locateGuidedDraft({ flow, args, db });
+  const result = await runAcceptance({
+    case: acceptanceCase,
+    draftId: guidedDraft?.draft_id || args.draftId,
+    chatId: args.chatId || guidedDraft?.chat_id || undefined,
+    timeoutMs: args.timeoutMs,
+    renderTimeoutMs: parseNumber(args.renderTimeoutMs, 30000),
+    pollMs: args.pollMs,
+    checkOnly: args.checkOnly === true,
+    allowRemoteN8n: args.allowRemoteN8n,
+    dbExecMode: args.dbExecMode,
+  });
+  state.human_steps.push({
+    type: "guided-acceptance",
+    flow,
+    draft_id: result.draft_id || null,
+    expected_button: result.expected_button || null,
+    human_click_requested: result.human_click_requested === true,
+    human_click_observed: result.human_click_observed === true,
+    created_at: new Date().toISOString(),
+  });
+  if (result.execution_id) {
+    await inspectExecutionById({ n8nClient, db, args, state, executionId: result.execution_id });
+  }
+  if (result.pass !== true) {
+    recordGuidedFailure(state, result, flow);
+  }
+  state.latestState.guided_result = sanitizeReport(result);
+}
+
+function recordGuidedFailure(state, result, flow) {
+  if (result.fail_code === "HUMAN_CLICK_TIMEOUT") {
+    markHumanTimeout(state, { flow, draft_id: result.draft_id || null });
+    return;
+  }
+  state.pass = false;
+  const item = failure(result.fail_code || "GUIDED_FLOW_FAILED", (result.failures || []).join(" | ") || "Guided flow failed", {
+    flow,
+    draft_id: result.draft_id || null,
+    draft_state: result.draft_state || result.db_snapshot?.pre_state || null,
+    tokens_generated: result.tokens_generated || result.db_snapshot?.tokens_after_render || [],
+    visible_actions_found: result.visible_actions_found || [],
+    n8n_execution_associated: result.n8n_execution_associated || result.render_execution_id || result.execution_id || null,
+  });
+  state.failures.push(item);
+  if (result.fail_code !== "UI_RENDER_FAIL") return;
+  const event = {
+    type: "BREAK_DETECTED",
+    observed_at: new Date().toISOString(),
+    execution_id: result.n8n_execution_associated || result.render_execution_id || result.execution_id || null,
+    workflow_id: null,
+    status: null,
+    source_kind: "GUIDED_RENDER",
+    callback_query_id_present: false,
+    callback_message_id_present: false,
+    chat_id_present: null,
+    chat_id_redacted: "",
+    update_id: null,
+    route: null,
+    requested_action: null,
+    requested_sandbox_action: null,
+    action: result.expected_action || null,
+    draft_id: result.draft_id || null,
+    invoice_status: result.draft_state?.invoice_status || null,
+    artifact_status: result.draft_state?.artifact_status || null,
+    tokens_created: result.tokens_generated || result.db_snapshot?.tokens_after_render || [],
+    tokens_used: [],
+    token_expired_or_invalid_reason: null,
+    reply_markup_generated: (result.visible_actions_found || []).length > 0,
+    visible_actions: result.visible_actions_found || [],
+    dispatch: null,
+    telegram_method: null,
+    telegram_dispatch_ok: false,
+    db_state_before: null,
+    db_state_after: result.draft_state || result.db_snapshot?.pre_state || null,
+    runtime_artifacts: {},
+    document_delivery_ledger: [],
+    send_logs: [],
+    nodes_executed: [],
+    errors: [],
+    warnings: [],
+    failures: [item],
+  };
+  state.events.push(event);
+  state.timeline.push({
+    observed_at: event.observed_at,
+    execution_id: event.execution_id,
+    draft_id: event.draft_id,
+    action: event.action,
+    route: event.route,
+    type: event.type,
+  });
+  if (event.draft_id) {
+    state.draftIds.add(event.draft_id);
+    state.latestState[event.draft_id] = {
+      draft: event.db_state_after || {},
+      runtime_artifacts: {},
+    };
+  }
+  if (event.execution_id) state.executionIds.add(String(event.execution_id));
+}
+
+function locateGuidedDraft({ flow, args, db }) {
+  if (!db || args.chatId) {
+    if (args.draftId && db?.getDraftFull) return db.getDraftFull(args.draftId);
+    return null;
+  }
+  if (args.draftId) return db.getDraftFull(args.draftId);
+  if (flow === "download-ready" && db.findDraftByState) {
+    return db.findDraftByState({ invoiceStatus: "SANDBOX_TIMBRADO", artifactStatus: "DOWNLOAD_READY" });
+  }
+  if (flow === "downloaded-delivery" && db.findDraftByState) {
+    return db.findDraftByState({ invoiceStatus: "SANDBOX_TIMBRADO", artifactStatus: "DOWNLOADED" });
+  }
+  if (flow === "expired-token-recovery" && db.findDraftByState) {
+    return db.findDraftByState({ invoiceStatus: "SANDBOX_TIMBRADO", artifactStatus: "DOWNLOAD_READY" })
+      || db.findDraftByState({ invoiceStatus: "SANDBOX_TIMBRADO", artifactStatus: "DOWNLOADED" });
+  }
+  return null;
+}
+
+function buildSummaryMarkdown(state) {
+  const failures = state.failures || [];
+  const failItems = failures.filter((item) => item.severity !== "WARN");
+  const draftIds = Array.from(state.draftIds || []);
+  const executionIds = Array.from(state.executionIds || []);
+  const tokenCreated = state.events.reduce((sum, event) => sum + (event.tokens_created || []).length, 0);
+  const tokenUsed = state.events.reduce((sum, event) => sum + (event.tokens_used || []).length, 0);
+  const telegramSends = state.events.flatMap((event) => event.dispatch?.methods || []).filter((item) => /Telegram/.test(item.node));
+  const providerEmailSends = state.events.flatMap((event) => event.document_delivery_ledger || []).filter((row) => row.channel === "PROVIDER_EMAIL" && row.delivery_status === "SENT");
+  const lines = [
+    "# Telegram UI Session Watch",
+    "",
+    `Result: ${failItems.length ? "FAIL" : "PASS"}`,
+    `Label: ${state.label}`,
+    `Start: ${state.started_at}`,
+    `End: ${state.finished_at || "N/A"}`,
+    `Workflow active: ${state.workflow_status?.workflow_active === true}`,
+    `Workflow sync: ${state.workflow_sync?.workflow_in_sync === true}`,
+    `Draft IDs: ${draftIds.join(", ") || "N/A"}`,
+    `Execution IDs: ${executionIds.join(", ") || "N/A"}`,
+    `Tokens created: ${tokenCreated}`,
+    `Tokens used: ${tokenUsed}`,
+    `Routes: ${unique(state.events.map((event) => event.route).filter(Boolean)).join(", ") || "N/A"}`,
+    `Telegram sends: ${telegramSends.length}`,
+    `Provider email sends: ${providerEmailSends.length}`,
+    `Bugs detected: ${failures.map((item) => item.code).join(", ") || "none"}`,
+    `Human steps: ${(state.human_steps || []).map((item) => item.type).join(", ") || "none"}`,
+    "",
+    "## Buttons",
+    ...state.events.flatMap((event) => {
+      const found = (event.visible_actions || []).map((button) => `${button.text}:${button.action || "unknown"}`).join(" | ") || "none";
+      return [`- execution ${event.execution_id || "N/A"} draft ${event.draft_id || "N/A"}: ${found}`];
+    }),
+    "",
+    "## DB Final",
+    ...draftIds.map((draftId) => {
+      const snap = state.latestState[draftId]?.draft || {};
+      const artifacts = state.latestState[draftId]?.runtime_artifacts || {};
+      return `- ${draftId}: invoice=${snap.invoice_status || "N/A"} artifact=${snap.artifact_status || "N/A"} xml=${artifacts.xml_exists === true} pdf=${artifacts.pdf_exists === true}`;
+    }),
+    "",
+  ];
+  return lines.join("\n");
+}
+
+function unique(values) {
+  return Array.from(new Set(values));
+}
+
+function writeSessionReport(state, reportDir) {
+  fs.mkdirSync(reportDir, { recursive: true });
+  state.finished_at = state.finished_at || new Date().toISOString();
+  state.pass = !(state.failures || []).some((item) => item.severity !== "WARN");
+  const serializable = {
+    ...state,
+    draftIds: Array.from(state.draftIds || []),
+    executionIds: Array.from(state.executionIds || []),
+    previousDraftSnapshots: undefined,
+    previousTokenSnapshots: undefined,
+  };
+  const safe = sanitizeReport(serializable);
+  const summary = sanitizeReport(buildSummaryMarkdown(serializable));
+  const files = {
+    "summary.md": summary,
+    "timeline.json": JSON.stringify(safe.timeline || [], null, 2) + "\n",
+    "events.jsonl": (safe.events || []).map((event) => JSON.stringify(event)).join("\n") + ((safe.events || []).length ? "\n" : ""),
+    "failures.json": JSON.stringify(safe.failures || [], null, 2) + "\n",
+    "db-snapshots.json": JSON.stringify(safe.dbSnapshots || [], null, 2) + "\n",
+    "token-snapshots.json": JSON.stringify(safe.tokenSnapshots || [], null, 2) + "\n",
+    "n8n-executions.json": JSON.stringify(safe.n8nExecutions || [], null, 2) + "\n",
+    "latest-state.json": JSON.stringify(safe.latestState || {}, null, 2) + "\n",
+  };
+  for (const [name, content] of Object.entries(files)) {
+    fs.writeFileSync(path.join(reportDir, name), content);
+  }
+  return { dir: reportDir, summary: files["summary.md"], state: safe };
+}
+
+function readExistingReport(reportDir) {
+  const summaryPath = path.join(reportDir, "summary.md");
+  if (!fs.existsSync(summaryPath)) throw new Error(`NOT_FOUND: summary.md no encontrado en ${reportDir}`);
+  return fs.readFileSync(summaryPath, "utf8");
+}
+
+async function run(args, injected = {}) {
+  loadLocalEnv();
+  if (args.help) {
+    printHelp();
+    return { printedHelp: true };
+  }
+  if (args.report) {
+    const summary = readExistingReport(args.report);
+    if (!args.json) console.log(summary);
+    return { summary };
+  }
+
+  const reportDir = injected.reportDir || reportDirFor(args.label || args.flow || "session");
+  const state = createSessionState(args, reportDir);
+  state.failures.push(...envFailures(state.env));
+
+  const n8nClient = injected.n8nClient || createN8nApiClient({ env: process.env, allowRemote: args.allowRemoteN8n === true });
+  const db = injected.db || createDbAccess(args);
+  await runWorkflowChecks(args, state);
+
+  if (args.last) {
+    if (!args.executionId) throw new Error("NEEDS_INPUT: --execution-id requerido con --last");
+    await inspectExecutionById({ n8nClient, db, args, state, executionId: args.executionId });
+  } else if (args.guided) {
+    await runGuided({ args, n8nClient, db, state });
+  } else if (args.watch) {
+    await runWatch({ args, n8nClient, db, state });
+  } else {
+    throw new Error("NEEDS_INPUT: usa --watch, --guided, --last o --report.");
+  }
+
+  const written = writeSessionReport(state, reportDir);
+  if (args.json) console.log(JSON.stringify(written.state, null, 2));
+  else if (args.markdown) console.log(written.summary);
+  else {
+    console.log(written.summary);
+    console.log(`Report dir: ${written.dir}`);
+  }
+  return written;
+}
+
+if (require.main === module) {
+  const args = parseArgs(process.argv.slice(2));
+  run(args).catch((error) => {
+    const safe = sanitizeReport({ message: error?.message || String(error), code: error?.code || null, body: error?.body || null });
+    console.error(safe.message || String(error));
+    if (safe.body) console.error(`body=${JSON.stringify(safe.body)}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  buildSummaryMarkdown,
+  classifyExecution,
+  createDbAccess,
+  detectStateButtonFailures,
+  dispatchSummary,
+  envAudit,
+  envFailures,
+  isProviderEmailAllowed,
+  markHumanTimeout,
+  parseArgs,
+  redactEmail,
+  redactId,
+  run,
+  writeSessionReport,
+};

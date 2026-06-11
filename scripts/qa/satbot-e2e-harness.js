@@ -5,7 +5,7 @@ const path = require("path");
 const { analyzeExecution, assertActiveWorkflowHasDispatchNodes, assertReplyMarkupReferencesToken } = require("./qa-assertions");
 const {
   analyzeWorkflowVersion,
-  buildWorkflowUpdatePayload,
+  buildWorkflowUpdatePlan,
   buildWorkflowDiffReport,
   extractWebhookPath,
   extractWorkflowBackup,
@@ -472,13 +472,17 @@ async function runWorkflowSyncScenario({ workflowPath, n8nClient, args }) {
   if (!target) {
     throw new Error(`NOT_FOUND: no se encontro workflow ${EXPECTED_WORKFLOW_NAME} en n8n`);
   }
+  const currentWorkflow = typeof n8nClient.getWorkflow === "function"
+    ? await n8nClient.getWorkflow({ workflowId: target.id }).catch(() => target)
+    : target;
   const previous = {
-    sync: workflowSyncCheck({ repoWorkflow, n8nWorkflow: target }),
-    active: target?.active === true,
-    workflow_name: target.name || null,
+    sync: workflowSyncCheck({ repoWorkflow, n8nWorkflow: currentWorkflow || target }),
+    active: (currentWorkflow || target)?.active === true,
+    workflow_name: (currentWorkflow || target).name || null,
   };
-  const backup = extractWorkflowBackup(active || target);
-  const payload = buildWorkflowUpdatePayload(repoWorkflow, null);
+  const backup = extractWorkflowBackup(active || currentWorkflow || target);
+  const updatePlan = buildWorkflowUpdatePlan(repoWorkflow, currentWorkflow || target);
+  const payload = updatePlan.payload;
   const updatedWorkflow = await n8nClient.updateWorkflow({ workflowId: target.id, workflow: payload });
   const refreshed = await n8nClient.getWorkflow({ workflowId: target.id });
   const sync = workflowSyncCheck({ repoWorkflow, n8nWorkflow: refreshed || updatedWorkflow || target });
@@ -514,6 +518,7 @@ async function runWorkflowSyncScenario({ workflowPath, n8nClient, args }) {
     changed_fields_summary: workflowDiff.changed_fields_summary,
     ignored_n8n_settings: workflowDiff.ignored_n8n_settings,
     settings_diff: workflowDiff.settings_diff,
+    credential_report: updatePlan.credential_report,
     workflow_diff: workflowDiff,
     failures: sync.workflow_in_sync ? [] : ["workflow_diff_detected"],
   };

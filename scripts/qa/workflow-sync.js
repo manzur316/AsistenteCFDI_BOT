@@ -17,6 +17,7 @@ const MANAGED_KEYS = new Set([
   "versionId",
   "createdAt",
   "updatedAt",
+  "credentials",
   "pinData",
   "staticData",
   "_id",
@@ -67,6 +68,93 @@ function workflowNodeNames(workflow) {
   return (Array.isArray(workflow?.nodes) ? workflow.nodes : [])
     .map((node) => String(node?.name || "").trim())
     .filter(Boolean);
+}
+
+function hasObjectEntries(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length);
+}
+
+function cloneJson(value) {
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function nodeIdentity(node) {
+  return String(node?.name || "").trim();
+}
+
+function workflowNodes(workflow) {
+  return Array.isArray(workflow?.nodes) ? workflow.nodes : [];
+}
+
+function findMatchingNode(node, candidates) {
+  const name = nodeIdentity(node);
+  if (!name) return null;
+  return candidates.find((candidate) => nodeIdentity(candidate) === name) || null;
+}
+
+function nodeCredentialSummary(node) {
+  return {
+    node: node?.name || null,
+    type: node?.type || null,
+    credential_keys: Object.keys(node?.credentials || {}).sort(),
+  };
+}
+
+function credentialCriticality(node) {
+  const type = String(node?.type || "").toLowerCase();
+  const name = String(node?.name || "").toLowerCase();
+  if (type.includes("postgres") || name.includes("postgres")) return "postgres";
+  if (type.includes("telegram") || name.includes("telegram")) return "telegram";
+  return "";
+}
+
+function mergeExistingNodeCredentials(repoNodes, n8nWorkflow) {
+  const existingNodes = workflowNodes(n8nWorkflow);
+  return (Array.isArray(repoNodes) ? repoNodes : []).map((node) => {
+    const merged = { ...node };
+    delete merged.credentials;
+    const matchingNode = findMatchingNode(node, existingNodes);
+    if (hasObjectEntries(matchingNode?.credentials)) {
+      merged.credentials = cloneJson(matchingNode.credentials);
+    }
+    return merged;
+  });
+}
+
+function buildCredentialPreservationReport(repoWorkflow = {}, n8nWorkflow = {}, payload = {}) {
+  const repoCredentialNodes = workflowNodes(repoWorkflow).filter((node) => hasObjectEntries(node?.credentials));
+  const existingCredentialNodes = workflowNodes(n8nWorkflow).filter((node) => hasObjectEntries(node?.credentials));
+  const payloadNodes = workflowNodes(payload);
+  const lostCredentialNodes = [];
+  const preservedCredentialNodes = [];
+  for (const existingNode of existingCredentialNodes) {
+    const payloadNode = findMatchingNode(existingNode, payloadNodes);
+    if (hasObjectEntries(payloadNode?.credentials)) preservedCredentialNodes.push(existingNode);
+    else lostCredentialNodes.push(existingNode);
+  }
+  const criticalLostCredentials = lostCredentialNodes
+    .map((node) => ({ ...nodeCredentialSummary(node), criticality: credentialCriticality(node) }))
+    .filter((item) => item.criticality);
+  return {
+    repo_credential_nodes: repoCredentialNodes.map(nodeCredentialSummary),
+    existing_credential_nodes: existingCredentialNodes.map(nodeCredentialSummary),
+    preserved_credential_nodes: preservedCredentialNodes.map(nodeCredentialSummary),
+    lost_credential_nodes: lostCredentialNodes.map(nodeCredentialSummary),
+    critical_lost_credentials: criticalLostCredentials,
+    credentials_preserved: lostCredentialNodes.length === 0,
+  };
+}
+
+function assertCriticalCredentialPreservation(report) {
+  const criticalLost = Array.isArray(report?.critical_lost_credentials) ? report.critical_lost_credentials : [];
+  if (criticalLost.length) {
+    const nodes = criticalLost.map((item) => `${item.node || "unknown"}:${item.criticality}`).join(", ");
+    const error = new Error(`CRITICAL_CREDENTIALS_WOULD_BE_REMOVED: ${nodes}`);
+    error.code = "CRITICAL_CREDENTIALS_WOULD_BE_REMOVED";
+    error.credential_report = report;
+    throw error;
+  }
 }
 
 function sanitizeSettingsForHash(settings) {
@@ -191,13 +279,24 @@ function workflowSyncCheck({ repoWorkflow, n8nWorkflow }) {
   };
 }
 
-function buildWorkflowUpdatePayload(repoWorkflow) {
+function buildWorkflowUpdatePayload(repoWorkflow, n8nWorkflow = {}) {
   const source = repoWorkflow || {};
-  return {
+  const payload = {
     name: source.name || null,
-    nodes: Array.isArray(source.nodes) ? source.nodes : [],
+    nodes: mergeExistingNodeCredentials(source.nodes, n8nWorkflow),
     connections: source.connections || {},
     settings: source.settings || {},
+  };
+  const credentialReport = buildCredentialPreservationReport(repoWorkflow, n8nWorkflow, payload);
+  assertCriticalCredentialPreservation(credentialReport);
+  return payload;
+}
+
+function buildWorkflowUpdatePlan(repoWorkflow, n8nWorkflow = {}) {
+  const payload = buildWorkflowUpdatePayload(repoWorkflow, n8nWorkflow);
+  return {
+    payload,
+    credential_report: buildCredentialPreservationReport(repoWorkflow, n8nWorkflow, payload),
   };
 }
 
@@ -244,7 +343,10 @@ module.exports = {
   EXPECTED_WEBHOOK_PATH,
   EXPECTED_WORKFLOW_NODES,
   analyzeWorkflowVersion,
+  assertCriticalCredentialPreservation,
   buildWorkflowUpdatePayload,
+  buildWorkflowUpdatePlan,
+  buildCredentialPreservationReport,
   extractWorkflowBackup,
   buildChangedFieldsSummary,
   buildWorkflowDiffReport,

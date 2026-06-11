@@ -1,6 +1,7 @@
 const assert = require("assert");
 
 const {
+  allCallbackData,
   baseSource,
   executeCode,
   getNodeCode,
@@ -41,7 +42,7 @@ check("stamp_ok_builds_visible_post_action_message_and_download_button", () => {
       invoice_status: "SANDBOX_TIMBRADO",
       payment_status: "PENDIENTE",
       total: 1136.8,
-      pac_result: { live_mode: true, mode: "live", uuid_present: true, pac_invoice_id_present: true },
+      pac_result: { live_mode: true, mode: "live", uuid_present: true, pac_invoice_id_present: true, artifact_status: "DOWNLOAD_READY", xml_provider_available: true, pdf_provider_available: true },
     },
   });
   const source = baseSource({
@@ -51,10 +52,7 @@ check("stamp_ok_builds_visible_post_action_message_and_download_button", () => {
     callback_message_id: "411",
     sandbox_reply_markup: {
       inline_keyboard: [
-        [{ text: "Descargar XML/PDF sandbox", callback_data: "cfdi:DOWNLOADPOST717F" }],
-        [{ text: "Ver estado documental", callback_data: "cfdi:STATUSPOST717F" }],
-        [{ text: "Ver factura", callback_data: "cfdi:VIEWPOST717F" }],
-        [{ text: "Menu principal", callback_data: "cfdi:MENUPOST717F" }],
+        [{ text: "Timbrar sandbox", callback_data: "cfdi:STALESTAMP717F" }],
       ],
     },
   });
@@ -65,6 +63,11 @@ check("stamp_ok_builds_visible_post_action_message_and_download_button", () => {
   const labels = (result.reply_markup.inline_keyboard || []).flat().map((button) => button.text);
   assert(labels.includes("Descargar XML/PDF sandbox"), "download button missing");
   assert(labels.includes("Ver estado documental"), "document status button missing");
+  assert(!labels.includes("Timbrar sandbox"), "stale stamp button must not be reused");
+  const callbacks = allCallbackData(result.reply_markup);
+  assert(!callbacks.includes("cfdi:STALESTAMP717F"), "stale callback_data must not be reused");
+  assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "fresh download token insert missing");
+  assert(!result.persistence_sql.includes("'STAMP_DRAFT_SANDBOX'"), "post-stamp summary must not create fresh stamp token");
   return labels.length;
 });
 
@@ -79,7 +82,7 @@ check("stamp_dispatch_plan_marks_callback_visible_dispatch", () => {
       invoice_status: "SANDBOX_TIMBRADO",
       payment_status: "PENDIENTE",
       total: 1136.8,
-      pac_result: { live_mode: true, mode: "live" },
+      pac_result: { live_mode: true, mode: "live", artifact_status: "DOWNLOAD_READY", xml_provider_available: true, pdf_provider_available: true },
     },
   });
   const summary = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({

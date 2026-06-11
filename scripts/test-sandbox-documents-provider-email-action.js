@@ -108,6 +108,53 @@ check("provider_email_real_send_requires_confirmation", async () => {
   return result.status;
 });
 
+check("provider_email_real_send_requires_env_guard", async () => {
+  const calls = [];
+  const result = await runSandboxDocumentDeliverySend({
+    draft: draft({ email: "cliente.real@example.com", confirmed: true }),
+    channel: "PROVIDER_EMAIL",
+    dryRun: false,
+    confirmRecipient: true,
+    env: {
+      SATBOT_PROVIDER_EMAIL_ALLOWLIST: "cliente.real@example.com",
+    },
+    adapter: {
+      sendInvoiceEmail: async () => {
+        calls.push("called");
+        return { ok: true };
+      },
+    },
+  });
+  assert.strictEqual(result.status, "PROVIDER_EMAIL_REAL_SEND_DISABLED");
+  assert.strictEqual(calls.length, 0);
+  assert(result.errors.includes("PROVIDER_EMAIL_REAL_SEND_DISABLED"));
+  return result.status;
+});
+
+check("provider_email_real_send_requires_allowlist", async () => {
+  const calls = [];
+  const result = await runSandboxDocumentDeliverySend({
+    draft: draft({ email: "cliente.real@example.com", confirmed: true }),
+    channel: "PROVIDER_EMAIL",
+    dryRun: false,
+    confirmRecipient: true,
+    env: {
+      SATBOT_PROVIDER_EMAIL_REAL_SEND_ENABLED: "1",
+      SATBOT_PROVIDER_EMAIL_ALLOWLIST: "otro@example.com",
+    },
+    adapter: {
+      sendInvoiceEmail: async () => {
+        calls.push("called");
+        return { ok: true };
+      },
+    },
+  });
+  assert.strictEqual(result.status, "PROVIDER_EMAIL_OUTSIDE_ALLOWLIST");
+  assert.strictEqual(calls.length, 0);
+  assert(result.errors.includes("PROVIDER_EMAIL_OUTSIDE_ALLOWLIST"));
+  return result.status;
+});
+
 check("provider_email_real_send_uses_adapter_when_confirmed", async () => {
   const calls = [];
   const result = await runSandboxDocumentDeliverySend({
@@ -115,6 +162,10 @@ check("provider_email_real_send_uses_adapter_when_confirmed", async () => {
     channel: "PROVIDER_EMAIL",
     dryRun: false,
     confirmRecipient: true,
+    env: {
+      SATBOT_PROVIDER_EMAIL_REAL_SEND_ENABLED: "1",
+      SATBOT_PROVIDER_EMAIL_ALLOWLIST: "cliente.real@example.com",
+    },
     adapter: {
       sendInvoiceEmail: async (invoiceRef, context) => {
         calls.push({ invoiceRef, context });
