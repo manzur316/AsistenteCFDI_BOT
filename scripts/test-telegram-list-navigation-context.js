@@ -124,6 +124,17 @@ function drafts(prefix, status, count, extra = {}) {
   });
 }
 
+function orderedDrafts(prefix, status, count, extra = {}) {
+  const baseMs = Date.parse("2026-06-11T12:00:00.000Z");
+  return Array.from({ length: count }, (_item, index) => {
+    const n = String(index + 1).padStart(2, "0");
+    return draft(`${prefix}-${n}`, status, {
+      updated_at: new Date(baseMs - index * 60000).toISOString(),
+      ...extra,
+    });
+  });
+}
+
 function baseInput(text, extra = {}) {
   return {
     update_id: extra.update_id || 99010,
@@ -250,8 +261,15 @@ if (handleCode) {
   const pending15 = drafts("DRAFT-PEND-15", "PENDIENTE", 15);
   const pending20 = drafts("DRAFT-PEND-20", "PENDIENTE", 20);
   const pending51 = drafts("DRAFT-PEND-LIMIT", "PENDIENTE", 51);
+  const pendingOrdered = orderedDrafts("DRAFT-PEND-ORDER", "PENDIENTE", 8);
+  const pendingNormal = draft("DRAFT-PEND-NORMAL", "PENDIENTE");
+  const pendingInvoiceStamped = draft("DRAFT-PEND-INVOICE-STAMPED", "PENDIENTE", { invoice_status: "SANDBOX_TIMBRADO" });
+  const pendingDownloaded = draft("DRAFT-PEND-DOWNLOADED", "PENDIENTE", { artifact_status: "DOWNLOADED" });
   const approved = drafts("DRAFT-APROB-LIST", "APROBADO", 10);
   const approved20 = drafts("DRAFT-APROB-20", "APROBADO", 20);
+  const approvedNormal = draft("DRAFT-APROB-NORMAL", "APROBADO");
+  const approvedInvoiceStamped = draft("DRAFT-APROB-INVOICE-STAMPED", "APROBADO", { invoice_status: "SANDBOX_TIMBRADO" });
+  const approvedDownloadReady = draft("DRAFT-APROB-DOWNLOAD-READY", "APROBADO", { artifact_status: "DOWNLOAD_READY" });
   const approvedMixedWithStamped = [
     ...drafts("DRAFT-APROB-MIX", "APROBADO", 6),
     draft("DRAFT-STAMPED-STATUS-01", "SANDBOX_TIMBRADO"),
@@ -262,19 +280,105 @@ if (handleCode) {
 
   const cases = [
     {
+      name: "pendiente_normal_aparece_en_pendientes",
+      run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99232, recent_drafts: [pendingNormal] })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && String(result.telegram_message || "").includes("DRAFT-PEND-NORMAL")
+        && hasButtons(result, ["Ver 1", "Aprobar 1", "Descartar 1"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "pendiente_invoice_sandbox_timbrado_no_aparece",
+      run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99233, recent_drafts: [pendingInvoiceStamped] })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && String(result.telegram_message || "").includes("No hay borradores pendientes.")
+        && !String(result.telegram_message || "").includes("DRAFT-PEND-INVOICE-STAMPED")
+        && lacksButtons(result, ["Ver 1", "Aprobar 1", "Descartar 1"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "pendiente_artifact_downloaded_no_aparece",
+      run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99234, recent_drafts: [pendingDownloaded] })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && String(result.telegram_message || "").includes("No hay borradores pendientes.")
+        && !String(result.telegram_message || "").includes("DRAFT-PEND-DOWNLOADED")
+        && lacksButtons(result, ["Ver 1", "Aprobar 1", "Descartar 1"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "pendientes_filtra_inconsistentes_y_mantiene_normal",
+      run: () => executeCode(handleCode, baseInput("/pendientes", {
+        update_id: 99235,
+        recent_drafts: [pendingInvoiceStamped, pendingNormal, pendingDownloaded],
+      })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && String(result.telegram_message || "").includes("Pendientes (1-1 de 1)")
+        && String(result.telegram_message || "").includes("DRAFT-PEND-NORMAL")
+        && !String(result.telegram_message || "").includes("DRAFT-PEND-INVOICE-STAMPED")
+        && !String(result.telegram_message || "").includes("DRAFT-PEND-DOWNLOADED")
+        && callbacksSafe(result),
+    },
+    {
+      name: "aprobado_normal_aparece_en_aprobadas",
+      run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 99236, recent_drafts: [approvedNormal] })),
+      expect: (result) => result.action === "COMMAND_APROBADAS"
+        && String(result.telegram_message || "").includes("DRAFT-APROB-NORMAL")
+        && hasButtons(result, ["Ver 1", "Timbrar sandbox 1"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "aprobado_invoice_sandbox_timbrado_no_aparece",
+      run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 99237, recent_drafts: [approvedInvoiceStamped] })),
+      expect: (result) => result.action === "COMMAND_APROBADAS"
+        && String(result.telegram_message || "").includes("No hay borradores aprobados listos para timbrar.")
+        && !String(result.telegram_message || "").includes("DRAFT-APROB-INVOICE-STAMPED")
+        && lacksButtons(result, ["Ver 1", "Timbrar sandbox 1"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "aprobado_artifact_download_ready_no_aparece",
+      run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 99238, recent_drafts: [approvedDownloadReady] })),
+      expect: (result) => result.action === "COMMAND_APROBADAS"
+        && String(result.telegram_message || "").includes("No hay borradores aprobados listos para timbrar.")
+        && !String(result.telegram_message || "").includes("DRAFT-APROB-DOWNLOAD-READY")
+        && lacksButtons(result, ["Ver 1", "Timbrar sandbox 1"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "pendientes_pagina_1_mas_recientes_primero_fixture_timestamps",
+      run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99239, recent_drafts: pendingOrdered })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && String(result.telegram_message || "").includes("1. DRAFT-PEND-ORDER-01")
+        && String(result.telegram_message || "").includes("5. DRAFT-PEND-ORDER-05")
+        && !String(result.telegram_message || "").includes("6. DRAFT-PEND-ORDER-06")
+        && hasButtons(result, ["Mas antiguos 6-8"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "pendientes_pagina_2_mas_antiguos_fixture_timestamps",
+      run: () => executeCode(handleCode, callbackInput("LIST_PENDING", { page: 2 }, { update_id: 99240, recent_drafts: pendingOrdered })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && String(result.telegram_message || "").includes("6. DRAFT-PEND-ORDER-06")
+        && String(result.telegram_message || "").includes("8. DRAFT-PEND-ORDER-08")
+        && !String(result.telegram_message || "").includes("1. DRAFT-PEND-ORDER-01")
+        && hasButtons(result, ["Mas recientes 1-5"])
+        && lacksButtons(result, ["Mas antiguos 11-15"])
+        && callbacksSafe(result),
+    },
+    {
       name: "pendientes_5_no_muestra_navegacion",
       run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99219, recent_drafts: pending5 })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
         && hasButtons(result, ["Ver 1", "Aprobar 5", "Descartar 5"])
-        && lacksButtons(result, ["Mas antiguas 6-10", "Mas recientes 1-5", "Timbrar sandbox 1"])
+        && lacksButtons(result, ["Mas antiguos 6-10", "Mas recientes 1-5", "Timbrar sandbox 1"])
         && String(result.telegram_message || "").includes("Pendientes (1-5 de 5)")
         && callbacksSafe(result),
     },
     {
-      name: "pendientes_6_muestra_mas_antiguas_6_6",
+      name: "pendientes_6_muestra_mas_antiguos_6_6",
       run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99220, recent_drafts: pending6 })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && hasButtons(result, ["Ver 1", "Aprobar 5", "Descartar 5", "Mas antiguas 6-6"])
+        && hasButtons(result, ["Ver 1", "Aprobar 5", "Descartar 5", "Mas antiguos 6-6"])
         && lacksButtons(result, ["Ver 6", "Mas recientes 1-5"])
         && String(result.telegram_message || "").includes("Pendientes (1-5 de 6)")
         && callbacksSafe(result),
@@ -283,7 +387,7 @@ if (handleCode) {
       name: "pendientes_10_muestra_siguiente_6_10",
       run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99201, recent_drafts: pending })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && hasButtons(result, ["Ver 1", "Aprobar 5", "Descartar 5", "Mas antiguas 6-10"])
+        && hasButtons(result, ["Ver 1", "Aprobar 5", "Descartar 5", "Mas antiguos 6-10"])
         && lacksButtons(result, ["Ver 6", "Mas recientes 1-5"])
         && String(result.telegram_message || "").includes("Pendientes (1-5 de 10)")
         && String(result.persistence_sql || "").includes("DRAFTS_PENDING")
@@ -294,7 +398,7 @@ if (handleCode) {
       run: () => executeCode(handleCode, callbackInput("LIST_PENDING", { page: 2 }, { update_id: 99202, recent_drafts: pending })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
         && hasButtons(result, ["Ver 6", "Aprobar 10", "Descartar 10", "Mas recientes 1-5"])
-        && lacksButtons(result, ["Ver 1", "Mas antiguas 11-15"])
+        && lacksButtons(result, ["Ver 1", "Mas antiguos 11-15"])
         && String(result.telegram_message || "").includes("10. DRAFT-PEND-LIST-10")
         && callbacksSafe(result),
     },
@@ -302,8 +406,8 @@ if (handleCode) {
       name: "pendientes_11_pagina_2_muestra_navegacion_hacia_11",
       run: () => executeCode(handleCode, callbackInput("LIST_PENDING", { page: 2 }, { update_id: 99221, recent_drafts: pending11 })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && hasButtons(result, ["Ver 6", "Aprobar 10", "Descartar 10", "Mas recientes 1-5", "Mas antiguas 11-11"])
-        && lacksButtons(result, ["Ver 11", "Mas antiguas 16-20"])
+        && hasButtons(result, ["Ver 6", "Aprobar 10", "Descartar 10", "Mas recientes 1-5", "Mas antiguos 11-11"])
+        && lacksButtons(result, ["Ver 11", "Mas antiguos 16-20"])
         && String(result.telegram_message || "").includes("Pendientes (6-10 de 11)")
         && callbacksSafe(result),
     },
@@ -311,7 +415,7 @@ if (handleCode) {
       name: "pendientes_15_pagina_2_intermedia_muestra_ambas_navegaciones",
       run: () => executeCode(handleCode, callbackInput("LIST_PENDING", { page: 2 }, { update_id: 99222, recent_drafts: pending15 })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && hasButtons(result, ["Ver 6", "Aprobar 10", "Descartar 10", "Mas recientes 1-5", "Mas antiguas 11-15"])
+        && hasButtons(result, ["Ver 6", "Aprobar 10", "Descartar 10", "Mas recientes 1-5", "Mas antiguos 11-15"])
         && lacksButtons(result, ["Ver 11"])
         && String(result.telegram_message || "").includes("Pendientes (6-10 de 15)")
         && callbacksSafe(result),
@@ -321,7 +425,7 @@ if (handleCode) {
       run: () => executeCode(handleCode, callbackInput("LIST_PENDING", { page: 3 }, { update_id: 99223, recent_drafts: pending15 })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
         && hasButtons(result, ["Ver 11", "Aprobar 15", "Descartar 15", "Mas recientes 6-10"])
-        && lacksButtons(result, ["Ver 6", "Mas antiguas 16-20"])
+        && lacksButtons(result, ["Ver 6", "Mas antiguos 16-20"])
         && String(result.telegram_message || "").includes("Pendientes (11-15 de 15)")
         && callbacksSafe(result),
     },
@@ -330,7 +434,7 @@ if (handleCode) {
       run: () => executeCode(handleCode, callbackInput("LIST_PENDING", { page: 4 }, { update_id: 99224, recent_drafts: pending20 })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
         && hasButtons(result, ["Ver 16", "Aprobar 20", "Descartar 20", "Mas recientes 11-15"])
-        && lacksButtons(result, ["Mas antiguas 21-25", "Ver 11"])
+        && lacksButtons(result, ["Mas antiguos 21-25", "Ver 11"])
         && String(result.telegram_message || "").includes("Pendientes (16-20 de 20)")
         && callbacksSafe(result),
     },
@@ -338,7 +442,7 @@ if (handleCode) {
       name: "pendientes_limite_50_muestra_aviso_historial",
       run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99225, recent_drafts: pending51 })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && hasButtons(result, ["Mas antiguas 6-10"])
+        && hasButtons(result, ["Mas antiguos 6-10"])
         && String(result.telegram_message || "").includes("Pendientes (1-5 de 50)")
         && String(result.telegram_message || "").includes("Mostrando los 50 mas recientes")
         && !String(result.telegram_message || "").includes("DRAFT-PEND-LIMIT-51")
@@ -349,7 +453,7 @@ if (handleCode) {
       run: () => executeCode(handleCode, callbackInput("LIST_APPROVED", { page: 2 }, { update_id: 99213, recent_drafts: approved })),
       expect: (result) => result.action === "COMMAND_APROBADAS"
         && hasButtons(result, ["Ver 6", "Ver 10", "Timbrar sandbox 10", "Mas recientes 1-5"])
-        && lacksButtons(result, ["Ver 1", "Ver 5", "Mas antiguas 11-15", "Cancelar sandbox 10"])
+        && lacksButtons(result, ["Ver 1", "Ver 5", "Mas antiguos 11-15", "Cancelar sandbox 10"])
         && String(result.telegram_message || "").includes("Aprobadas (6-10 de 10)")
         && !String(result.telegram_message || "").includes("Acciones rapidas disponibles")
         && callbacksSafe(result),
@@ -359,7 +463,7 @@ if (handleCode) {
       run: () => executeCode(handleCode, callbackInput("LIST_APPROVED", { page: 4 }, { update_id: 99226, recent_drafts: approved20 })),
       expect: (result) => result.action === "COMMAND_APROBADAS"
         && hasButtons(result, ["Ver 16", "Ver 20", "Timbrar sandbox 20", "Mas recientes 11-15"])
-        && lacksButtons(result, ["Mas antiguas 21-25", "Cancelar sandbox 20", "Ver 11"])
+        && lacksButtons(result, ["Mas antiguos 21-25", "Cancelar sandbox 20", "Ver 11"])
         && String(result.telegram_message || "").includes("Aprobadas (16-20 de 20)")
         && callbacksSafe(result),
     },
@@ -367,7 +471,7 @@ if (handleCode) {
       name: "aprobadas_excluye_sandbox_timbrado_y_no_muestra_cancelar",
       run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 99227, recent_drafts: approvedMixedWithStamped })),
       expect: (result) => result.action === "COMMAND_APROBADAS"
-        && hasButtons(result, ["Ver 1", "Timbrar sandbox 5", "Mas antiguas 6-6"])
+        && hasButtons(result, ["Ver 1", "Timbrar sandbox 5", "Mas antiguos 6-6"])
         && lacksButtons(result, ["Cancelar sandbox 1", "Ver 7", "Timbrar sandbox 7"])
         && String(result.telegram_message || "").includes("Aprobadas (1-5 de 6)")
         && !String(result.telegram_message || "").includes("DRAFT-STAMPED-STATUS-01")
