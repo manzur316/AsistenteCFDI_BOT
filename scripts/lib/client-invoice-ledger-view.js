@@ -220,7 +220,7 @@ function renderClientInvoiceLedgerText(view, options = {}) {
     lines.push('Cancelado separado: ' + formatMoney(group.summary.cancelled_total));
   }
 
-  lines.push('', 'Cambios de estado de pago: solo por comando/flujo autorizado en fases futuras.');
+  lines.push('', 'Cambios de estado de pago: usa Pendientes pago -> facturas N -> pagar N.');
   return lines.map((line) => maybeEscape(line, useHtml)).join('\n');
 }
 

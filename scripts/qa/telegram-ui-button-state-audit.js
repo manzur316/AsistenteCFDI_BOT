@@ -466,9 +466,10 @@ function runAudit() {
     }));
     assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
     assertVisibleContract(result, {
-      allow: ["Descargar XML/PDF sandbox", "Ver factura", "Marcar pagada"],
+      allow: ["Descargar XML/PDF sandbox", "Ver factura"],
       forbid: ["Timbrar sandbox"],
-      sqlIncludes: ["DOWNLOAD_SANDBOX_ARTIFACTS", "VIEW_DRAFT", "MARK_PAYMENT_PAID"],
+      sqlIncludes: ["DOWNLOAD_SANDBOX_ARTIFACTS", "VIEW_DRAFT"],
+      sqlExcludes: ["MARK_PAYMENT_PAID", "MARK_PAYMENT_PARTIAL", "MARK_PAYMENT_OVERDUE"],
     });
   });
 
@@ -482,9 +483,10 @@ function runAudit() {
     }));
     assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
     assertVisibleContract(result, {
-      allow: ["Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver factura", "Marcar pagada"],
+      allow: ["Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver factura"],
       forbid: ["Timbrar sandbox"],
-      sqlIncludes: ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL", "MARK_PAYMENT_PAID"],
+      sqlIncludes: ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL"],
+      sqlExcludes: ["MARK_PAYMENT_PAID", "MARK_PAYMENT_PARTIAL", "MARK_PAYMENT_OVERDUE"],
     });
   });
 

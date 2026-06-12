@@ -310,10 +310,10 @@ check("workflow_ledger_download_ready_exposes_download_action", () => {
   const texts = buttonTexts(result);
   assert(texts.includes("Descargar XML/PDF sandbox"), texts.join(","));
   assert(texts.includes("Ver factura"), texts.join(","));
-  assert(texts.includes("Marcar pagada"), texts.join(","));
+  assert(!texts.includes("Marcar pagada"), texts.join(","));
   assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "download token missing");
   assert(result.persistence_sql.includes("'VIEW_DRAFT'"), "view draft token missing");
-  assert(result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "payment token missing");
+  assert(!result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "ambiguous payment token present");
   return "DOWNLOAD_READY";
 });
 
@@ -328,15 +328,15 @@ check("workflow_ledger_downloaded_exposes_document_actions", () => {
   assert(texts.includes("Enviar a canal documentos"), texts.join(","));
   assert(texts.includes("Enviar por correo"), texts.join(","));
   assert(texts.includes("Ver factura"), texts.join(","));
-  assert(texts.includes("Marcar pagada"), texts.join(","));
+  assert(!texts.includes("Marcar pagada"), texts.join(","));
   assert(result.persistence_sql.includes("'DELIVERY_STATUS'"), "delivery status token missing");
   assert(result.persistence_sql.includes("'DELIVERY_PREPARE_TELEGRAM_CHANNEL'"), "telegram delivery token missing");
   assert(result.persistence_sql.includes("'DELIVERY_PREPARE_PROVIDER_EMAIL'"), "provider email delivery token missing");
-  assert(result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "payment token missing");
+  assert(!result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "ambiguous payment token present");
   return "DOWNLOADED";
 });
 
-check("workflow_ledger_normal_without_artifacts_keeps_payment_surface", () => {
+check("workflow_ledger_normal_without_artifacts_blocks_ambiguous_payment_surface", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", ROLES.OWNER, {
     update_id: 9514,
     client_invoice_ledger: [ledgerRows()[0]],
@@ -345,22 +345,24 @@ check("workflow_ledger_normal_without_artifacts_keeps_payment_surface", () => {
   const texts = buttonTexts(result);
   assert(!texts.includes("Descargar XML/PDF sandbox"), texts.join(","));
   assert(!texts.includes("Ver estado documental"), texts.join(","));
-  assert(texts.includes("Marcar pendiente"), texts.join(","));
-  assert(texts.includes("Marcar pagada"), texts.join(","));
-  assert(result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "payment token missing");
+  assert(!texts.includes("Marcar pendiente"), texts.join(","));
+  assert(!texts.includes("Marcar pagada"), texts.join(","));
+  assert(!texts.includes("Marcar parcial"), texts.join(","));
+  assert(!texts.includes("Marcar vencida"), texts.join(","));
+  assert(!result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "ambiguous payment token present");
   assert(!result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "unexpected download token");
-  return "payment_only";
+  return "payment_blocked";
 });
 
 check("workflow_renders_payment_filters", () => {
   const pending = executeCode(handleCode, baseInput("cfdi_nav:pay_pending"));
   const paid = executeCode(handleCode, baseInput("cfdi_nav:pay_paid"));
   const cancelled = executeCode(handleCode, baseInput("cfdi_nav:pay_cancel"));
-  assert.strictEqual(pending.action, "CLIENT_PAYMENT_PENDING");
+  assert.strictEqual(pending.action, "COLLECTION_CLIENTS");
   assert.strictEqual(paid.action, "CLIENT_PAYMENT_PAID");
   assert.strictEqual(cancelled.action, "CLIENT_PAYMENT_CANCELLED");
-  assert(pending.telegram_message.includes("PENDIENTE"));
-  assert(!pending.telegram_message.includes("PAGADO | $5000.00"));
+  assert(pending.telegram_message.includes("Clientes con saldo abierto"));
+  assert(pending.persistence_sql.includes('"kind":"COLLECTION_CLIENTS"'));
   assert(paid.telegram_message.includes("PAGADO | $5000.00"));
   assert(!paid.telegram_message.includes("PENDIENTE | $10150.00"));
   assert(cancelled.telegram_message.includes("SANDBOX_CANCELADO"));

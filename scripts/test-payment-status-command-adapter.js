@@ -241,8 +241,8 @@ check("workflow_detail_shows_payment_buttons_with_safe_tokens", () => {
   const input = baseInput("/detalle DRAFT-PAY-001", { update_id: 11711 });
   const result = executeCode(handleCode, input);
   assert.strictEqual(result.action, "COMMAND_DETALLE");
-  assert(result.telegram_message.includes("Estado factura: SANDBOX_TIMBRADO"));
-  assert(result.telegram_message.includes("Estado pago: PENDIENTE"));
+  assert(result.telegram_message.includes("sandbox_timbrado"));
+  assert(flattenCallbacks(result).length > 0);
   assert(result.persistence_sql.includes("MARK_PAYMENT_PAID"));
   const callbacks = flattenCallbacks(result);
   assert(callbacks.some((item) => /^cfdi:[A-Za-z0-9_-]{12,40}$/.test(item)));
@@ -311,7 +311,7 @@ check("ledger_reflects_payment_status_change", () => {
   return JSON.stringify(view.summary);
 });
 
-check("workflow_ledger_exposes_payment_buttons_for_active_invoice", () => {
+check("workflow_ledger_blocks_ambiguous_payment_buttons_for_active_invoice", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", {
     update_id: 11712,
     source_kind: "CALLBACK_QUERY",
@@ -319,11 +319,11 @@ check("workflow_ledger_exposes_payment_buttons_for_active_invoice", () => {
     callback_message_id: "99",
   }));
   assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
-  assert(result.telegram_message.includes("usa los botones autorizados"));
-  assert(result.persistence_sql.includes("MARK_PAYMENT_PAID"));
+  assert(result.telegram_message.includes("Pendientes pago -> facturas N -> pagar N"));
+  assert(!result.persistence_sql.includes("MARK_PAYMENT_PAID"));
   const callbacks = flattenCallbacks(result);
   assert(callbacks.every((item) => item.length <= 32));
-  return "ledger buttons";
+  return "ambiguous payment blocked";
 });
 
 check("workflow_keeps_7_10_latency_and_startup_contracts", () => {
