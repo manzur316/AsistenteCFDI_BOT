@@ -731,7 +731,8 @@ if (handleCode) {
       expect: (result) => result.action === "PRODUCT_MENU_MAIN"
         && result.screen_id === "MAIN_MENU"
         && result.screen_kind === "MENU"
-        && hasButtons(result, ["Nueva factura", "Pendientes", "Clientes", "Estado"])
+        && hasButtons(result, ["Nueva factura", "Borradores", "Clientes", "Facturas", "Cobranza", "Documentos", "Sincronizar proveedor", "Ayuda"])
+        && lacksButtons(result, ["Admin/Sandbox", "Estado", "Smoke tests", "Preflight proveedor"])
         && callbacksSafe(result),
     },
     {

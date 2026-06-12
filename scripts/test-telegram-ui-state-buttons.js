@@ -211,6 +211,28 @@ function baseInput(text, extra = {}) {
     callback_query_id: extra.callback_query_id || "",
     callback_message_id: extra.callback_message_id || "",
     source_message_id: extra.source_message_id || "",
+    authorized_user: extra.authorized_user ?? null,
+    security_user_id: extra.security_user_id || "",
+    security_role: extra.security_role || "",
+    security_allowed: extra.security_allowed ?? false,
+    security_enforcement: extra.security_enforcement ?? false,
+  };
+}
+
+function ownerSecurity(extra = {}) {
+  return {
+    authorized_user: {
+      user_id: "OWNER-UI-STATE",
+      telegram_chat_id: extra.chat_id || chatId,
+      telegram_user_id: extra.telegram_user_id || "owner-ui-state",
+      role: "OWNER",
+      enabled: true,
+    },
+    telegram_user_id: extra.telegram_user_id || "owner-ui-state",
+    security_user_id: "OWNER-UI-STATE",
+    security_role: "OWNER",
+    security_allowed: true,
+    security_enforcement: false,
   };
 }
 
@@ -409,14 +431,16 @@ if (handleCode) {
     {
       name: "help_menu_start_ayuda_unknown",
       run: () => [
-        executeCode(handleCode, baseInput("/start", { update_id: 9307 })),
-        executeCode(handleCode, baseInput("/ayuda", { update_id: 9308 })),
-        executeCode(handleCode, baseInput("/noexiste", { update_id: 9309 })),
+        executeCode(handleCode, baseInput("/start", { update_id: 9307, ...ownerSecurity() })),
+        executeCode(handleCode, baseInput("/ayuda", { update_id: 9308, ...ownerSecurity() })),
+        executeCode(handleCode, baseInput("/noexiste", { update_id: 9309, ...ownerSecurity() })),
       ],
       expect: (results) => results[0].action === "PRODUCT_MENU_MAIN"
         && results[1].action === "PRODUCT_HELP"
         && results[2].action === "COMMAND_UNKNOWN"
-        && results.every((result) => hasButtons(result, ["Nueva factura", "Clientes", "Pendientes", "Estado", "Ayuda"]) && callbacksSafe(result)),
+        && hasButtons(results[0], ["Nueva factura", "Borradores", "Clientes", "Facturas", "Cobranza", "Documentos", "Sincronizar proveedor", "Ayuda"])
+        && lacksButtons(results[0], ["Admin/Sandbox", "Estado", "Smoke tests", "Preflight proveedor"])
+        && results.every((result) => callbacksSafe(result)),
     },
     {
       name: "cancelado_tiene_menu_post_cancel",

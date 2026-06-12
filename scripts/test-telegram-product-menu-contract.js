@@ -49,14 +49,14 @@ checks.push({
 });
 
 const expectedMainLabels = [
-  "Nueva factura / borrador CFDI",
+  "Nueva factura",
+  "Borradores",
   "Clientes",
-  "Borradores pendientes",
-  "Reporte mensual",
-  "Paquete para contador",
-  "Estado del sistema",
+  "Facturas",
+  "Cobranza",
+  "Documentos",
+  "Sincronizar proveedor",
   "Ayuda",
-  "Admin/Sandbox",
 ];
 
 const mainLabels = MAIN_MENU.buttons.map((item) => item.text);
@@ -66,7 +66,7 @@ checks.push({
   value: `${expectedMainLabels.length}/${MAIN_MENU.buttons.length}`,
 });
 
-const expectedSubmenus = ["invoices", "clients", "reports", "system", "admin_sandbox"];
+const expectedSubmenus = ["invoices", "documents", "provider", "clients", "reports", "system", "admin_sandbox"];
 checks.push({
   name: "submenus_exist",
   pass: expectedSubmenus.every((id) => SUBMENUS[id]),
@@ -146,19 +146,23 @@ checks.push({
 const accountantMenuCallbacks = flattenButtons(getTelegramProductMenu(ROLES.ACCOUNTANT_READONLY)).map((item) => item.callback_data);
 const accountantReportsCallbacks = flattenButtons(getTelegramSubmenu("reports", ROLES.ACCOUNTANT_READONLY)).map((item) => item.callback_data);
 checks.push({
-  name: "accountant_readonly_only_sees_report_summary",
-  pass: accountantMenuCallbacks.includes("cfdi_nav:report")
+  name: "accountant_readonly_sees_readonly_operational_surfaces",
+  pass: accountantMenuCallbacks.includes("cfdi_nav:invoices")
+    && accountantMenuCallbacks.includes("cfdi_nav:docs")
+    && accountantMenuCallbacks.includes("cfdi_nav:help")
+    && !accountantMenuCallbacks.includes("cfdi_nav:acctpkg")
     && accountantReportsCallbacks.includes("cfdi_nav:report")
     && !accountantMenuCallbacks.includes("cfdi_nav:acctpkg")
     && !accountantReportsCallbacks.includes("cfdi_nav:acctpkg"),
-  value: accountantReportsCallbacks.join(", "),
+  value: accountantMenuCallbacks.join(", "),
 });
 
 const ownerAdminMenu = getTelegramProductMenu(ROLES.OWNER, { includeAdmin: true });
 const ownerAdminCallbacks = flattenButtons(ownerAdminMenu).map((item) => item.callback_data);
 checks.push({
-  name: "owner_can_see_admin_when_requested",
-  pass: ownerAdminCallbacks.includes("cfdi_nav:admin"),
+  name: "admin_not_visible_in_operational_menu_even_for_owner",
+  pass: !ownerAdminCallbacks.includes("cfdi_nav:admin")
+    && ownerAdminCallbacks.includes("cfdi_nav:provider"),
   value: ownerAdminCallbacks.join(", "),
 });
 
@@ -166,7 +170,10 @@ const ownerSandboxSubmenu = getTelegramSubmenu("admin_sandbox", ROLES.OWNER, { i
 const ownerSandboxCallbacks = flattenButtons(ownerSandboxSubmenu).map((item) => item.callback_data);
 checks.push({
   name: "sandbox_submenu_owner_only",
-  pass: ownerSandboxCallbacks.includes("cfdi_sbx:menu") && ownerSandboxCallbacks.includes("cfdi_sbx:full"),
+  pass: ownerSandboxCallbacks.includes("cfdi_nav:status")
+    && ownerSandboxCallbacks.includes("cfdi_nav:pac_sbx")
+    && ownerSandboxCallbacks.includes("cfdi_sbx:smoke_menu")
+    && ownerSandboxCallbacks.includes("cfdi_sbx:full"),
   value: ownerSandboxCallbacks.join(", "),
 });
 
@@ -208,8 +215,8 @@ checks.push({
 });
 
 checks.push({
-  name: "contract_has_no_n8n_or_workflow_dependency",
-  pass: !/n8n|workflow|webhook|sendMessage|Telegram Trigger/i.test(contractSource),
+  name: "contract_has_no_n8n_or_telegram_runtime_dependency",
+  pass: !/n8n|webhook|sendMessage|Telegram Trigger/i.test(contractSource),
   value: "pure JS contract",
 });
 

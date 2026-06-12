@@ -203,9 +203,17 @@ check("start_muestra_menu_producto", () => {
   const callbacks = callbackDataList(result);
   assert.strictEqual(result.action, "PRODUCT_MENU_MAIN");
   assert(callbacks.includes("cfdi_nav:new"));
-  assert(callbacks.includes("cfdi_nav:clients"));
   assert(callbacks.includes("cfdi_nav:drafts"));
-  assert(callbacks.includes("cfdi_nav:status"));
+  assert(callbacks.includes("cfdi_nav:clients"));
+  assert(callbacks.includes("cfdi_nav:invoices"));
+  assert(callbacks.includes("cfdi_nav:pay_pending"));
+  assert(callbacks.includes("cfdi_nav:docs"));
+  assert(callbacks.includes("cfdi_nav:provider"));
+  assert(callbacks.includes("cfdi_nav:help"));
+  assert(!callbacks.includes("cfdi_nav:admin"));
+  assert(!callbacks.includes("cfdi_nav:status"));
+  assert(!callbacks.includes("cfdi_nav:acctpkg"));
+  assert(!callbacks.some((value) => value.startsWith("cfdi_sbx:")));
   return callbacks.join(",");
 });
 
@@ -222,8 +230,10 @@ check("menu_principal_navega_a_secciones", () => {
     "cfdi_nav:new": "INVOICE_WIZARD",
     "cfdi_nav:clients": "COMMAND_CLIENTES",
     "cfdi_nav:drafts": "COMMAND_PENDIENTES",
-    "cfdi_nav:report": "COMMAND_RESUMEN",
-    "cfdi_nav:status": "PRODUCT_STATUS",
+    "cfdi_nav:invoices": "PRODUCT_INVOICES_PLACEHOLDER",
+    "cfdi_nav:pay_pending": "COLLECTION_CLIENTS",
+    "cfdi_nav:docs": "PRODUCT_DOCUMENTS_PLACEHOLDER",
+    "cfdi_nav:provider": "PRODUCT_PROVIDER_SYNC_PLACEHOLDER",
     "cfdi_nav:help": "PRODUCT_HELP",
   };
   for (const [callbackData, expectedAction] of Object.entries(cases)) {
@@ -241,7 +251,6 @@ check("clientes_muestra_opciones_claras", () => {
   assert(!callbacks.includes("cfdi_nav:clients"));
   assert(callbacks.includes("cfdi_nav:client_find"));
   assert(callbacks.includes("cfdi_nav:client_new"));
-  assert(callbacks.includes("cfdi_nav:client_validate"));
   assert(callbacks.includes("cfdi_nav:menu"));
   return callbacks.join(",");
 });
@@ -263,10 +272,44 @@ check("owner_ve_admin_sandbox_y_aclara_no_produccion", () => {
   const result = executeCode(handleCode, callbackInput("cfdi_nav:admin", "OWNER", { update_id: 7640 }));
   const callbacks = callbackDataList(result);
   assert.strictEqual(result.action, "PRODUCT_ADMIN_SANDBOX");
+  assert(result.telegram_message.includes("Admin / QA"));
+  assert(callbacks.includes("cfdi_nav:status"));
   assert(callbacks.includes("cfdi_nav:pac_sbx"));
+  assert(callbacks.includes("cfdi_sbx:smoke_menu"));
+  assert(callbacks.includes("cfdi_sbx:preflight"));
   assert(callbacks.includes("cfdi_sbx:full"));
   assert(result.telegram_message.includes("Factura.com Sandbox: CFDI de prueba. No es produccion fiscal real."));
   return callbacks.join(",");
+});
+
+check("admin_qa_sandbox_commands_are_owner_only", () => {
+  const admin = executeCode(handleCode, baseInput("/admin", { update_id: 7641 }));
+  const qa = executeCode(handleCode, baseInput("/qa", { update_id: 7642 }));
+  const sandbox = executeCode(handleCode, baseInput("/sandbox", { update_id: 7643 }));
+  assert.strictEqual(admin.action, "PRODUCT_ADMIN_SANDBOX");
+  assert.strictEqual(qa.action, "PRODUCT_ADMIN_SANDBOX");
+  assert.strictEqual(sandbox.action, "PRODUCT_PAC_SANDBOX_CONSOLE");
+  const denied = executeCode(handleCode, baseInput("/admin", {
+    update_id: 7644,
+    authorized_user: authorizedUser("ASSISTANT_OPERATOR"),
+  }));
+  assert.strictEqual(denied.action, "ACCESS_DENIED");
+  return "admin_qa_owner_only";
+});
+
+check("placeholders_operativos_no_mutan_datos", () => {
+  const invoices = executeCode(handleCode, callbackInput("cfdi_nav:invoices", "OWNER", { update_id: 7645 }));
+  const docs = executeCode(handleCode, callbackInput("cfdi_nav:docs", "OWNER", { update_id: 7646 }));
+  const provider = executeCode(handleCode, callbackInput("cfdi_nav:provider", "OWNER", { update_id: 7647 }));
+  assert.strictEqual(invoices.action, "PRODUCT_INVOICES_PLACEHOLDER");
+  assert.strictEqual(docs.action, "PRODUCT_DOCUMENTS_PLACEHOLDER");
+  assert.strictEqual(provider.action, "PRODUCT_PROVIDER_SYNC_PLACEHOLDER");
+  const businessMutation = /UPDATE\s+(?:cfdi_drafts|cfdi_invoice_payment_state|cfdi_clients|cfdi_client_aliases)\b/i;
+  assert(!businessMutation.test(String(invoices.persistence_sql || "")));
+  assert(!businessMutation.test(String(docs.persistence_sql || "")));
+  assert(!businessMutation.test(String(provider.persistence_sql || "")));
+  assert(provider.telegram_message.includes("no se ejecuta"));
+  return "safe_placeholders";
 });
 
 check("confirmar_borrador_responde_con_feedback_y_menu", () => {

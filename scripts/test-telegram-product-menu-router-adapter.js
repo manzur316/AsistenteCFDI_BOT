@@ -167,7 +167,11 @@ check("assistant_visible_buttons_have_destinations", () => {
 
 check("owner_visible_buttons_have_destinations", () => {
   const callbacks = flattenCallbacks(renderTelegramMainMenu(ROLES.OWNER, { includeAdmin: true, includeSandbox: true }));
-  assert(callbacks.includes("cfdi_nav:admin"));
+  assert(!callbacks.includes("cfdi_nav:admin"));
+  assert(callbacks.includes("cfdi_nav:invoices"));
+  assert(callbacks.includes("cfdi_nav:docs"));
+  assert(callbacks.includes("cfdi_nav:provider"));
+  assert(callbacks.includes("cfdi_nav:pay_pending"));
   for (const callbackData of callbacks) {
     assertSafeCallback(callbackData);
     const result = executeCode(handleCode, baseInput(callbackData, ROLES.OWNER, { update_id: 7320 + callbacks.indexOf(callbackData) }));
@@ -179,11 +183,13 @@ check("owner_visible_buttons_have_destinations", () => {
 
 check("admin_sandbox_visible_only_for_owner", () => {
   const assistantCallbacks = flattenCallbacks(renderTelegramMainMenu(ROLES.ASSISTANT_OPERATOR, { includeAdmin: true, includeSandbox: true }));
-  const ownerCallbacks = flattenCallbacks(renderTelegramMainMenu(ROLES.OWNER, { includeAdmin: true, includeSandbox: true }));
+  const ownerCallbacks = flattenCallbacks(renderTelegramSubmenu("admin_sandbox", ROLES.OWNER, { includeSandbox: true }));
   assert(!assistantCallbacks.includes("cfdi_nav:admin"));
-  assert(ownerCallbacks.includes("cfdi_nav:admin"));
+  assert(ownerCallbacks.includes("cfdi_nav:pac_sbx"));
   const result = executeCode(handleCode, baseInput("cfdi_nav:admin", ROLES.ASSISTANT_OPERATOR, { update_id: 7330 }));
   assert.strictEqual(result.action, "ACCESS_DENIED");
+  const owner = executeCode(handleCode, baseInput("cfdi_nav:admin", ROLES.OWNER, { update_id: 7331 }));
+  assert.strictEqual(owner.action, "PRODUCT_ADMIN_SANDBOX");
   return "owner_only";
 });
 
@@ -191,6 +197,9 @@ check("admin_sandbox_submenu_callbacks_are_explicit", () => {
   const callbacks = flattenCallbacks(renderTelegramSubmenu("admin_sandbox", ROLES.OWNER, { includeSandbox: true }));
   assert(callbacks.includes("cfdi_nav:pac_sbx"));
   assert(callbacks.includes("cfdi_nav:sbx_drafts"));
+  assert(callbacks.includes("cfdi_nav:status"));
+  assert(callbacks.includes("cfdi_nav:provider"));
+  assert(callbacks.includes("cfdi_sbx:smoke_menu"));
   assert(callbacks.includes("cfdi_sbx:full"));
   assert(callbacks.includes("cfdi_sbx:preflight"));
   assert(callbacks.includes("cfdi_sbx:smoke_create"));
@@ -212,6 +221,10 @@ check("minimum_required_routes_match_existing_actions", () => {
     ["cfdi_nav:new", "INVOICE_WIZARD"],
     ["cfdi_nav:clients", "COMMAND_CLIENTES"],
     ["cfdi_nav:drafts", "COMMAND_PENDIENTES"],
+    ["cfdi_nav:invoices", "PRODUCT_INVOICES_PLACEHOLDER"],
+    ["cfdi_nav:docs", "PRODUCT_DOCUMENTS_PLACEHOLDER"],
+    ["cfdi_nav:provider", "PRODUCT_PROVIDER_SYNC_PLACEHOLDER"],
+    ["cfdi_nav:pay_pending", "COLLECTION_CLIENTS"],
     ["cfdi_nav:report", "COMMAND_RESUMEN"],
     ["cfdi_nav:status", "PRODUCT_STATUS"],
     ["cfdi_nav:help", "PRODUCT_HELP"],
@@ -261,8 +274,6 @@ check("callbacks_do_not_send_files_or_call_pac", () => {
     "sendDocument",
     "sendMediaGroup",
     "sendPhoto",
-    "downloadXml",
-    "downloadPdf",
     "stampProduction",
     "stampProduction futuro",
     "production.factura",

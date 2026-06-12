@@ -16,8 +16,20 @@ const SUBMENU_TEXT = Object.freeze({
   invoices: [
     "Facturas",
     "",
-    "Crea un borrador CFDI o revisa borradores pendientes.",
-    "El bot organiza la informacion; la revision humana sigue siendo obligatoria.",
+    "Consulta facturas recientes o abre facturas por cliente.",
+    "El historial pesado sigue delegado a Factura.com/PAC.",
+  ].join("\n"),
+  documents: [
+    "Documentos",
+    "",
+    "Superficie para XML/PDF, estado documental y envios.",
+    "Por ahora conserva rutas seguras existentes sin ejecutar acciones nuevas.",
+  ].join("\n"),
+  provider: [
+    "Proveedor",
+    "",
+    "Sincronizacion y diagnostico de Factura.com/PAC.",
+    "Esta fase no ejecuta sync real ni muestra credenciales.",
   ].join("\n"),
   clients: [
     "Clientes",
@@ -38,10 +50,10 @@ const SUBMENU_TEXT = Object.freeze({
     "Las acciones dependen del rol autorizado.",
   ].join("\n"),
   admin_sandbox: [
-    "Admin/Sandbox",
+    "Admin / QA",
     "",
-    "Consola OWNER/admin para Factura.com Sandbox.",
-    "Permite timbrado sandbox de prueba por Action Layer; produccion fiscal real sigue bloqueada.",
+    "Consola OWNER para diagnostico, sandbox y pruebas tecnicas.",
+    "No representa la experiencia diaria del usuario.",
   ].join("\n"),
 });
 
@@ -121,9 +133,9 @@ function buildPayload(text, replyMarkup) {
 function renderTelegramMainMenu(role = ROLES.ASSISTANT_OPERATOR, options = {}) {
   const menu = getTelegramProductMenu(normalizeRole(role), safeOptions(options));
   const text = [
-    "Menu CFDI",
+    "Menu principal",
     "",
-    "Organizo borradores CFDI para captura y revision manual.",
+    "Operaciones rapidas de Private SatBot.",
     "Elige una opcion para continuar.",
   ].join("\n");
   return buildPayload(text, menu.reply_markup);
@@ -151,7 +163,7 @@ function renderTelegramHelp(role = ROLES.ASSISTANT_OPERATOR, options = {}) {
   const text = [
     "Ayuda CFDI",
     "",
-    "Puedes iniciar un borrador, revisar clientes, consultar pendientes o ver reportes.",
+    "Puedes iniciar un borrador, revisar clientes, consultar cobranza o ver documentos.",
     "Tambien puedes escribir una actividad en lenguaje natural y el bot pedira lo que falte.",
   ].join("\n");
   return buildPayload(text, menu.reply_markup);

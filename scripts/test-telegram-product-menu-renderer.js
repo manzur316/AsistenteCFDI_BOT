@@ -81,7 +81,7 @@ checks.push({
 checks.push({
   name: "main_menu_renders_text_and_keyboard",
   pass: typeof mainAssistant.text === "string"
-    && mainAssistant.text.includes("Menu CFDI")
+    && mainAssistant.text.includes("Menu principal")
     && flattenButtons(mainAssistant).length > 0,
   value: `${flattenButtons(mainAssistant).length} buttons`,
 });
@@ -93,6 +93,8 @@ checks.push({
 
 const submenuPayloads = [
   renderTelegramSubmenu("invoices", ROLES.ASSISTANT_OPERATOR),
+  renderTelegramSubmenu("documents", ROLES.OWNER),
+  renderTelegramSubmenu("provider", ROLES.OWNER, { includeSandbox: true }),
   renderTelegramSubmenu("clients", ROLES.OWNER),
   renderTelegramSubmenu("reports", ROLES.ACCOUNTANT_READONLY),
   renderTelegramSubmenu("system", ROLES.ASSISTANT_OPERATOR),
@@ -114,8 +116,9 @@ checks.push({
 const ownerAdmin = renderTelegramMainMenu(ROLES.OWNER, { includeAdmin: true });
 const ownerAdminCallbacks = callbacks(ownerAdmin);
 checks.push({
-  name: "admin_can_see_admin_entry_when_requested",
-  pass: ownerAdminCallbacks.includes("cfdi_nav:admin"),
+  name: "admin_entry_not_in_operational_menu",
+  pass: !ownerAdminCallbacks.includes("cfdi_nav:admin")
+    && ownerAdminCallbacks.includes("cfdi_nav:provider"),
   value: ownerAdminCallbacks.join(", "),
 });
 
