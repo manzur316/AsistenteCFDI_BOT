@@ -258,14 +258,99 @@ pdf_downloaded = pdf_downloaded OR nuevo_pdf_downloaded
 
 Asi una descarga posterior puede marcar documentos sin degradar una fila previa.
 
-## 9. Que NO implementa este slice
+## 9. Historical backfill
+
+Las facturas sandbox timbradas antes de la persistencia runtime pueden tener identidad proveedor en `cfdi_drafts.sandbox_pac_summary` o manifests JSON historicos, pero no tener fila en `provider_invoice_links`.
+
+El tooling de backfill vive en:
+
+- `scripts/lib/provider-contracts/provider-invoice-identity-backfill.js`
+- `scripts/backfill-provider-invoice-links.js`
+- `scripts/test-provider-invoice-identity-backfill.js`
+
+### Fuentes usadas
+
+Prioridad de fuentes:
+
+1. `cfdi_drafts.sandbox_pac_summary`, porque es el resumen persistido del timbrado/descarga.
+2. Manifests JSON historicos, si se pasa `--manifest-root`, para completar campos faltantes.
+3. `provider_invoice_links`, solo para clasificar si el plan sera `INSERT`, `UPDATE` o `SKIP_ALREADY_COMPLETE`.
+
+Campos usados:
+
+- `draft_id`
+- `client_id`
+- `invoice_status`
+- `payment_status`
+- `artifact_status`
+- `folio`
+- `serie`
+- `uuid`
+- `cfdi_uid`
+- `pac_invoice_id`
+- `xml_downloaded`
+- `pdf_downloaded`
+
+No se leen XML/PDF ni payloads crudos.
+
+### Dry-run
+
+El default del CLI es dry-run:
+
+```bash
+node scripts/backfill-provider-invoice-links.js --dry-run
+node scripts/backfill-provider-invoice-links.js --dry-run --json
+node scripts/backfill-provider-invoice-links.js --dry-run --limit 10
+```
+
+En dry-run el script:
+
+- usa consulta read-only si hay DB local configurada;
+- puede leer fixtures o manifests JSON;
+- genera plan de backfill;
+- no ejecuta SQL de escritura;
+- oculta rutas sensibles, tokens, secrets y payloads completos.
+
+### Apply protegido
+
+El modo apply existe para una fase posterior, pero esta protegido:
+
+```bash
+node scripts/backfill-provider-invoice-links.js --apply --yes-i-understand-this-mutates-db
+```
+
+Si falta `--yes-i-understand-this-mutates-db`, aborta con `APPLY_CONFIRMATION_REQUIRED`.
+
+Este slice no ejecuta `--apply`.
+
+### Idempotencia y no degradacion
+
+El backfill usa `buildProviderInvoiceLinkPersistencePlan()`, por lo que conserva la misma estrategia runtime:
+
+- `UPDATE` por `tenant_id + draft_id + provider + environment`;
+- `INSERT ... WHERE NOT EXISTS` con la misma llave;
+- `COALESCE(nuevo, existente)` para no sobrescribir folio, UUID, provider UID o provider id con `NULL`;
+- OR booleano para `xml_downloaded` y `pdf_downloaded`.
+
+### Clasificacion del plan
+
+Cada candidato queda como:
+
+- `INSERT`: no hay fila existente y hay identidad proveedor suficiente.
+- `UPDATE`: existe fila, pero falta completar identidad o flags documentales.
+- `SKIP_NO_IDENTITY`: no hay folio, UUID, provider UID ni provider id.
+- `SKIP_ALREADY_COMPLETE`: la fila existente ya contiene la identidad y flags aplicables.
+
+Siguiente paso operativo: ejecutar dry-run local real, revisar el plan y autorizar una fase de apply si el conteo y las muestras son correctas.
+
+## 10. Que NO implementa este slice
 
 Este slice no:
 
 - Modifica SQL/schema.
 - Modifica workflow n8n.
 - Cambia UI de Facturas o Documentos.
-- Ejecuta backfill historico.
+- Ejecuta backfill historico con escritura real.
 - Ejecuta timbrado, descargas, smokes, watcher ni llamadas PAC/Factura.com.
 
-Siguiente slice recomendado: backfill local desde `sandbox_pac_summary` y manifests historicos, o UI de Facturas por folio proveedor.
+Siguiente slice recomendado: revisar un dry-run real local y autorizar apply, o avanzar a UI de Facturas por folio proveedor con fallback seguro.
