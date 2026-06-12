@@ -762,6 +762,8 @@ async function runSandboxDraftStamp(options = {}) {
   };
   const persistence = await persistSandboxStampResult({
     draftId: draft.draft_id,
+    clientId: validation.client.client_id || draft.client_id,
+    tenantId: options.tenantId || options.tenant_id,
     invoiceStatus: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
     paymentStatus,
     pacResult,
@@ -850,6 +852,9 @@ async function runSandboxDraftStamp(options = {}) {
       persistence_status: persistenceStatus,
       persistence_error: persistFailed ? persistence.error : null,
       persistence_row: persistence.ok ? persistence.row : null,
+      provider_invoice_link_status: persistence.provider_invoice_link_status || "SKIPPED",
+      provider_invoice_link_strategy: persistence.provider_invoice_link_strategy || null,
+      provider_invoice_link_warnings: persistence.provider_invoice_link_warnings || [],
       timeline_event: {
         event_type: "DRAFT_SANDBOX_STAMPED",
         draft_id: draft.draft_id,

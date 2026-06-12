@@ -2,11 +2,12 @@
 
 ## 1. Objetivo
 
-Definir el contrato offline `ProviderInvoiceIdentity` para normalizar la identidad de factura del proveedor despues del timbrado sandbox/Factura.com, sin conectar todavia escritura runtime, workflow, DB ni UI.
+Definir el contrato `ProviderInvoiceIdentity` para normalizar la identidad de factura del proveedor despues del timbrado sandbox/Factura.com y persistirla de forma idempotente en `provider_invoice_links` durante el runtime local.
 
 El contrato vive en:
 
 - `scripts/lib/provider-contracts/provider-invoice-identity.contract.js`
+- `scripts/lib/provider-contracts/provider-invoice-link-persistence.js`
 - Exportado por `scripts/lib/provider-contracts/provider-contract-index.js`
 
 Regla de producto:
@@ -134,7 +135,7 @@ Si el borrador esta post-timbrado y no hay identidad proveedor, el helper agrega
 }
 ```
 
-Este objeto esta pensado como input futuro para `provider_invoice_links`, pero este slice no lo persiste.
+Este objeto es la base del plan de persistencia runtime hacia `provider_invoice_links`.
 
 ## 7. Sanitizacion
 
@@ -151,16 +152,120 @@ Este objeto esta pensado como input futuro para `provider_invoice_links`, pero e
 - Puede exponer `local_draft_id`, UUID completo y provider ids.
 - Redacta valores obvios de token, secret, password, api key o authorization.
 
-## 8. Que NO implementa este slice
+## 8. Runtime persistence
+
+La persistencia runtime se integra en `scripts/lib/sandbox-draft-stamp-persistence.js`, que ya es el punto comun usado por:
+
+- `sandbox.draft.stamp`
+- `sandbox.draft.download-artifacts`
+- recuperacion local de estado documental descargado
+
+El helper puro `buildProviderInvoiceLinkPersistencePlan(input)`:
+
+- normaliza el input con `normalizeProviderInvoiceIdentity`;
+- construye el candidate con `buildProviderInvoiceLinkCandidate`;
+- genera SQL para `provider_invoice_links`;
+- no ejecuta SQL;
+- no requiere conexion a DB;
+- no muta datos por si mismo.
+
+### Fuente de datos
+
+La identidad se toma de:
+
+- `draft_id`
+- `client_id` cuando esta disponible
+- `sandbox_pac_summary`
+- `pacResult`
+- `invoice_status`
+- `payment_status`
+- `artifact_status`
+- `folio`
+- `serie`
+- `uuid`
+- `cfdi_uid`
+- `pac_invoice_id`
+- `provider`
+- `environment`
+
+### Estrategia de idempotencia
+
+El schema actual tiene:
+
+- `provider_invoice_link_id` como primary key;
+- indice no unico `idx_provider_invoice_links_tenant_draft` sobre `tenant_id, draft_id`;
+- indice no unico `idx_provider_invoice_links_provider` sobre `provider, environment, provider_invoice_id, provider_invoice_uid, uuid`;
+- no tiene constraint unico por `tenant_id, draft_id, provider, environment`.
+
+Por eso el runtime usa estrategia:
+
+```text
+UPDATE provider_invoice_links
+WHERE tenant_id + draft_id + provider + environment
+
+INSERT provider_invoice_links
+WHERE NOT EXISTS mismo tenant_id + draft_id + provider + environment
+```
+
+No usa `ON CONFLICT` en runtime porque el schema actual no tiene el constraint unico necesario.
+
+### Timbrado sandbox
+
+Despues del timbrado, si hay identidad proveedor suficiente, se escribe o actualiza:
+
+- `draft_id`
+- `client_id` si existe
+- `provider`
+- `environment`
+- `provider_invoice_id`
+- `provider_invoice_uid`
+- `uuid`
+- `serie`
+- `folio`
+- `provider_status`
+- `invoice_status`
+- `payment_status_local`
+- `xml_downloaded=false`
+- `pdf_downloaded=false`
+- `provider_response_sanitized` con metadata minima y sanitizada
+
+No se inserta una fila vacia si `identity_confidence=NONE` y no hay folio, UUID, provider UID ni provider invoice id.
+
+### Descarga XML/PDF
+
+Despues de `sandbox.draft.download-artifacts`, el mismo punto de persistencia actualiza:
+
+- identidad preservada: `folio`, `serie`, `uuid`, `provider_invoice_uid`, `provider_invoice_id`;
+- `xml_downloaded`;
+- `pdf_downloaded`;
+- `provider_status`;
+- `invoice_status`;
+- `payment_status_local`;
+- metadata minima en `provider_response_sanitized`.
+
+El schema real no tiene columnas `xml_path` ni `pdf_path`; por lo tanto este slice no guarda rutas documentales como columnas en `provider_invoice_links`.
+
+### Reglas de no degradacion
+
+El SQL usa `COALESCE(nuevo, existente)` para no sobrescribir `folio`, `uuid`, `provider_invoice_uid`, `provider_invoice_id`, `serie` ni estados buenos con `NULL`.
+
+Los flags documentales usan OR booleano:
+
+```text
+xml_downloaded = xml_downloaded OR nuevo_xml_downloaded
+pdf_downloaded = pdf_downloaded OR nuevo_pdf_downloaded
+```
+
+Asi una descarga posterior puede marcar documentos sin degradar una fila previa.
+
+## 9. Que NO implementa este slice
 
 Este slice no:
 
-- Escribe `provider_invoice_links`.
-- Modifica `cfdi_drafts`.
 - Modifica SQL/schema.
 - Modifica workflow n8n.
-- Modifica runtime.
 - Cambia UI de Facturas o Documentos.
+- Ejecuta backfill historico.
 - Ejecuta timbrado, descargas, smokes, watcher ni llamadas PAC/Factura.com.
 
-Siguiente slice recomendado: persistencia runtime de `ProviderInvoiceIdentity` desde `sandbox_pac_summary` hacia `provider_invoice_links`, con idempotencia por `draft_id + provider + environment`.
+Siguiente slice recomendado: backfill local desde `sandbox_pac_summary` y manifests historicos, o UI de Facturas por folio proveedor.

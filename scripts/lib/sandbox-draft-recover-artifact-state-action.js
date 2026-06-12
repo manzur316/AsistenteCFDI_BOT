@@ -166,6 +166,8 @@ async function runSandboxDraftRecoverArtifactState(options = {}) {
   const persistence = await persistSandboxStampResult({
     ...options,
     draftId,
+    clientId: draft.client_id || runtime.output?.client_id,
+    tenantId: options.tenantId || options.tenant_id,
     invoiceStatus: "SANDBOX_TIMBRADO",
     paymentStatus: persistenceSummary.payment_status,
     artifactStatus: "DOWNLOADED",
@@ -215,6 +217,9 @@ async function runSandboxDraftRecoverArtifactState(options = {}) {
       pdf_content_valid: true,
       persistence_status: persistence.persistence_status,
       persistence_row: persistence.row,
+      provider_invoice_link_status: persistence.provider_invoice_link_status || "SKIPPED",
+      provider_invoice_link_strategy: persistence.provider_invoice_link_strategy || null,
+      provider_invoice_link_warnings: persistence.provider_invoice_link_warnings || [],
       runtime_result_path: rel(runtime.filePath),
     },
     warnings: [],

@@ -538,6 +538,8 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
   const persistenceSandboxPacSummary = sandboxPacSummaryForPersistence(draft, identity, manifest, manifestPath, clientStorageManifestPath);
   const persistence = await persistSandboxStampResult({
     draftId: draft.draft_id,
+    clientId: draft.client_id || normalizeClient(draft).client_id,
+    tenantId: options.tenantId || options.tenant_id,
     invoiceStatus: SANDBOX_DRAFT_STAMP_STATUS.STAMPED,
     paymentStatus: text(draft.payment_status) || "PENDIENTE",
     pacResult: {
@@ -660,6 +662,9 @@ async function runSandboxDraftDownloadArtifacts(options = {}) {
     persistence_status: persistenceStatus,
     persistence_error: persistFailed ? persistence.error : null,
     persistence_row: persistence.ok ? persistence.row : null,
+    provider_invoice_link_status: persistence.provider_invoice_link_status || "SKIPPED",
+    provider_invoice_link_strategy: persistence.provider_invoice_link_strategy || null,
+    provider_invoice_link_warnings: persistence.provider_invoice_link_warnings || [],
     sandbox_notice: "CFDI de prueba. No es produccion fiscal real.",
     requires_human_review: true,
   };

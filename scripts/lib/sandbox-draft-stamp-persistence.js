@@ -1,6 +1,7 @@
 const path = require("path");
 const { runPsqlRaw } = require("./local-db-psql-runner");
 const { PAC_ENVIRONMENTS } = require("./canonical-cfdi-contracts");
+const { buildProviderInvoiceLinkPersistencePlan } = require("./provider-contracts/provider-contract-index");
 
 const repoRoot = path.resolve(__dirname, "../..");
 
@@ -300,6 +301,31 @@ async function persistSandboxStampResult(input = {}) {
     artifactStatus,
   });
   const persistedPacResult = buildPersistedPacResult(pacResult, invoiceStatus, paymentStatus, artifactStatus);
+  const providerInvoiceLinkPlan = buildProviderInvoiceLinkPersistencePlan({
+    tenant_id: input.tenantId || input.tenant_id,
+    local_draft_id: draftId,
+    draft_id: draftId,
+    client_id: input.clientId || input.client_id || summary.client_id || pacResult.client_id,
+    provider_name: summary.provider || pacResult.provider || "Factura.com Sandbox",
+    provider_environment: summary.environment || pacResult.environment || PAC_ENVIRONMENTS.SANDBOX,
+    provider_status: pacResult.provider_status || pacResult.status || artifactStatus,
+    local_status: invoiceStatus,
+    invoice_status: invoiceStatus,
+    payment_status: paymentStatus,
+    payment_status_local: paymentStatus,
+    artifact_status: artifactStatus,
+    sandbox_pac_summary: summary,
+    provider_response: pacResult,
+    manifest: {
+      artifact_status: artifactStatus,
+      manifest_path: summary.manifest_path || input.manifestPath,
+      xml_path: summary.xml_storage_path || summary.human_xml_path,
+      pdf_path: summary.pdf_storage_path || summary.human_pdf_path,
+      xml_downloaded: summary.xml_downloaded === true,
+      pdf_downloaded: summary.pdf_downloaded === true,
+    },
+    provider_raw_snapshot_ref: summary.manifest_path || input.manifestPath,
+  });
   const summaryJson = sqlJson(summary);
   const resultJson = sqlJson({
     ...persistedPacResult,
@@ -318,7 +344,8 @@ async function persistSandboxStampResult(input = {}) {
     ", updated_at = now()",
     "WHERE d.draft_id = " + safeDraftId,
     "RETURNING to_jsonb(jsonb_build_object('draft_id', d.draft_id, 'invoice_status', d.invoice_status, 'payment_status', d.payment_status, 'sandbox_pac_summary', d.sandbox_pac_summary))::text;",
-  ].join(" ");
+    providerInvoiceLinkPlan.should_persist ? providerInvoiceLinkPlan.sql : "",
+  ].filter(Boolean).join(" ");
 
   try {
     const raw = runPsqlRaw(sql, buildDbOptions(input));
@@ -336,6 +363,9 @@ async function persistSandboxStampResult(input = {}) {
       persistence_status: "UPDATED",
       draft_id: draftId,
       row,
+      provider_invoice_link_status: providerInvoiceLinkPlan.should_persist ? "UPSERTED" : "SKIPPED",
+      provider_invoice_link_strategy: providerInvoiceLinkPlan.idempotency_strategy,
+      provider_invoice_link_warnings: providerInvoiceLinkPlan.warnings,
     };
   } catch (error) {
     return {

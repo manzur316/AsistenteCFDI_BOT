@@ -5,6 +5,7 @@ module.exports = {
   ...require("./provider-client.contract"),
   ...require("./provider-invoice.contract"),
   ...require("./provider-invoice-identity.contract"),
+  ...require("./provider-invoice-link-persistence"),
   ...require("./provider-payment.contract"),
   ...require("./provider-webhook.contract"),
 };
