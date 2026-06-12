@@ -1118,6 +1118,36 @@ function detectDispatchFailures({ execution, context, dispatch }) {
   return failures;
 }
 
+function containsPresentationHtmlTags(value) {
+  return /<\/?(?:b|strong|i|em|u|s|strike|del|code|pre|a)(?:\s+[^>]*)?>/i.test(String(value || ""));
+}
+
+function isHtmlParseMode(value) {
+  return String(value || "").trim().toUpperCase() === "HTML";
+}
+
+function detectPresentationFailures(context = {}) {
+  const failures = [];
+  const sources = [
+    { name: "handle", value: context.handle || {} },
+    { name: "summary", value: context.summary || {} },
+    { name: "dispatch_plan", value: context.plan || {} },
+  ];
+  const dispatchParseMode = context.plan?.parse_mode || "";
+  for (const source of sources) {
+    const text = String(source.value?.telegram_message || source.value?.send_text || "");
+    if (!containsPresentationHtmlTags(text)) continue;
+    const parseMode = source.value?.parse_mode || dispatchParseMode;
+    if (!isHtmlParseMode(parseMode)) {
+      failures.push(failure("RAW_HTML_TAGS_VISIBLE", "Telegram message contains HTML tags without parse_mode=HTML", {
+        execution_id: context.execution_id,
+        source: source.name,
+      }));
+    }
+  }
+  return failures;
+}
+
 function detectActionFailures({ execution, context, draftBefore, draftAfter, ledgerRows, artifactPaths }) {
   const failures = [];
   const route = String(context.route || "").trim();
@@ -1216,6 +1246,7 @@ function classifyExecution(execution, options = {}) {
     failures = failures.concat(detectStateButtonFailures({ state, buttons: visibleButtons, context }));
   }
   failures = failures.concat(detectTokenFailures({ context, tokens, buttons: visibleButtons }));
+  failures = failures.concat(detectPresentationFailures(context));
   failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));
   failures = failures.concat(providerEmailFailures({ context, args: options.args || {}, ledgerRows, env: process.env, state: draft || {} }));

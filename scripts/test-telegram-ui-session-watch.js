@@ -335,6 +335,63 @@ check("detects failed Telegram dispatch", () => {
   return codes.join(",");
 });
 
+check("detects raw HTML tags without parse_mode", () => {
+  const sample = execution({
+    id: "exec-raw-html",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "cb-html",
+      callback_message_id: "703",
+      chat_id: "6573879494",
+      action: "COMMAND_DETALLE",
+      telegram_message: "<b>Borrador aprobado</b>",
+    },
+    plan: {
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "cb-html",
+      callback_message_id: "703",
+      chat_id: "6573879494",
+      telegram_message: "<b>Borrador aprobado</b>",
+      should_send_telegram: true,
+      telegram_dispatch_method: "editMessageText",
+      telegram_dispatch_payload_built: true,
+    },
+  });
+  const result = classify(sample, null);
+  const codes = failureCodes(result);
+  assert(codes.includes("RAW_HTML_TAGS_VISIBLE"));
+  return codes.join(",");
+});
+
+check("allows HTML tags when dispatch parse_mode is HTML", () => {
+  const sample = execution({
+    id: "exec-html-parse-mode",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "cb-html-ok",
+      callback_message_id: "704",
+      chat_id: "6573879494",
+      action: "COMMAND_DETALLE",
+      telegram_message: "<b>Borrador aprobado</b>",
+    },
+    plan: {
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "cb-html-ok",
+      callback_message_id: "704",
+      chat_id: "6573879494",
+      telegram_message: "<b>Borrador aprobado</b>",
+      parse_mode: "HTML",
+      should_send_telegram: true,
+      telegram_dispatch_method: "editMessageText",
+      telegram_dispatch_payload_built: true,
+    },
+  });
+  const result = classify(sample, null);
+  const codes = failureCodes(result);
+  assert(!codes.includes("RAW_HTML_TAGS_VISIBLE"));
+  return "parse mode accepted";
+});
+
 check("ignores inbound old reply_markup when auditing generated UI", () => {
   const draftId = "DRAFT-WATCH-INBOUND";
   const usedToken = tokenRow("USEDTOKEN00001", "VIEW_DRAFT", draftId, { used_at: "2026-06-11T12:00:00.000Z" });
