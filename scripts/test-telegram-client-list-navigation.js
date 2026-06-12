@@ -160,6 +160,17 @@ function hasButton(result, text) {
   return callbacks(result).some((button) => button.text === text);
 }
 
+function assertNoLiteralEscapedLineBreaks(result, label = result.action) {
+  const text = String(result.telegram_message || "");
+  assert(!text.includes("\\n"), `${label} contiene \\\\n literal: ${JSON.stringify(text)}`);
+  assert(!text.includes("\\r"), `${label} contiene \\\\r literal: ${JSON.stringify(text)}`);
+}
+
+function assertHasRealLineBreak(result, label = result.action) {
+  const text = String(result.telegram_message || "");
+  assert(text.includes("\n"), `${label} no contiene saltos reales: ${JSON.stringify(text)}`);
+}
+
 function callbackInput(action, payload, extra = {}) {
   const token = `CLIENTNAV${String(extra.update_id || 81699).slice(-4)}`;
   return baseInput(`cfdi:${token}`, {
@@ -195,6 +206,9 @@ check("clientes_crea_contexto_clients_y_lista_limpia", () => {
   const result = executeCode(handleCode, baseInput("/clientes", { update_id: 81602 }));
   assert.strictEqual(result.action, "COMMAND_CLIENTES");
   assert.strictEqual(result.screen_id, "CLIENTS_LIST_SELECTION");
+  assertNoLiteralEscapedLineBreaks(result, "/clientes");
+  assertHasRealLineBreak(result, "/clientes");
+  assert(result.telegram_message.includes("Clientes\nSelecciona con cliente N o facturas N."));
   assert(result.persistence_sql.includes('"kind":"CLIENTS"'));
   assert(hasButton(result, "Ver 1"));
   assert(hasButton(result, "Ver 5"));
@@ -213,6 +227,8 @@ check("cliente_1_resuelve_primer_cliente", () => {
   assert.strictEqual(result.action, "CLIENT_DETAIL");
   assert.strictEqual(result.json_debug.client_id, "CLI-REAL-BILBAO");
   assert.strictEqual(result.return_to, "CLIENTS_LIST_SELECTION");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_DETAIL");
+  assertHasRealLineBreak(result, "CLIENT_DETAIL");
   return result.json_debug.client_id;
 });
 
@@ -223,6 +239,7 @@ check("slash_cliente_5_resuelve_quinto_cliente", () => {
   }));
   assert.strictEqual(result.action, "CLIENT_DETAIL");
   assert.strictEqual(result.json_debug.client_id, "CLI-CINCO");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_DETAIL");
   assert(!String(result.telegram_message || "").includes("No encontre cliente para: 5"));
   return result.json_debug.client_id;
 });
@@ -234,12 +251,14 @@ check("cliente_99_falla_seguro", () => {
   }));
   assert.strictEqual(result.action, "CLIENT_LIST_INDEX_NOT_FOUND");
   assert.strictEqual(result.screen_id, "RECOVERY");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_LIST_INDEX_NOT_FOUND");
   return result.action;
 });
 
 check("cliente_5_sin_contexto_no_busca_texto_ambiguo", () => {
   const result = executeCode(handleCode, baseInput("cliente 5", { update_id: 81606 }));
   assert.strictEqual(result.action, "CLIENT_LIST_CONTEXT_MISSING");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_LIST_CONTEXT_MISSING");
   assert(!String(result.telegram_message || "").includes("No encontre cliente para: 5"));
   return result.action;
 });
@@ -251,6 +270,8 @@ check("facturas_1_abre_ledger_del_cliente_sin_pago", () => {
   }));
   assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
   assert.strictEqual(result.json_debug.client_id, "CLI-REAL-BILBAO");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_INVOICE_LEDGER");
+  assertHasRealLineBreak(result, "CLIENT_INVOICE_LEDGER");
   assert(!String(result.persistence_sql || "").includes("SET payment_status"));
   return result.action;
 });
@@ -261,6 +282,7 @@ check("facturas_99_falla_seguro", () => {
     chat_state: clientListState(),
   }));
   assert.strictEqual(result.action, "CLIENT_LIST_INDEX_NOT_FOUND");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_LIST_INDEX_NOT_FOUND");
   return result.action;
 });
 
@@ -270,6 +292,7 @@ check("contexto_drafts_no_contamina_cliente_n", () => {
     chat_state: draftListState(),
   }));
   assert.strictEqual(result.action, "CLIENT_LIST_CONTEXT_MISSING");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_LIST_CONTEXT_MISSING");
   assert.notStrictEqual(result.action, "COMMAND_DETALLE");
   return result.action;
 });
@@ -283,6 +306,8 @@ check("buscar_cliente_inicia_awaiting_client_search", () => {
     source_message_id: "MSG-CB",
   }));
   assert.strictEqual(result.action, "AWAITING_CLIENT_SEARCH");
+  assertNoLiteralEscapedLineBreaks(result, "AWAITING_CLIENT_SEARCH");
+  assertHasRealLineBreak(result, "AWAITING_CLIENT_SEARCH");
   assert(result.persistence_sql.includes("AWAITING_CLIENT_SEARCH"));
   return result.action;
 });
@@ -298,6 +323,8 @@ check("siguiente_mensaje_busca_y_crea_lista_accionable", () => {
     },
   }));
   assert.strictEqual(result.action, "CLIENT_SEARCH_OPTIONS");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_SEARCH_OPTIONS");
+  assertHasRealLineBreak(result, "CLIENT_SEARCH_OPTIONS");
   assert(result.persistence_sql.includes('"kind":"CLIENTS"'));
   assert(hasButton(result, "Ver 1"));
   assert(hasButton(result, "Ver 2"));
@@ -319,6 +346,8 @@ check("volver_desde_detalle_regresa_a_lista_clientes", () => {
   }));
   assert.strictEqual(result.action, "COMMAND_CLIENTES");
   assert.strictEqual(result.screen_id, "CLIENTS_LIST_SELECTION");
+  assertNoLiteralEscapedLineBreaks(result, "COMMAND_CLIENTES");
+  assertHasRealLineBreak(result, "COMMAND_CLIENTES");
   assert(hasButton(result, "Ver 1"));
   return result.action;
 });
@@ -329,6 +358,7 @@ check("contexto_expirado_falla_seguro", () => {
     chat_state: clientListState(clients, 1, { expires_at: "2020-01-01T00:00:00.000Z" }),
   }));
   assert.strictEqual(result.action, "CLIENT_LIST_CONTEXT_EXPIRED");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_LIST_CONTEXT_EXPIRED");
   return result.action;
 });
 
