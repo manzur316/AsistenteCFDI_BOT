@@ -220,7 +220,9 @@ check("minimum_required_routes_match_existing_actions", () => {
   const cases = [
     ["cfdi_nav:new", "INVOICE_WIZARD"],
     ["cfdi_nav:clients", "COMMAND_CLIENTES"],
-    ["cfdi_nav:drafts", "COMMAND_PENDIENTES"],
+    ["cfdi_nav:drafts", "DRAFTS_MENU"],
+    ["cfdi_nav:pending", "COMMAND_PENDIENTES"],
+    ["cfdi_nav:approved", "COMMAND_APROBADAS"],
     ["cfdi_nav:invoices", "PRODUCT_INVOICES_PLACEHOLDER"],
     ["cfdi_nav:docs", "PRODUCT_DOCUMENTS_PLACEHOLDER"],
     ["cfdi_nav:provider", "PRODUCT_PROVIDER_SYNC_PLACEHOLDER"],

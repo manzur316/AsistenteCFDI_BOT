@@ -66,7 +66,7 @@ checks.push({
   value: `${expectedMainLabels.length}/${MAIN_MENU.buttons.length}`,
 });
 
-const expectedSubmenus = ["invoices", "documents", "provider", "clients", "reports", "system", "admin_sandbox"];
+const expectedSubmenus = ["drafts", "invoices", "documents", "provider", "clients", "reports", "system", "admin_sandbox"];
 checks.push({
   name: "submenus_exist",
   pass: expectedSubmenus.every((id) => SUBMENUS[id]),

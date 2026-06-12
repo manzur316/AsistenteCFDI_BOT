@@ -13,11 +13,17 @@ const TELEGRAM_PRODUCT_MENU_RENDERER_VERSION = "TELEGRAM_PRODUCT_MENU_RENDERER_V
 const FOOTER = "Borrador sujeto a revision humana. No sustituye contador.";
 
 const SUBMENU_TEXT = Object.freeze({
+  drafts: [
+    "Borradores",
+    "",
+    "Gestiona facturas antes de timbrar.",
+    "Pendientes y aprobados viven aqui; facturas historicas viven en Facturas.",
+  ].join("\n"),
   invoices: [
     "Facturas",
     "",
-    "Consulta facturas recientes o abre facturas por cliente.",
-    "El historial pesado sigue delegado a Factura.com/PAC.",
+    "Consulta facturas ya generadas/timbradas o historial por cliente.",
+    "No uses esta pantalla para marcar pagos.",
   ].join("\n"),
   documents: [
     "Documentos",
@@ -26,16 +32,16 @@ const SUBMENU_TEXT = Object.freeze({
     "Por ahora conserva rutas seguras existentes sin ejecutar acciones nuevas.",
   ].join("\n"),
   provider: [
-    "Proveedor",
+    "Sincronizar proveedor",
     "",
-    "Sincronizacion y diagnostico de Factura.com/PAC.",
-    "Esta fase no ejecuta sync real ni muestra credenciales.",
+    "Pendiente de implementacion segura.",
+    "No ejecuta sync real, no corre preflight y no muestra credenciales.",
   ].join("\n"),
   clients: [
     "Clientes",
     "",
-    "Busca, crea o valida clientes locales antes de preparar borradores.",
-    "Los cambios fiscales sensibles requieren revision humana.",
+    "Lista, busca o crea clientes locales antes de preparar borradores.",
+    "Facturas y cobranza viven en sus modulos o en el detalle de cliente.",
   ].join("\n"),
   reports: [
     "Reportes",
@@ -163,7 +169,8 @@ function renderTelegramHelp(role = ROLES.ASSISTANT_OPERATOR, options = {}) {
   const text = [
     "Ayuda CFDI",
     "",
-    "Puedes iniciar un borrador, revisar clientes, consultar cobranza o ver documentos.",
+    "Puedes iniciar un borrador, revisar clientes, consultar facturas, cobranza o documentos.",
+    "Comandos: /menu, /nueva, /borradores, /clientes, /facturas, /cobranza, /documentos, /ayuda.",
     "Tambien puedes escribir una actividad en lenguaje natural y el bot pedira lo que falte.",
   ].join("\n");
   return buildPayload(text, menu.reply_markup);

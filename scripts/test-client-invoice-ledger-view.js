@@ -253,12 +253,14 @@ check("safe_ledger_keyboard_callbacks_are_short", () => {
   return callbacks.join(",");
 });
 
-check("contract_clients_submenu_contains_ledger_callbacks", () => {
+check("contract_clients_submenu_stays_operationally_clean", () => {
   const callbacks = flattenCallbacks(getTelegramSubmenu("clients", ROLES.ASSISTANT_OPERATOR));
-  assert(callbacks.includes("cfdi_nav:client_ledger"));
-  assert(callbacks.includes("cfdi_nav:pay_pending"));
-  assert(callbacks.includes("cfdi_nav:pay_paid"));
-  assert(callbacks.includes("cfdi_nav:pay_cancel"));
+  assert(callbacks.includes("cfdi_nav:client_find"));
+  assert(callbacks.includes("cfdi_nav:client_new"));
+  assert(!callbacks.includes("cfdi_nav:client_ledger"));
+  assert(!callbacks.includes("cfdi_nav:pay_pending"));
+  assert(!callbacks.includes("cfdi_nav:pay_paid"));
+  assert(!callbacks.includes("cfdi_nav:pay_cancel"));
   assert(!callbacks.includes("cfdi_nav:client_validate"));
   return callbacks.join(",");
 });
@@ -274,14 +276,16 @@ check("workflow_loads_invoice_payment_views", () => {
   return "views_loaded";
 });
 
-check("workflow_clients_menu_exposes_ledger_buttons", () => {
+check("workflow_clients_menu_stays_operationally_clean", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:clients"));
   const text = result.telegram_message + "\n" + JSON.stringify(result.reply_markup || {});
   assert.strictEqual(result.action, "COMMAND_CLIENTES");
-  assert(text.includes("cfdi_nav:client_ledger"));
-  assert(text.includes("cfdi_nav:pay_pending"));
-  assert(text.includes("cfdi_nav:pay_paid"));
-  assert(text.includes("cfdi_nav:pay_cancel"));
+  assert(text.includes("cfdi_nav:client_find"));
+  assert(text.includes("cfdi_nav:client_new"));
+  assert(!text.includes("cfdi_nav:client_ledger"));
+  assert(!text.includes("cfdi_nav:pay_pending"));
+  assert(!text.includes("cfdi_nav:pay_paid"));
+  assert(!text.includes("cfdi_nav:pay_cancel"));
   assert(!hasSensitiveValue(text));
   return result.action;
 });

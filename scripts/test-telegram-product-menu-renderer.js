@@ -92,6 +92,7 @@ checks.push({
 });
 
 const submenuPayloads = [
+  renderTelegramSubmenu("drafts", ROLES.OWNER),
   renderTelegramSubmenu("invoices", ROLES.ASSISTANT_OPERATOR),
   renderTelegramSubmenu("documents", ROLES.OWNER),
   renderTelegramSubmenu("provider", ROLES.OWNER, { includeSandbox: true }),

@@ -229,7 +229,9 @@ check("menu_principal_navega_a_secciones", () => {
   const cases = {
     "cfdi_nav:new": "INVOICE_WIZARD",
     "cfdi_nav:clients": "COMMAND_CLIENTES",
-    "cfdi_nav:drafts": "COMMAND_PENDIENTES",
+    "cfdi_nav:drafts": "DRAFTS_MENU",
+    "cfdi_nav:pending": "COMMAND_PENDIENTES",
+    "cfdi_nav:approved": "COMMAND_APROBADAS",
     "cfdi_nav:invoices": "PRODUCT_INVOICES_PLACEHOLDER",
     "cfdi_nav:pay_pending": "COLLECTION_CLIENTS",
     "cfdi_nav:docs": "PRODUCT_DOCUMENTS_PLACEHOLDER",
@@ -249,6 +251,10 @@ check("clientes_muestra_opciones_claras", () => {
   const callbacks = callbackDataList(result);
   assert.strictEqual(result.action, "COMMAND_CLIENTES");
   assert(!callbacks.includes("cfdi_nav:clients"));
+  assert(!callbacks.includes("cfdi_nav:billing"));
+  assert(!callbacks.includes("cfdi_nav:aging"));
+  assert(!callbacks.includes("cfdi_nav:pay_paid"));
+  assert(!callbacks.includes("cfdi_nav:pay_cancel"));
   assert(callbacks.includes("cfdi_nav:client_find"));
   assert(callbacks.includes("cfdi_nav:client_new"));
   assert(callbacks.includes("cfdi_nav:menu"));
@@ -308,8 +314,30 @@ check("placeholders_operativos_no_mutan_datos", () => {
   assert(!businessMutation.test(String(invoices.persistence_sql || "")));
   assert(!businessMutation.test(String(docs.persistence_sql || "")));
   assert(!businessMutation.test(String(provider.persistence_sql || "")));
-  assert(provider.telegram_message.includes("no se ejecuta"));
+  assert(provider.telegram_message.includes("No se ejecuto ninguna sincronizacion real."));
+  assert(provider.telegram_message.includes("no se corrio preflight"));
+  assert(!callbackDataList(provider).some((callbackData) => callbackData.startsWith("cfdi_sbx:")));
   return "safe_placeholders";
+});
+
+check("comandos_operativos_abren_modulos_claros", () => {
+  const cases = {
+    "/nueva": "INVOICE_WIZARD",
+    "/borradores": "DRAFTS_MENU",
+    "/facturas": "PRODUCT_INVOICES_PLACEHOLDER",
+    "/documentos": "PRODUCT_DOCUMENTS_PLACEHOLDER",
+    "/sync": "PRODUCT_PROVIDER_SYNC_PLACEHOLDER",
+    "/cobranza": "COLLECTION_CLIENTS",
+  };
+  for (const [command, expectedAction] of Object.entries(cases)) {
+    const result = executeCode(handleCode, baseInput(command, { update_id: 7655 + Object.keys(cases).indexOf(command) }));
+    assert.strictEqual(result.action, expectedAction, `${command} => ${result.action}`);
+    assert(result.telegram_message && result.telegram_message.trim());
+    assert(callbackDataList(result).includes("cfdi_nav:menu") || expectedAction === "INVOICE_WIZARD");
+  }
+  const payment = executeCode(handleCode, baseInput("/pagar 1", { update_id: 7665 }));
+  assert.strictEqual(payment.action, "PAYMENT_ACTION_REQUIRES_INVOICE_CONTEXT");
+  return "commands_ok";
 });
 
 check("confirmar_borrador_responde_con_feedback_y_menu", () => {
