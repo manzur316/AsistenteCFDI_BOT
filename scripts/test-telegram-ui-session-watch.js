@@ -178,6 +178,37 @@ check("detects DOWNLOAD_READY with STAMP_DRAFT_SANDBOX visible", () => {
   return codes.join(",");
 });
 
+check("allows DOWNLOAD_READY ledger surface with download action", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-LEDGER-DOWNLOAD", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOAD_READY" },
+    buttons: [
+      { action: "DOWNLOAD_SANDBOX_ARTIFACTS" },
+      { action: "VIEW_DRAFT" },
+      { action: "MARK_PAYMENT_PAID" },
+    ],
+    context: { action: "CLIENT_INVOICE_LEDGER" },
+  }).map((item) => item.code);
+  assert(!codes.includes("DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON"));
+  assert(!codes.includes("DOWNLOAD_READY_SHOWS_STAMP"));
+  return "ledger download action accepted";
+});
+
+check("allows DOWNLOADED ledger surface with delivery actions", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-LEDGER-DOWNLOADED", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
+    buttons: [
+      { action: "DELIVERY_STATUS" },
+      { action: "DELIVERY_PREPARE_TELEGRAM_CHANNEL" },
+      { action: "DELIVERY_PREPARE_PROVIDER_EMAIL" },
+      { action: "VIEW_DRAFT" },
+      { action: "MARK_PAYMENT_PAID" },
+    ],
+    context: { action: "CLIENT_INVOICE_LEDGER" },
+  }).map((item) => item.code);
+  assert(!codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
+  return "ledger delivery actions accepted";
+});
+
 check("allows stamp button for approved draft with BORRADOR invoice status", () => {
   const codes = detectStateButtonFailures({
     state: { draft_id: "DRAFT-WATCH-APPROVED", status: "APROBADO", invoice_status: "BORRADOR", artifact_status: "" },

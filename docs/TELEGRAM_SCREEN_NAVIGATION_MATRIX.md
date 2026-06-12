@@ -269,7 +269,18 @@ Objetivo: eliminar acciones contables o fiscales ambiguas.
 - Mantener `Marcar vencida` como derivado o owner-only con confirmacion.
 - Mantener sandbox tecnico owner-only y separado del flujo operativo.
 
-## 12. Veredicto final
+## 12. Excepcion aceptada de watcher
+
+### WATCHER-DISPATCH-RECOVERY-001
+
+Regla operacional para validaciones runtime:
+
+- `editMessageText` fallido con fallback `sendMessage` exitoso debe tratarse como `WARN` recuperado, no como `FAIL` funcional del producto.
+- Doble click humano en navegacion debe tratarse como `WARN`.
+- Doble click en accion sensible debe ser `FAIL` solo si hay evidencia de efecto real duplicado sin proteccion.
+- Si la validacion humana presiona manualmente enviar canal, enviar correo o descargar documentos, esos efectos deben reportarse como actividad observada, no como bug automatico, salvo que excedan allowlist o se dupliquen sin proteccion.
+
+## 13. Veredicto final
 
 Fase 3 queda documentada como auditoria estatica. No hay evidencia de drift critico en las listas de drafts posteriores a Fase 2; esa superficie esta mucho mejor que en el contrato inicial. Los riesgos importantes se concentran en clientes, cobranza, `return_to` implicito y duplicacion de pantallas sandbox/admin.
 
@@ -280,7 +291,7 @@ Bloqueantes para go-live real privado:
 - `DRAFT_DETAIL` debe volver a la superficie correcta segun origen.
 - Comandos de cobranza por indice deben fallar seguro o implementarse con contexto.
 
-## 13. Criterios para cerrar Fase 3
+## 14. Criterios para cerrar Fase 3
 
 Fase 3 se considera cerrada cuando:
 

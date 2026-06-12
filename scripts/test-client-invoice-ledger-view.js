@@ -92,6 +92,45 @@ function ledgerRows() {
   ];
 }
 
+function downloadReadyLedgerRow(overrides = {}) {
+  return {
+    client_id: "CLIENT-PRIVADA-RIVERA",
+    client_display: "Privada Rivera",
+    draft_id: "DRAFT-LEDGER-DOWNLOAD-READY",
+    invoice_status: "SANDBOX_TIMBRADO",
+    payment_status: "PENDIENTE",
+    artifact_status: "DOWNLOAD_READY",
+    sandbox_pac_summary: {
+      artifact_status: "DOWNLOAD_READY",
+      xml_downloaded: false,
+      pdf_downloaded: false,
+      xml_content_valid: false,
+      pdf_content_valid: false,
+    },
+    total: 1234.56,
+    payment_amount_paid: 0,
+    updated_at: "2026-06-06T10:00:00Z",
+    ...overrides,
+  };
+}
+
+function downloadedLedgerRow(overrides = {}) {
+  return {
+    ...downloadReadyLedgerRow({
+      draft_id: "DRAFT-LEDGER-DOWNLOADED",
+      artifact_status: "DOWNLOADED",
+      sandbox_pac_summary: {
+        artifact_status: "DOWNLOADED",
+        xml_downloaded: true,
+        pdf_downloaded: true,
+        xml_content_valid: true,
+        pdf_content_valid: true,
+      },
+      ...overrides,
+    }),
+  };
+}
+
 function clients() {
   return [
     {
@@ -140,6 +179,10 @@ function baseInput(callbackData, role = ROLES.OWNER, extra = {}) {
 
 function flattenCallbacks(payload) {
   return (payload.reply_markup?.inline_keyboard || []).flat().map((button) => button.callback_data);
+}
+
+function buttonTexts(payload) {
+  return (payload.reply_markup?.inline_keyboard || []).flat().map((button) => button.text);
 }
 
 function hasSensitiveValue(value) {
@@ -256,6 +299,57 @@ check("workflow_renders_client_invoice_ledger", () => {
   assert(result.telegram_message.includes("Cancelado separado: $7500.00"));
   assert(!hasSensitiveValue(result.telegram_message));
   return result.action;
+});
+
+check("workflow_ledger_download_ready_exposes_download_action", () => {
+  const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", ROLES.OWNER, {
+    update_id: 9512,
+    client_invoice_ledger: [downloadReadyLedgerRow()],
+  }));
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  const texts = buttonTexts(result);
+  assert(texts.includes("Descargar XML/PDF sandbox"), texts.join(","));
+  assert(texts.includes("Ver factura"), texts.join(","));
+  assert(texts.includes("Marcar pagada"), texts.join(","));
+  assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "download token missing");
+  assert(result.persistence_sql.includes("'VIEW_DRAFT'"), "view draft token missing");
+  assert(result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "payment token missing");
+  return "DOWNLOAD_READY";
+});
+
+check("workflow_ledger_downloaded_exposes_document_actions", () => {
+  const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", ROLES.OWNER, {
+    update_id: 9513,
+    client_invoice_ledger: [downloadedLedgerRow()],
+  }));
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  const texts = buttonTexts(result);
+  assert(texts.includes("Ver estado documental"), texts.join(","));
+  assert(texts.includes("Enviar a canal documentos"), texts.join(","));
+  assert(texts.includes("Enviar por correo"), texts.join(","));
+  assert(texts.includes("Ver factura"), texts.join(","));
+  assert(texts.includes("Marcar pagada"), texts.join(","));
+  assert(result.persistence_sql.includes("'DELIVERY_STATUS'"), "delivery status token missing");
+  assert(result.persistence_sql.includes("'DELIVERY_PREPARE_TELEGRAM_CHANNEL'"), "telegram delivery token missing");
+  assert(result.persistence_sql.includes("'DELIVERY_PREPARE_PROVIDER_EMAIL'"), "provider email delivery token missing");
+  assert(result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "payment token missing");
+  return "DOWNLOADED";
+});
+
+check("workflow_ledger_normal_without_artifacts_keeps_payment_surface", () => {
+  const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", ROLES.OWNER, {
+    update_id: 9514,
+    client_invoice_ledger: [ledgerRows()[0]],
+  }));
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  const texts = buttonTexts(result);
+  assert(!texts.includes("Descargar XML/PDF sandbox"), texts.join(","));
+  assert(!texts.includes("Ver estado documental"), texts.join(","));
+  assert(texts.includes("Marcar pendiente"), texts.join(","));
+  assert(texts.includes("Marcar pagada"), texts.join(","));
+  assert(result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "payment token missing");
+  assert(!result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "unexpected download token");
+  return "payment_only";
 });
 
 check("workflow_renders_payment_filters", () => {

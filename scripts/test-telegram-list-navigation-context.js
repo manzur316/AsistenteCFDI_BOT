@@ -229,6 +229,25 @@ function listState(kind, listDrafts, page = 1, options = {}) {
   };
 }
 
+function returnPayload(kind, page = 1, options = {}) {
+  const expiresAt = options.expires_at || "2099-01-01T00:00:00.000Z";
+  const screenId = kind === "DRAFTS_APPROVED" ? "DRAFTS_APPROVED_LIST" : "DRAFTS_PENDING_LIST";
+  return {
+    page,
+    nav_return: true,
+    return_to: screenId,
+    return_context: {
+      kind,
+      page,
+      expires_at: expiresAt,
+    },
+    source_list_kind: kind,
+    source_page: page,
+    return_expires_at: expiresAt,
+    ...options.payload,
+  };
+}
+
 const checks = [];
 let handleCode = "";
 let loadCode = "";
@@ -487,6 +506,34 @@ if (handleCode) {
         && callbacksSafe(result),
     },
     {
+      name: "detalle_desde_pendientes_conserva_return_to",
+      run: () => executeCode(handleCode, baseInput("detalle 10", { update_id: 99241, recent_drafts: pending, chat_state: listState("DRAFTS_PENDING", pending, 2) })),
+      expect: (result) => result.action === "COMMAND_DETALLE"
+        && result.screen_id === "DRAFT_DETAIL"
+        && result.screen_kind === "DETAIL"
+        && result.return_to === "DRAFTS_PENDING_LIST"
+        && result.source_list_kind === "DRAFTS_PENDING"
+        && result.source_page === 2
+        && result.json_debug?.navigation?.return_to === "DRAFTS_PENDING_LIST"
+        && hasButtons(result, ["Volver a pendientes"])
+        && lacksButtons(result, ["Volver a aprobadas"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "detalle_desde_aprobadas_conserva_return_to",
+      run: () => executeCode(handleCode, baseInput("detalle 10", { update_id: 99242, recent_drafts: approved, chat_state: listState("DRAFTS_APPROVED", approved, 2) })),
+      expect: (result) => result.action === "COMMAND_DETALLE"
+        && result.screen_id === "DRAFT_DETAIL"
+        && result.screen_kind === "DETAIL"
+        && result.return_to === "DRAFTS_APPROVED_LIST"
+        && result.source_list_kind === "DRAFTS_APPROVED"
+        && result.source_page === 2
+        && result.json_debug?.navigation?.return_to === "DRAFTS_APPROVED_LIST"
+        && hasButtons(result, ["Volver a aprobadas"])
+        && lacksButtons(result, ["Volver a pendientes"])
+        && callbacksSafe(result),
+    },
+    {
       name: "detalle_15_resuelve_draft_correcto",
       run: () => executeCode(handleCode, baseInput("detalle 15", { update_id: 99228, recent_drafts: pending15, chat_state: listState("DRAFTS_PENDING", pending15, 3) })),
       expect: (result) => result.action === "COMMAND_DETALLE"
@@ -500,6 +547,39 @@ if (handleCode) {
       expect: (result) => result.action === "COMMAND_DETALLE"
         && result.json_debug?.draft_id === "DRAFT-PEND-15-15"
         && String(result.telegram_message || "").includes("DRAFT-PEND-15-15")
+        && callbacksSafe(result),
+    },
+    {
+      name: "volver_desde_detalle_pendiente_regresa_pendientes_pagina_origen",
+      run: () => executeCode(handleCode, callbackInput("BACK_PENDING", returnPayload("DRAFTS_PENDING", 2), { update_id: 99243, recent_drafts: pending15 })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && result.screen_id === "DRAFTS_PENDING_LIST"
+        && result.return_to === "MAIN_MENU"
+        && String(result.telegram_message || "").includes("Pendientes (6-10 de 15)")
+        && hasButtons(result, ["Ver 6", "Aprobar 10", "Descartar 10", "Mas recientes 1-5", "Mas antiguos 11-15"])
+        && lacksButtons(result, ["Timbrar sandbox 10"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "volver_desde_detalle_aprobado_regresa_aprobadas_pagina_origen",
+      run: () => executeCode(handleCode, callbackInput("LIST_APPROVED", returnPayload("DRAFTS_APPROVED", 3), { update_id: 99244, recent_drafts: approved20 })),
+      expect: (result) => result.action === "COMMAND_APROBADAS"
+        && result.screen_id === "DRAFTS_APPROVED_LIST"
+        && result.return_to === "MAIN_MENU"
+        && String(result.telegram_message || "").includes("Aprobadas (11-15 de 20)")
+        && hasButtons(result, ["Ver 11", "Ver 15", "Timbrar sandbox 15", "Mas recientes 6-10", "Mas antiguos 16-20"])
+        && lacksButtons(result, ["Aprobar 15", "Cancelar sandbox 15"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "volver_contexto_expirado_no_regresa_lista_incorrecta",
+      run: () => executeCode(handleCode, callbackInput("LIST_APPROVED", returnPayload("DRAFTS_APPROVED", 3, { expires_at: "2020-01-01T00:00:00.000Z" }), { update_id: 99245, recent_drafts: approved20 })),
+      expect: (result) => result.action === "NAV_CONTEXT_EXPIRED"
+        && result.screen_id === "RECOVERY"
+        && result.return_to === "MAIN_MENU"
+        && !String(result.telegram_message || "").includes("Aprobadas (11-15 de 20)")
+        && lacksButtons(result, ["Ver 11", "Timbrar sandbox 15", "Volver a pendientes", "Volver a aprobadas"])
+        && hasButtons(result, ["Ver pendientes", "Ver aprobadas", "Menu principal"])
         && callbacksSafe(result),
     },
     {
@@ -591,6 +671,46 @@ if (handleCode) {
         && result.json_debug?.draft_id === "DRAFT-PEND-LIST-10"
         && String(result.telegram_message || "").includes("Resumen de borrador")
         && String(result.telegram_message || "").includes("DRAFT-PEND-LIST-10")
+        && callbacksSafe(result),
+    },
+    {
+      name: "resumen_desde_aprobadas_conserva_return_to",
+      run: () => executeCode(handleCode, baseInput("resumen 10", { update_id: 99246, recent_drafts: approved, chat_state: listState("DRAFTS_APPROVED", approved, 2) })),
+      expect: (result) => result.action === "COMMAND_RESUMEN"
+        && result.screen_id === "DRAFT_SUMMARY"
+        && result.screen_kind === "DETAIL"
+        && result.return_to === "DRAFTS_APPROVED_LIST"
+        && result.source_list_kind === "DRAFTS_APPROVED"
+        && result.source_page === 2
+        && hasButtons(result, ["Volver a aprobadas"])
+        && lacksButtons(result, ["Volver a pendientes"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "menu_callback_siempre_regresa_menu_principal",
+      run: () => executeCode(handleCode, callbackInput("MENU", {}, { update_id: 99247, recent_drafts: approved20, chat_state: listState("DRAFTS_APPROVED", approved20, 3) })),
+      expect: (result) => result.action === "PRODUCT_MENU_MAIN"
+        && result.screen_id === "MAIN_MENU"
+        && result.screen_kind === "MENU"
+        && hasButtons(result, ["Nueva factura", "Pendientes", "Clientes", "Estado"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "pendientes_callback_explicito_ignora_contexto_aprobadas",
+      run: () => executeCode(handleCode, callbackInput("LIST_PENDING", { page: 3 }, { update_id: 99248, recent_drafts: pending15, chat_state: listState("DRAFTS_APPROVED", approved20, 4) })),
+      expect: (result) => result.action === "COMMAND_PENDIENTES"
+        && result.screen_id === "DRAFTS_PENDING_LIST"
+        && String(result.telegram_message || "").includes("Pendientes (11-15 de 15)")
+        && hasButtons(result, ["Ver 11", "Aprobar 15", "Descartar 15"])
+        && callbacksSafe(result),
+    },
+    {
+      name: "aprobadas_callback_explicito_ignora_contexto_pendientes",
+      run: () => executeCode(handleCode, callbackInput("LIST_APPROVED", { page: 3 }, { update_id: 99249, recent_drafts: approved20, chat_state: listState("DRAFTS_PENDING", pending15, 2) })),
+      expect: (result) => result.action === "COMMAND_APROBADAS"
+        && result.screen_id === "DRAFTS_APPROVED_LIST"
+        && String(result.telegram_message || "").includes("Aprobadas (11-15 de 20)")
+        && hasButtons(result, ["Ver 11", "Timbrar sandbox 15"])
         && callbacksSafe(result),
     },
     {

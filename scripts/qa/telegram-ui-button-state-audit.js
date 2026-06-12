@@ -396,7 +396,7 @@ function runAudit() {
     const pendingResult = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-PENDING", { update_id: 88105, recent_drafts: [pending] }));
     const approvedResult = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-APPROVED", { update_id: 88106, recent_drafts: [approved] }));
     assertVisibleContract(pendingResult, { allow: ["Aprobar", "Descartar"], forbid: ["Timbrar sandbox"] });
-    assertVisibleContract(approvedResult, { allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a pendientes", "Ver resumen"], forbid: ["Aprobar", "Descartar"] });
+    assertVisibleContract(approvedResult, { allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a aprobadas", "Ver resumen"], forbid: ["Aprobar", "Descartar"] });
   });
 
   auditCase(cases, "DRAFT_APPROVED_POST_ACTION", () => {
@@ -453,6 +453,38 @@ function runAudit() {
     assertVisibleContract(result, {
       allow: ["Descargar XML/PDF sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos"],
       forbid: ["Timbrar sandbox"],
+    });
+  });
+
+  auditCase(cases, "LEDGER_DOWNLOAD_READY_ARTIFACT_ACTION", () => {
+    const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", {
+      update_id: 88131,
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "CALLBACK-AUDIT-LEDGER-DOWNLOAD-READY",
+      callback_message_id: "881",
+      client_invoice_ledger: [downloadReady],
+    }));
+    assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+    assertVisibleContract(result, {
+      allow: ["Descargar XML/PDF sandbox", "Ver factura", "Marcar pagada"],
+      forbid: ["Timbrar sandbox"],
+      sqlIncludes: ["DOWNLOAD_SANDBOX_ARTIFACTS", "VIEW_DRAFT", "MARK_PAYMENT_PAID"],
+    });
+  });
+
+  auditCase(cases, "LEDGER_DOWNLOADED_DOCUMENT_ACTIONS", () => {
+    const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", {
+      update_id: 88132,
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "CALLBACK-AUDIT-LEDGER-DOWNLOADED",
+      callback_message_id: "881",
+      client_invoice_ledger: [downloaded],
+    }));
+    assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+    assertVisibleContract(result, {
+      allow: ["Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver factura", "Marcar pagada"],
+      forbid: ["Timbrar sandbox"],
+      sqlIncludes: ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL", "MARK_PAYMENT_PAID"],
     });
   });
 
@@ -616,9 +648,23 @@ function runAudit() {
     }));
     assert(["CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
     assertVisibleContract(result, {
-      allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a pendientes", "Ver resumen"],
+      allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a aprobadas", "Ver resumen"],
       forbid: ["Aprobar", "Descartar"],
       sqlExcludes: ["status = 'PENDIENTE'"],
+    });
+  });
+
+  auditCase(cases, "DELIVERY_TOKEN_USED_RECOVERY_HAS_STATUS", () => {
+    const result = executeCode(handleCode, callbackInput("DELIVERY_PREPARE_PROVIDER_EMAIL", { draft_id: downloaded.draft_id, channel: "PROVIDER_EMAIL" }, {
+      update_id: 88133,
+      recent_drafts: [downloaded],
+      used_at: "2026-06-11T10:00:00.000Z",
+    }));
+    assert(["CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
+    assertVisibleContract(result, {
+      allow: ["Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver borrador"],
+      forbid: ["Timbrar sandbox"],
+      sqlExcludes: ["sandbox.documents.delivery.send"],
     });
   });
 
