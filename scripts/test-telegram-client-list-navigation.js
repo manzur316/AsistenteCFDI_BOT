@@ -263,15 +263,21 @@ check("cliente_5_sin_contexto_no_busca_texto_ambiguo", () => {
   return result.action;
 });
 
-check("facturas_1_abre_ledger_del_cliente_sin_pago", () => {
+check("facturas_1_abre_facturas_del_cliente_con_teclado_propio", () => {
   const result = executeCode(handleCode, baseInput("facturas 1", {
     update_id: 81607,
     chat_state: clientListState(),
   }));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  assert.strictEqual(result.action, "CLIENT_INVOICES_LIST");
   assert.strictEqual(result.json_debug.client_id, "CLI-REAL-BILBAO");
-  assertNoLiteralEscapedLineBreaks(result, "CLIENT_INVOICE_LEDGER");
-  assertHasRealLineBreak(result, "CLIENT_INVOICE_LEDGER");
+  assertNoLiteralEscapedLineBreaks(result, "CLIENT_INVOICES_LIST");
+  assertHasRealLineBreak(result, "CLIENT_INVOICES_LIST");
+  assert(result.telegram_message.includes("Facturas de Real Bilbao"));
+  assert(!result.telegram_message.includes("SANDBOX_TIMBRADO |"));
+  const text = JSON.stringify(result.reply_markup || {});
+  assert(!text.includes("Editar RFC"));
+  assert(!text.includes("Resumen cobranza"));
+  assert(!text.includes("Marcar pagada"));
   assert(!String(result.persistence_sql || "").includes("SET payment_status"));
   return result.action;
 });

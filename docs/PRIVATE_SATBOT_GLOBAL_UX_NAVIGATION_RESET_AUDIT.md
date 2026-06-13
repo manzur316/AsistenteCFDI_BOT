@@ -18,6 +18,8 @@ No se ejecuto Telegram real, watcher, n8n, smokes, workflow sync ni PAC. Este do
 
 Veredicto: la UX actual ya tiene mejores contratos internos que en fases anteriores (`screen_id`, `list_context`, `return_to`, parse mode, clientes funcionales y cobranza accionable), pero la arquitectura visible sigue mezclando demasiadas superficies: operacion diaria, administracion, sandbox, QA, proveedor, documentos, facturas, cobranza, pagos y recuperacion aparecen como una sola malla de botones. El problema ya no es un boton aislado; es la falta de separacion de informacion entre modulos.
 
+Nota Slice 9R 2.2: Facturas ya tiene una superficie operativa inicial separada. `/facturas` abre `INVOICES_RECENT_LIST` y `facturas N` desde Clientes abre `CLIENT_INVOICES_LIST`; ambas usan folio proveedor como identidad principal con fallback seguro y no heredan botones de edicion fiscal, cobranza ni pago. Documentos sigue pendiente como modulo propio.
+
 La recomendacion central es redisenar la navegacion en dos capas:
 
 - Menu operativo normal: tareas diarias del bot personal.

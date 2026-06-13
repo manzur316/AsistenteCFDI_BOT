@@ -341,16 +341,41 @@ Cada candidato queda como:
 - `SKIP_NO_IDENTITY`: no hay folio, UUID, provider UID ni provider id.
 - `SKIP_ALREADY_COMPLETE`: la fila existente ya contiene la identidad y flags aplicables.
 
-Siguiente paso operativo: ejecutar dry-run local real, revisar el plan y autorizar una fase de apply si el conteo y las muestras son correctas.
+El apply controlado posterior dejo las filas historicas aplicables como `SKIP_ALREADY_COMPLETE`.
 
-## 10. Que NO implementa este slice
+## 10. UI de Facturas por folio proveedor
+
+Slice 9R 2.2 conecta la UX operativa de Facturas al contrato de identidad proveedor:
+
+- `/facturas` y `cfdi_nav:invoices` abren `INVOICES_RECENT_LIST`.
+- `Clientes -> cliente N -> Facturas del cliente` y `facturas N` desde lista de clientes abren `CLIENT_INVOICES_LIST`.
+- `ver N` y `/ver N` desde listas de facturas abren `INVOICE_DETAIL`.
+- La lectura prioriza `provider_invoice_links` y conserva fallback a `cfdi_drafts.sandbox_pac_summary`/ledger local cuando no hay link.
+
+Reglas visibles aplicadas:
+
+- Si hay `serie + folio`, se muestra `A-F66`.
+- Si solo hay `folio`, se muestra `F66`.
+- Si falta folio y hay UUID, se muestra `UUID-xxxxxxxx`.
+- Si falta UUID y hay provider UID/id, se muestra `PAC-xxxxxxxx`.
+- Si no hay identidad proveedor, se muestra `BOR-*` y se marca `Folio proveedor: no disponible`.
+- `DRAFT-*`, UUID completo, estados crudos como `SANDBOX_TIMBRADO`, pipes tecnicos, rutas locales y raw snapshots no aparecen en UX normal.
+
+Screen ownership aplicado:
+
+- `INVOICES_RECENT_LIST` tiene texto y teclado propios.
+- `CLIENT_INVOICES_LIST` tiene texto y teclado propios, sin botones de edicion fiscal, cobranza ni pago.
+- `INVOICE_DETAIL` muestra detalle seguro y solo enlaza a Documentos como placeholder; no descarga ni envia archivos.
+- `pagar N`, `descargar N` y `enviar N` dentro de Facturas responden como pantalla de consulta y no mutan pagos/documentos.
+
+## 11. Que NO implementa este slice
 
 Este slice no:
 
 - Modifica SQL/schema.
-- Modifica workflow n8n.
-- Cambia UI de Facturas o Documentos.
-- Ejecuta backfill historico con escritura real.
+- Cambia UI profunda de Documentos.
+- Muta pagos/cobranza funcional desde Facturas.
+- Ejecuta backfill historico.
 - Ejecuta timbrado, descargas, smokes, watcher ni llamadas PAC/Factura.com.
 
-Siguiente slice recomendado: revisar un dry-run real local y autorizar apply, o avanzar a UI de Facturas por folio proveedor con fallback seguro.
+Siguiente slice recomendado: Documentos por folio proveedor, o detalle Factura -> Documentos con cruce documental real sin descargar desde Facturas.
