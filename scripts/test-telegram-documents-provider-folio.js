@@ -282,9 +282,10 @@ check("documentos_pac_fallback", () => {
   assertNoTechnicalDocumentUx(result);
 });
 
-check("documentos_bor_fallback_y_advierte", () => {
+check("documentos_fallback_local_seguro_y_advierte", () => {
   const result = executeCode(handleCode, baseInput("/documentos", { provider_invoice_links: [providerLink({ provider_folio: "", provider_serie: "", provider_uuid: "", provider_invoice_uid: "", provider_invoice_id: "", draft_id: "DRAFT-20260612-5412" })] }));
-  assert(result.telegram_message.includes("BOR-5412"), result.telegram_message);
+  assert(result.telegram_message.includes("FAC-SBX-"), result.telegram_message);
+  assert(!result.telegram_message.includes("DRAFT-"), result.telegram_message);
   assert(result.telegram_message.includes("Folio proveedor: no disponible"));
   assertNoTechnicalDocumentUx(result);
 });

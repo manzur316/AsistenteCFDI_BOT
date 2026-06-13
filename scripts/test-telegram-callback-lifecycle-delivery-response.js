@@ -65,7 +65,8 @@ function draftForLink(link) {
 
 function documentCallbackInput(token, action, link, options = {}) {
   const payload = {
-    state: "DOCUMENT_DETAIL",
+    state: "DOCUMENT_DELIVERY_CONFIRM",
+    screen_id: "DOCUMENT_DELIVERY_CONFIRM",
     action,
     draft_id: link.draft_id,
     provider_invoice_link_id: link.provider_invoice_link_id,

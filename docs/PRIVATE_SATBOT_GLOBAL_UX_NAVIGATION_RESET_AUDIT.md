@@ -26,6 +26,8 @@ Nota Slice 9R 2.4: Documentos ya permite descarga y envio con confirmacion token
 
 Nota Slice 9R 2.4F: QA runtime detecto fuga de teclado legacy desde Documentos y acceso normal al ledger tecnico `CLIENT_INVOICE_LEDGER`. El fix aplicado depreca `cfdi_nav:client_ledger`, `cfdi_nav:pay_paid` y `cfdi_nav:pay_cancel` en UX normal, fuerza `CLIENT_INVOICES_LIST` para Facturas del cliente, bloquea pagos si `source_module=DOCUMENTS`, y recupera tokens de Documentos con `DOCUMENT_ACTION_BLOCKED`/teclado propio en lugar de `DRAFT_DETAIL`.
 
+Nota Slice 9R 2.4G: QA runtime posterior confirmo un defecto mas profundo de routing de entidad. El fix aplicado separa `BORRADOR`, `FACTURA TIMBRADA`, `DOCUMENTO` y `COBRANZA`: una entidad timbrada ya no se presenta como "Borrador aprobado", `VIEW_DRAFT` de factura timbrada cae en `INVOICE_DETAIL`, `/start` y `/menu` son rutas absolutas al menu principal, y download/delivery solo se planean desde `DOCUMENT_DOWNLOAD_CONFIRM`/`DOCUMENT_DELIVERY_CONFIRM` con `source_module=DOCUMENTS`, token vigente, estado valido y referencia proveedor suficiente. El fallback visible sin folio ya no expone `SANDBOX-INV-DRAFT-*`; usa `FAC-SBX-<id corto>`.
+
 La recomendacion central es redisenar la navegacion en dos capas:
 
 - Menu operativo normal: tareas diarias del bot personal.

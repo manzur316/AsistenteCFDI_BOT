@@ -294,3 +294,32 @@ node scripts/test-telegram-callback-lifecycle-delivery-response.js
 ```
 
 Siguiente paso: repetir QA runtime controlado para confirmar en Telegram/n8n que la navegacion ya no hereda teclados de borrador y que `DOWNLOAD_ERROR`, si reaparece, queda como error humano seguro.
+
+## 19. Actualizacion Slice 9R 2.4G
+
+Se aplico fix correctivo adicional porque el QA posterior mostro que el problema no era solo teclado heredado: el bot aun mezclaba entidad, pantalla y accion.
+
+Cambios aplicados:
+
+- `VIEW_DRAFT` y detalle de draft ahora enrutan una entidad ya timbrada (`SANDBOX_TIMBRADO`, `DOWNLOAD_READY`, `DOWNLOADED` o identidad proveedor) a `INVOICE_DETAIL`, no a una pantalla de "Borrador aprobado".
+- `INVOICE_DETAIL` de factura timbrada muestra folio proveedor/fallback seguro, `Borrador origen: BOR-*`, proveedor y estados humanos; no muestra `DRAFT-*`, `SANDBOX_TIMBRADO`, pipes, pago, cancelacion ni delivery directo.
+- El fallback visible sin folio/UUID/provider id usa `FAC-SBX-<id corto>` y no `SANDBOX-INV-DRAFT-*`.
+- `/start` y `/menu` son rutas absolutas al menu principal y no recuperan estados o resultados de acciones previas.
+- `DOWNLOAD_SANDBOX_ARTIFACTS` solo se planea desde `DOCUMENT_DOWNLOAD_CONFIRM` con `source_module=DOCUMENTS`, token vigente, `draft_id`, referencia proveedor suficiente y estado descargable.
+- `DELIVERY_CONFIRM_*` solo se planea desde `DOCUMENT_DELIVERY_CONFIRM` con `source_module=DOCUMENTS`, token vigente, XML/PDF descargados y contexto documental valido.
+- Los resultados post-descarga/post-delivery ya no regeneran botones de envio directo fuera del detalle documental confirmado.
+- `DOWNLOAD_ERROR` queda clasificado con motivo humano seguro y sin rutas locales, payloads, UUID completo ni estados crudos.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-entity-state-routing-and-delivery-guard.js
+node scripts/test-telegram-runtime-qa-fix-document-isolation.js
+node scripts/test-telegram-documents-confirmed-actions.js
+node scripts/test-telegram-callback-lifecycle-download-response.js
+node scripts/test-telegram-callback-lifecycle-delivery-response.js
+node scripts/test-telegram-ui-state-buttons.js
+node scripts/test-telegram-ui-button-state-audit.js
+```
+
+Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.

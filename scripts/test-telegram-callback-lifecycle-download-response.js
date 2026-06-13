@@ -30,12 +30,46 @@ function buttonTexts(markup) {
 const handleCode = getNodeCode("Handle Commands And Scoring");
 const summaryCode = getNodeCode("Build PAC Sandbox Action Summary");
 
+function downloadReadyDraft(draftId) {
+  const draft = sandboxStampedDraft(draftId);
+  draft.artifact_status = "DOWNLOAD_READY";
+  draft.sandbox_pac_summary = {
+    ...(draft.sandbox_pac_summary || {}),
+    artifact_status: "DOWNLOAD_READY",
+    uuid: "123e4567-e89b-12d3-a456-426614174000",
+    cfdi_uid: "UID-DOWNLOAD-LIFECYCLE",
+    pac_invoice_id: "PAC-DOWNLOAD-LIFECYCLE",
+    xml_downloaded: false,
+    pdf_downloaded: false,
+    xml_content_valid: false,
+    pdf_content_valid: false,
+  };
+  return draft;
+}
+
+function documentDownloadCallbackInput(token, draftId, updateId) {
+  const draft = downloadReadyDraft(draftId);
+  const input = callbackInput(token, "DOWNLOAD_SANDBOX_ARTIFACTS", {
+    draft,
+    update_id: updateId,
+  });
+  input.action_token.payload = {
+    ...(input.action_token.payload || {}),
+    state: "DOCUMENT_DOWNLOAD_CONFIRM",
+    screen_id: "DOCUMENT_DOWNLOAD_CONFIRM",
+    source_module: "DOCUMENTS",
+    draft_id: draftId,
+    provider_invoice_link_id: `PIL-${draftId}`,
+    display_id: "F-DOWN",
+    return_to: "DOCUMENT_DETAIL",
+    confirmation_required: true,
+  };
+  return input;
+}
+
 check("download_callback_request_defers_delivery_buttons_until_persisted_result", () => {
-  const source = executeCode(handleCode, callbackInput("downcycle001", "DOWNLOAD_SANDBOX_ARTIFACTS", {
-    draft: sandboxStampedDraft("DRAFT-DOWNLOAD-LIFECYCLE-001"),
-    update_id: 7173101,
-  }));
-  assert.strictEqual(source.action, "DRAFT_SANDBOX_DOWNLOAD_REQUESTED");
+  const source = executeCode(handleCode, documentDownloadCallbackInput("downcycle001", "DRAFT-DOWNLOAD-LIFECYCLE-001", 7173101));
+  assert.strictEqual(source.action, "DOCUMENT_DOWNLOAD_RESULT");
   assert.strictEqual(source.should_execute_sandbox_action, true);
   assert.strictEqual(source.requested_sandbox_action, "sandbox.draft.download-artifacts");
   assert(source.callback_processing_sql.includes("UPDATE cfdi_action_tokens SET used_at"), "download token must be marked used");
@@ -43,15 +77,14 @@ check("download_callback_request_defers_delivery_buttons_until_persisted_result"
   assert(!source.callback_processing_sql.includes("DELIVERY_PREPARE_PROVIDER_EMAIL"), "provider delivery token must wait for persisted download");
   assert(!source.callback_processing_sql.includes("DELIVERY_PREPARE_TELEGRAM_CHANNEL"), "telegram delivery token must wait for persisted download");
   const labels = buttonTexts(source.sandbox_reply_markup || source.reply_markup);
-  assert.strictEqual(labels.length, 0);
+  assert(labels.includes("Volver a Documentos"), "documents recovery button missing");
+  assert(labels.includes("Menu principal"), "menu recovery button missing");
+  assert(!labels.includes("Enviar por correo"), "download request must not show delivery button");
   return labels.length;
 });
 
 check("download_action_summary_builds_visible_response_and_delivery_buttons", () => {
-  const source = executeCode(handleCode, callbackInput("downcycle002", "DOWNLOAD_SANDBOX_ARTIFACTS", {
-    draft: sandboxStampedDraft("DRAFT-DOWNLOAD-LIFECYCLE-001"),
-    update_id: 7173102,
-  }));
+  const source = executeCode(handleCode, documentDownloadCallbackInput("downcycle002", "DRAFT-DOWNLOAD-LIFECYCLE-001", 7173102));
   const restoreSource = {
     ...source,
     chat_id: "",
@@ -91,34 +124,22 @@ check("download_action_summary_builds_visible_response_and_delivery_buttons", ()
     return [];
   });
   assert.strictEqual(result.should_send_telegram, true);
-  assert(/Descarga sandbox completada/.test(result.telegram_message));
-  assert(/XML descargado: si/.test(result.telegram_message));
-  assert(/PDF descargado: si/.test(result.telegram_message));
-  assert(/Storage local: actualizado/.test(result.telegram_message));
-  assert(/Estado documental: DOWNLOADED/.test(result.telegram_message));
-  assert(/Persistencia local: UPDATED/.test(result.telegram_message));
-  assert(/listos para envio/.test(result.telegram_message));
+  assert(/Descarga completada/.test(result.telegram_message));
+  assert(/Factura: F-DOWN/.test(result.telegram_message));
+  assert(/XML\/PDF: Descargados/.test(result.telegram_message));
   assert(!/token_usado|Boton invalido/.test(result.telegram_message));
   assert.strictEqual(result.json_debug.callback_lifecycle.action_executed, true);
   assert.strictEqual(result.json_debug.callback_lifecycle.response_built, true);
   const labels = buttonTexts(result.reply_markup);
-  assert(labels.includes("Ver estado documental"), "status button missing after download");
-  assert(labels.includes("Enviar por correo"), "provider email button missing after download");
-  assert(labels.includes("Enviar a canal documentos"), "telegram channel button missing after download");
-  assert(labels.includes("Ver factura"), "view invoice button missing after download");
+  assert(labels.includes("Documentos"), "documents button missing after download");
   assert(labels.includes("Menu principal"), "menu button missing after download");
-  assert(result.persistence_sql.includes("DELIVERY_PREPARE_PROVIDER_EMAIL"), "provider delivery token SQL missing after download");
-  assert(result.persistence_sql.includes("DELIVERY_PREPARE_TELEGRAM_CHANNEL"), "telegram delivery token SQL missing after download");
-  assert(/VALUES \('[A-Za-z0-9_-]+', '6573879494', 'DRAFT-DOWNLOAD-LIFECYCLE-001'/.test(result.persistence_sql), "delivery token SQL must use recovered chat_id");
-  assert(!/VALUES \('[A-Za-z0-9_-]+', '', 'DRAFT-DOWNLOAD-LIFECYCLE-001'/.test(result.persistence_sql), "delivery token SQL must not use empty chat_id");
+  assert(!result.persistence_sql.includes("DELIVERY_PREPARE_PROVIDER_EMAIL"), "provider delivery token must wait for document detail confirmation");
+  assert(!result.persistence_sql.includes("DELIVERY_PREPARE_TELEGRAM_CHANNEL"), "telegram delivery token must wait for document detail confirmation");
   return result.sandbox_action_status;
 });
 
 check("download_action_summary_does_not_enable_delivery_without_persistence", () => {
-  const source = executeCode(handleCode, callbackInput("downcycle003", "DOWNLOAD_SANDBOX_ARTIFACTS", {
-    draft: sandboxStampedDraft("DRAFT-DOWNLOAD-LIFECYCLE-003"),
-    update_id: 7173103,
-  }));
+  const source = executeCode(handleCode, documentDownloadCallbackInput("downcycle003", "DRAFT-DOWNLOAD-LIFECYCLE-003", 7173103));
   const stdout = JSON.stringify({
     schema_version: "sandbox_action_result.v1",
     action: "sandbox.draft.download-artifacts",
@@ -144,7 +165,7 @@ check("download_action_summary_does_not_enable_delivery_without_persistence", ()
     },
   });
   const result = executeCode(summaryCode, { stdout }, () => [{ json: source }]);
-  assert(/No se habilito envio/.test(result.telegram_message));
+  assert(/Ver estado documental/.test(result.telegram_message));
   const labels = buttonTexts(result.reply_markup);
   assert(!labels.includes("Enviar por correo"), "provider email button must not be enabled when persistence failed");
   assert(!labels.includes("Enviar a canal documentos"), "telegram delivery button must not be enabled when persistence failed");

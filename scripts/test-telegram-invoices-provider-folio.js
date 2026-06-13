@@ -257,12 +257,13 @@ check("sin_folio_ni_uuid_con_uid_muestra_pac_corto", () => {
   return "PAC fallback";
 });
 
-check("sin_identidad_proveedor_usa_bor_y_advierte", () => {
+check("sin_identidad_proveedor_usa_fallback_local_seguro_y_advierte", () => {
   const result = executeCode(handleCode, baseInput("/facturas", { provider_invoice_links: [providerLink({ provider_folio: "", provider_serie: "", provider_uuid: "", provider_invoice_uid: "", provider_invoice_id: "", draft_id: "DRAFT-20260612-5412" })] }));
-  assert(result.telegram_message.includes("BOR-5412"), result.telegram_message);
+  assert(result.telegram_message.includes("FAC-SBX-"), result.telegram_message);
+  assert(!result.telegram_message.includes("DRAFT-"), result.telegram_message);
   assert(result.telegram_message.includes("Folio proveedor: no disponible"));
   assertNoTechnicalInvoiceUx(result);
-  return "BOR fallback";
+  return "safe local fallback";
 });
 
 check("lista_no_muestra_draft_uuid_estado_crudo_ni_pipes", () => {

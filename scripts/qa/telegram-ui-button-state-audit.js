@@ -442,8 +442,8 @@ function runAudit() {
     const result = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-DOWNLOAD-READY", { update_id: 88111, recent_drafts: [downloadReady] }));
     assert.strictEqual(result.action, "COMMAND_DETALLE");
     assertVisibleContract(result, {
-      allow: ["Descargar XML/PDF sandbox"],
-      forbid: ["Timbrar sandbox"],
+      allow: ["Ver documentos", "Volver", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Enviar por correo", "Enviar a canal documentos", "Cancelar CFDI sandbox", "Marcar pagada"],
     });
   });
 
@@ -451,8 +451,8 @@ function runAudit() {
     const result = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-DOWNLOADED", { update_id: 88112, recent_drafts: [downloaded] }));
     assert.strictEqual(result.action, "COMMAND_DETALLE");
     assertVisibleContract(result, {
-      allow: ["Descargar XML/PDF sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos"],
-      forbid: ["Timbrar sandbox"],
+      allow: ["Ver documentos", "Volver", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Cancelar CFDI sandbox", "Marcar pagada"],
     });
   });
 
@@ -519,9 +519,9 @@ function runAudit() {
     const result = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({ draft_id: "DRAFT-AUDIT-STAMP" }) }]);
     assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_RESULT");
     assertVisibleContract(result, {
-      allow: ["Descargar XML/PDF sandbox", "Ver factura", "Menu principal"],
-      forbid: ["Timbrar sandbox"],
-      sqlIncludes: ["DOWNLOAD_SANDBOX_ARTIFACTS"],
+      allow: ["Documentos", "Facturas", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Ver factura"],
+      sqlExcludes: ["DOWNLOAD_SANDBOX_ARTIFACTS"],
     });
   });
 
@@ -553,9 +553,9 @@ function runAudit() {
     const result = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({ draft_id: "DRAFT-AUDIT-DOWNLOAD-ACTION" }) }]);
     assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_RESULT");
     assertVisibleContract(result, {
-      allow: ["Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver factura", "Menu principal"],
-      forbid: ["Timbrar sandbox"],
-      sqlIncludes: ["DELIVERY_PREPARE_PROVIDER_EMAIL", "DELIVERY_PREPARE_TELEGRAM_CHANNEL"],
+      allow: ["Documentos", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Enviar por correo", "Enviar a canal documentos", "Ver factura"],
+      sqlExcludes: ["DELIVERY_PREPARE_PROVIDER_EMAIL", "DELIVERY_PREPARE_TELEGRAM_CHANNEL"],
     });
   });
 
@@ -587,9 +587,10 @@ function runAudit() {
     }) }]);
     assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_RESULT");
     assertVisibleContract(result, {
-      allow: ["Ver estado documental", "Enviar a canal documentos", "Enviar por correo", "Ver factura", "Menu principal"],
-      forbid: ["Confirmar envio canal"],
-      sqlIncludes: ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL"],
+      allow: ["Ver estado documental", "Documentos", "Facturas", "Menu principal"],
+      forbid: ["Confirmar envio canal", "Enviar a canal documentos", "Enviar por correo", "Ver factura"],
+      sqlIncludes: ["DELIVERY_STATUS"],
+      sqlExcludes: ["DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL"],
     });
     assertFreshNoStale(result, [stale]);
   });
@@ -662,7 +663,7 @@ function runAudit() {
     }));
     assert(["CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
     assertVisibleContract(result, {
-      allow: ["Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver borrador"],
+      allow: ["Documentos", "Menu principal"],
       forbid: ["Timbrar sandbox"],
       sqlExcludes: ["sandbox.documents.delivery.send"],
     });
@@ -690,10 +691,10 @@ function runAudit() {
       recent_drafts: [downloaded],
       expires_at: "2020-01-01T00:00:00.000Z",
     }));
-    assert.strictEqual(result.action, "CALLBACK_TOKEN_CONTEXT_RECOVERED");
+    assert.strictEqual(result.action, "INVOICE_DETAIL");
     assertVisibleContract(result, {
-      allow: ["Descargar XML/PDF sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos"],
-      forbid: ["Timbrar sandbox"],
+      allow: ["Ver documentos", "Volver", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos"],
     });
   });
 

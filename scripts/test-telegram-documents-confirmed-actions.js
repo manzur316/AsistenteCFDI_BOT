@@ -188,8 +188,15 @@ function draftForLink(link, options = {}) {
 
 function documentCallbackInput(token, action, link, options = {}) {
   const draft = options.draft || draftForLink(link, { downloaded: options.downloaded });
+  const normalizedAction = String(action || "").toUpperCase();
+  const defaultState = normalizedAction === "DOWNLOAD_SANDBOX_ARTIFACTS"
+    ? "DOCUMENT_DOWNLOAD_CONFIRM"
+    : normalizedAction.includes("DELIVERY_CONFIRM") || normalizedAction.includes("DELIVERY_FORCE")
+      ? "DOCUMENT_DELIVERY_CONFIRM"
+      : "DOCUMENT_DETAIL";
   const payload = {
-    state: options.state || "DOCUMENT_DETAIL",
+    state: options.state || defaultState,
+    screen_id: options.screen_id || options.state || defaultState,
     action,
     draft_id: link.draft_id,
     provider_invoice_link_id: link.provider_invoice_link_id,
