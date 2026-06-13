@@ -365,17 +365,41 @@ Screen ownership aplicado:
 
 - `INVOICES_RECENT_LIST` tiene texto y teclado propios.
 - `CLIENT_INVOICES_LIST` tiene texto y teclado propios, sin botones de edicion fiscal, cobranza ni pago.
-- `INVOICE_DETAIL` muestra detalle seguro y solo enlaza a Documentos como placeholder; no descarga ni envia archivos.
+- `INVOICE_DETAIL` muestra detalle seguro y enlaza a Documentos sin descargar ni enviar archivos.
 - `pagar N`, `descargar N` y `enviar N` dentro de Facturas responden como pantalla de consulta y no mutan pagos/documentos.
 
-## 11. Que NO implementa este slice
+## 11. UI de Documentos por folio proveedor
+
+Slice 9R 2.3 conecta la UX operativa de Documentos al mismo contrato de identidad proveedor:
+
+- `/documentos` y `cfdi_nav:docs` abren `DOCUMENTS_RECENT_LIST`.
+- La lectura prioriza `provider_invoice_links`.
+- `document_delivery_ledger` se carga en modo solo lectura para resumir envio cuando existe evidencia local.
+- `ver N`, `/ver N` y `documentos N` desde listas de documentos abren `DOCUMENT_DETAIL`.
+- Los filtros `DOCUMENTS_PENDING_LIST`, `DOCUMENTS_DOWNLOADED_LIST`, `DOCUMENTS_SENT_LIST` y `DOCUMENTS_ERROR_LIST` quedan tokenizados y no ejecutan acciones externas.
+
+Reglas visibles aplicadas:
+
+- Usa `serie-folio`, `folio`, `UUID-xxxxxxxx`, `PAC-xxxxxxxx` o `BOR-*` con aviso de folio faltante.
+- XML/PDF se muestra como `Descargados`, `Parcial`, `Listos para descargar`, `Pendientes` o `Error`.
+- Envio se muestra como `Pendiente`, `Enviado`, `Error` o `Ya enviado / protegido`.
+- `DRAFT-*`, UUID completo, estados crudos, pipes tecnicos, rutas locales, raw snapshots y payloads no aparecen en UX normal.
+
+Screen ownership aplicado:
+
+- `DOCUMENTS_RECENT_LIST` y sus filtros tienen texto y teclado propios.
+- `DOCUMENT_DETAIL` tiene texto y teclado propios, sin heredar botones de Facturas, Clientes, Cobranza ni Admin/QA.
+- `descargar N`, `enviar N`, `correo N`, `canal N` y `pagar N` dentro de Documentos responden como consulta segura y no mutan datos.
+
+## 12. Que NO implementa este slice
 
 Este slice no:
 
 - Modifica SQL/schema.
-- Cambia UI profunda de Documentos.
+- Ejecuta descarga real de XML/PDF desde Documentos.
+- Ejecuta envio real por correo o canal desde Documentos.
 - Muta pagos/cobranza funcional desde Facturas.
 - Ejecuta backfill historico.
 - Ejecuta timbrado, descargas, smokes, watcher ni llamadas PAC/Factura.com.
 
-Siguiente slice recomendado: Documentos por folio proveedor, o detalle Factura -> Documentos con cruce documental real sin descargar desde Facturas.
+Siguiente slice recomendado: flujo confirmado de descarga/envio desde Documentos, o detalle Factura -> Documento especifico cuando se autorice accion documental real.

@@ -234,7 +234,7 @@ check("menu_principal_navega_a_secciones", () => {
     "cfdi_nav:approved": "COMMAND_APROBADAS",
     "cfdi_nav:invoices": "INVOICES_RECENT_LIST",
     "cfdi_nav:pay_pending": "COLLECTION_CLIENTS",
-    "cfdi_nav:docs": "PRODUCT_DOCUMENTS_PLACEHOLDER",
+    "cfdi_nav:docs": "DOCUMENTS_RECENT_LIST",
     "cfdi_nav:provider": "PRODUCT_PROVIDER_SYNC_PLACEHOLDER",
     "cfdi_nav:help": "PRODUCT_HELP",
   };
@@ -308,7 +308,7 @@ check("placeholders_operativos_no_mutan_datos", () => {
   const docs = executeCode(handleCode, callbackInput("cfdi_nav:docs", "OWNER", { update_id: 7646 }));
   const provider = executeCode(handleCode, callbackInput("cfdi_nav:provider", "OWNER", { update_id: 7647 }));
   assert.strictEqual(invoices.action, "INVOICES_RECENT_LIST");
-  assert.strictEqual(docs.action, "PRODUCT_DOCUMENTS_PLACEHOLDER");
+  assert.strictEqual(docs.action, "DOCUMENTS_RECENT_LIST");
   assert.strictEqual(provider.action, "PRODUCT_PROVIDER_SYNC_PLACEHOLDER");
   const businessMutation = /UPDATE\s+(?:cfdi_drafts|cfdi_invoice_payment_state|cfdi_clients|cfdi_client_aliases)\b/i;
   assert(!businessMutation.test(String(invoices.persistence_sql || "")));
@@ -325,7 +325,7 @@ check("comandos_operativos_abren_modulos_claros", () => {
     "/nueva": "INVOICE_WIZARD",
     "/borradores": "DRAFTS_MENU",
     "/facturas": "INVOICES_RECENT_LIST",
-    "/documentos": "PRODUCT_DOCUMENTS_PLACEHOLDER",
+    "/documentos": "DOCUMENTS_RECENT_LIST",
     "/sync": "PRODUCT_PROVIDER_SYNC_PLACEHOLDER",
     "/cobranza": "COLLECTION_CLIENTS",
   };

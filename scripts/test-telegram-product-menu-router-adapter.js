@@ -224,7 +224,7 @@ check("minimum_required_routes_match_existing_actions", () => {
     ["cfdi_nav:pending", "COMMAND_PENDIENTES"],
     ["cfdi_nav:approved", "COMMAND_APROBADAS"],
     ["cfdi_nav:invoices", "INVOICES_RECENT_LIST"],
-    ["cfdi_nav:docs", "PRODUCT_DOCUMENTS_PLACEHOLDER"],
+    ["cfdi_nav:docs", "DOCUMENTS_RECENT_LIST"],
     ["cfdi_nav:provider", "PRODUCT_PROVIDER_SYNC_PLACEHOLDER"],
     ["cfdi_nav:pay_pending", "COLLECTION_CLIENTS"],
     ["cfdi_nav:report", "COMMAND_RESUMEN"],

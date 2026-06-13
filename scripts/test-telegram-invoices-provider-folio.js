@@ -363,10 +363,11 @@ check("cobranza_sigue_funcionando", () => {
   return result.action;
 });
 
-check("documentos_sigue_placeholder_seguro", () => {
+check("documentos_abre_lista_segura", () => {
   const result = executeCode(handleCode, baseInput("/documentos", { update_id: 99038 }));
-  assert.strictEqual(result.action, "PRODUCT_DOCUMENTS_PLACEHOLDER");
-  assert(result.telegram_message.includes("No se envio ni descargo ningun archivo"));
+  assert.strictEqual(result.action, "DOCUMENTS_RECENT_LIST");
+  assert(result.telegram_message.includes("Documentos recientes"));
+  assert(!/DOWNLOAD_SANDBOX_ARTIFACTS|DELIVERY_CONFIRM/.test(String(result.persistence_sql || "")));
   return result.action;
 });
 
