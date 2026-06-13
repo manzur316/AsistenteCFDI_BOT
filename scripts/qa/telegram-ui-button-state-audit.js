@@ -396,7 +396,7 @@ function runAudit() {
     const pendingResult = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-PENDING", { update_id: 88105, recent_drafts: [pending] }));
     const approvedResult = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-APPROVED", { update_id: 88106, recent_drafts: [approved] }));
     assertVisibleContract(pendingResult, { allow: ["Aprobar", "Descartar"], forbid: ["Timbrar sandbox"] });
-    assertVisibleContract(approvedResult, { allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a aprobadas", "Ver resumen"], forbid: ["Aprobar", "Descartar"] });
+    assertVisibleContract(approvedResult, { allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a listos para facturar", "Ver resumen"], forbid: ["Aprobar", "Descartar"] });
   });
 
   auditCase(cases, "DRAFT_APPROVED_POST_ACTION", () => {
@@ -649,7 +649,7 @@ function runAudit() {
     }));
     assert(["CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
     assertVisibleContract(result, {
-      allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a aprobadas", "Ver resumen"],
+      allow: ["Timbrar sandbox", "Regresar a borrador", "Volver a listos para facturar", "Ver resumen"],
       forbid: ["Aprobar", "Descartar"],
       sqlExcludes: ["status = 'PENDIENTE'"],
     });

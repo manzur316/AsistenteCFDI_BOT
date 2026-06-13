@@ -547,7 +547,7 @@ if (handleCode) {
         && result.source_page === 2
         && result.json_debug?.navigation?.return_to === "DRAFTS_PENDING_LIST"
         && hasButtons(result, ["Volver a pendientes"])
-        && lacksButtons(result, ["Volver a aprobadas"])
+        && lacksButtons(result, ["Volver a listos para facturar"])
         && callbacksSafe(result),
     },
     {
@@ -560,7 +560,7 @@ if (handleCode) {
         && result.source_list_kind === "DRAFTS_APPROVED"
         && result.source_page === 2
         && result.json_debug?.navigation?.return_to === "DRAFTS_APPROVED_LIST"
-        && hasButtons(result, ["Volver a aprobadas"])
+        && hasButtons(result, ["Volver a listos para facturar"])
         && lacksButtons(result, ["Volver a pendientes"])
         && callbacksSafe(result),
     },
@@ -613,7 +613,7 @@ if (handleCode) {
         && result.screen_id === "RECOVERY"
         && result.return_to === "MAIN_MENU"
         && !String(result.telegram_message || "").includes("Mostrando 11-15 de 20")
-        && lacksButtons(result, ["Ver 11", "Timbrar sandbox 15", "Volver a pendientes", "Volver a aprobadas"])
+        && lacksButtons(result, ["Ver 11", "Timbrar sandbox 15", "Volver a pendientes", "Volver a listos para facturar"])
         && hasButtons(result, ["Menu principal", "Facturas", "Documentos", "Ayuda"])
         && lacksButtons(result, ["Por revisar", "Listos para facturar", "Crear nuevo borrador"])
         && callbacksSafe(result),
@@ -722,7 +722,7 @@ if (handleCode) {
         && result.return_to === "DRAFTS_APPROVED_LIST"
         && result.source_list_kind === "DRAFTS_APPROVED"
         && result.source_page === 2
-        && hasButtons(result, ["Volver a aprobadas"])
+        && hasButtons(result, ["Volver a listos para facturar"])
         && lacksButtons(result, ["Volver a pendientes"])
         && callbacksSafe(result),
     },
@@ -778,7 +778,7 @@ if (handleCode) {
       expect: (result) => result.action === "DRAFT_SANDBOX_STAMP_READY"
         && result.json_debug?.draft_id === "DRAFT-APROB-LIST-10"
         && result.should_execute_sandbox_action !== true
-        && hasButtons(result, ["Timbrar sandbox 10", "Volver a aprobadas", "Menu principal"])
+        && hasButtons(result, ["Timbrar sandbox 10", "Volver a listos para facturar", "Menu principal"])
         && callbacksSafe(result),
     },
     {

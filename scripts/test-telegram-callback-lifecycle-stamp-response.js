@@ -40,7 +40,7 @@ function approvedDraft() {
 const handleCode = getNodeCode("Handle Commands And Scoring");
 const summaryCode = getNodeCode("Build PAC Sandbox Action Summary");
 
-check("stamp_callback_request_has_post_action_recovery_buttons", () => {
+check("stamp_callback_request_has_safe_pending_buttons", () => {
   const source = executeCode(handleCode, callbackInput("stampcycle001", "STAMP_DRAFT_SANDBOX", {
     draft: approvedDraft(),
     update_id: 7173001,
@@ -51,9 +51,10 @@ check("stamp_callback_request_has_post_action_recovery_buttons", () => {
   assert(source.callback_processing_sql.includes("UPDATE cfdi_action_tokens SET used_at"), "stamp token must be marked used");
   assert(source.callback_processing_sql.includes("DRAFT_SANDBOX_STAMP_IN_PROGRESS"), "in-progress event missing");
   const labels = buttonTexts(source.sandbox_reply_markup || source.reply_markup);
-  assert(labels.includes("Descargar XML/PDF sandbox"), "download button missing after stamp");
-  assert(labels.includes("Ver estado documental"), "delivery status button missing after stamp");
+  assert(!labels.includes("Descargar XML/PDF sandbox"), "download button must wait for successful stamp");
+  assert(!labels.includes("Ver estado documental"), "delivery status button must wait for successful stamp");
   assert(labels.includes("Ver ultimo resultado sandbox"), "latest sandbox button missing after stamp");
+  assert(labels.includes("Volver a listos para facturar"), "approved list button missing after stamp");
   assert(labels.includes("Menu principal"), "menu button missing after stamp");
   return labels.length;
 });
@@ -101,10 +102,10 @@ check("stamp_action_summary_builds_visible_response_and_buttons", () => {
   assert.strictEqual(result.json_debug.callback_lifecycle.response_built, true);
   assert.strictEqual(result.json_debug.callback_lifecycle.token_used, true);
   const callbacks = allCallbackData(result.reply_markup);
-  assert(callbacks.some((item) => item.startsWith("cfdi:")), "fresh action tokens missing");
-  assert(callbacks.includes("cfdi_sbx:latest"), "latest callback missing");
+  assert(callbacks.includes("cfdi_nav:docs"), "documents callback missing");
+  assert(callbacks.includes("cfdi_nav:invoices"), "invoices callback missing");
   assert(callbacks.includes("cfdi_nav:menu"), "menu callback missing");
-  assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "fresh download token insert missing");
+  assert(!result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "stamp summary must route to Documents instead of creating legacy download token");
   assert(!result.persistence_sql.includes("'STAMP_DRAFT_SANDBOX'"), "post-stamp summary must not create stamp token");
   return result.sandbox_draft_status;
 });

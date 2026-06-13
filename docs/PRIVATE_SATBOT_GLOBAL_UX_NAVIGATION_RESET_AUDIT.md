@@ -562,6 +562,20 @@ Se reforzo la recuperacion contextual y la identidad visible:
 
 Nueva QA runtime observacional requerida: repetir navegacion corta sin smokes, timbrado, descargas reales ni envios reales.
 
+## 15.2 Nota Slice 9R 2.4J
+
+Se reforzo el guard contra acciones documentales cuando el timbrado sandbox falla:
+
+- `SANDBOX_ERROR` ya no muestra `Descargar XML/PDF sandbox`, `Ver estado documental`, envio, pago, cancelacion ni ledger.
+- `DRAFT_SANDBOX_STAMP_REQUESTED` muestra solo recuperacion segura mientras no exista resultado final OK.
+- El resultado de error de timbrado muestra `No se pudo timbrar sandbox`, `Borrador: BOR-*`, cliente, estado de error y acciones seguras.
+- Los labels residuales `Borrador regresado a borrador` y `Volver a aprobadas` fueron reemplazados por `Borrador devuelto a revision` y `Volver a listos para facturar`.
+- La auditoria `scripts/audit-provider-invoice-identity-quality.js` clasifica calidad de identidad sin mutar DB ni imprimir datos fiscales.
+
+Resultado local sanitizado del dry-run `--limit 50`: 41 con folio proveedor, 9 con fallback `FAC-SBX-*`, 2 `SANDBOX_ERROR`, 4 `DOWNLOAD_ERROR`, 4 mock/legacy sospechosos y 4 con identidad proveedor incompleta.
+
+Nueva QA runtime observacional requerida: repetir navegacion corta y confirmar que un error de timbrado no deja botones documentales.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

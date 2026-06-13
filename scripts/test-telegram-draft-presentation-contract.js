@@ -287,7 +287,7 @@ function run() {
         assert(text.includes("SERVICIO DE INSTALACION Y CONFIGURACION DE SISTEMA DE VIDEOVIGILANCIA CCTV"), text);
         assert(text.includes("Total:</b> $11,020.00") || text.includes("Total: <b>$11,020.00</b>"), text);
         assertNoRawHtmlRisk(result);
-        assert(buttons(result).includes("Volver a aprobadas"), JSON.stringify(buttons(result)));
+        assert(buttons(result).includes("Volver a listos para facturar"), JSON.stringify(buttons(result)));
       },
     },
     {

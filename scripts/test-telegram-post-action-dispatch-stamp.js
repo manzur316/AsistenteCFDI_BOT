@@ -25,7 +25,7 @@ function printCheck(item) {
 const summaryCode = getNodeCode("Build PAC Sandbox Action Summary");
 const dispatchPlanCode = getNodeCode("Build Telegram Dispatch Plan");
 
-check("stamp_ok_builds_visible_post_action_message_and_download_button", () => {
+check("stamp_ok_builds_visible_post_action_message_and_document_routes", () => {
   const stdout = JSON.stringify({
     schema_version: "sandbox_action_result.v1",
     action: "sandbox.draft.stamp",
@@ -61,12 +61,12 @@ check("stamp_ok_builds_visible_post_action_message_and_download_button", () => {
   assert(/Estado: SANDBOX_TIMBRADO/.test(result.telegram_message));
   assert(/Siguiente paso: Descargar XML\/PDF sandbox/.test(result.telegram_message));
   const labels = (result.reply_markup.inline_keyboard || []).flat().map((button) => button.text);
-  assert(labels.includes("Descargar XML/PDF sandbox"), "download button missing");
-  assert(labels.includes("Ver estado documental"), "document status button missing");
+  assert(labels.includes("Documentos"), "documents route missing");
+  assert(labels.includes("Facturas"), "invoices route missing");
   assert(!labels.includes("Timbrar sandbox"), "stale stamp button must not be reused");
   const callbacks = allCallbackData(result.reply_markup);
   assert(!callbacks.includes("cfdi:STALESTAMP717F"), "stale callback_data must not be reused");
-  assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "fresh download token insert missing");
+  assert(!result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "post-stamp summary must not create legacy download token");
   assert(!result.persistence_sql.includes("'STAMP_DRAFT_SANDBOX'"), "post-stamp summary must not create fresh stamp token");
   return labels.length;
 });

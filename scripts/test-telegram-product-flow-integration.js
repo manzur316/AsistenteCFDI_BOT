@@ -362,7 +362,7 @@ check("regresar_aprobado_a_borrador_responde_con_feedback", () => {
     recent_drafts: [approved],
   }));
   assert.strictEqual(result.action, "COMMAND_REGRESAR_BORRADOR");
-  assert(result.telegram_message.includes("Borrador regresado a borrador"));
+  assert(result.telegram_message.includes("Borrador devuelto a revision"));
   assert(result.persistence_sql.includes("UPDATE cfdi_drafts SET status = 'PENDIENTE'"));
   return result.action;
 });

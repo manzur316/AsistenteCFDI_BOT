@@ -34,7 +34,7 @@ function assertRecovery(result) {
 
 const handleCode = getNodeCode("Handle Commands And Scoring");
 
-check("used_stamp_token_recovers_to_download_and_status_buttons", () => {
+check("used_stamp_token_recovers_to_invoice_detail_document_route", () => {
   const draft = sandboxStampedDraft("DRAFT-USED-STAMP-001");
   const result = executeCode(handleCode, callbackInput("usedstampcycle01", "STAMP_DRAFT_SANDBOX", {
     draft,
@@ -44,8 +44,9 @@ check("used_stamp_token_recovers_to_download_and_status_buttons", () => {
   assertRecovery(result);
   assert(/La factura ya esta timbrada/.test(result.telegram_message));
   const labels = (result.reply_markup.inline_keyboard || []).flat().map((button) => button.text);
-  assert(labels.includes("Descargar XML/PDF sandbox"), "download recovery button missing");
-  assert(labels.includes("Ver estado documental"), "status recovery button missing");
+  assert(labels.includes("Ver documentos"), "documents route missing");
+  assert(!labels.includes("Descargar XML/PDF sandbox"), "legacy download button must not be exposed");
+  assert(!labels.includes("Ver estado documental"), "legacy status button must not be exposed");
   return labels.length;
 });
 
@@ -60,8 +61,10 @@ check("used_download_token_recovers_to_delivery_buttons", () => {
   assert(/Esta descarga ya fue procesada/.test(result.telegram_message));
   assert(/XML\/PDF ya estan disponibles/.test(result.telegram_message));
   const labels = (result.reply_markup.inline_keyboard || []).flat().map((button) => button.text);
-  assert(labels.includes("Enviar por correo"), "provider email recovery missing");
-  assert(labels.includes("Enviar a canal documentos"), "telegram channel recovery missing");
+  assert(labels.includes("Documentos"), "documents recovery missing");
+  assert(labels.includes("Menu principal"), "menu recovery missing");
+  assert(!labels.includes("Enviar por correo"), "send action must be prepared from Documents");
+  assert(!labels.includes("Enviar a canal documentos"), "channel action must be prepared from Documents");
   return labels.length;
 });
 

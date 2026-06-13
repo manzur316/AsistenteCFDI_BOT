@@ -324,6 +324,33 @@ node scripts/test-telegram-ui-button-state-audit.js
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
 
+## 22. Actualizacion Slice 9R 2.4J
+
+Se corrigio el caso detectado por watcher `APPROVED_BEFORE_STAMP_SHOWS_DOWNLOAD`:
+
+- La solicitud `DRAFT_SANDBOX_STAMP_REQUESTED` ya no prepara botones documentales antes de saber si el timbrado fue exitoso.
+- El resumen de `sandbox.draft.stamp` en error ya no reutiliza `source.sandbox_reply_markup`; usa un teclado seguro de error.
+- `SANDBOX_ERROR` no muestra descarga, estado documental, envio, pago, cancelacion ni ledger.
+- El mensaje de error queda humano y sanitizado: `No se pudo timbrar sandbox`, borrador origen `BOR-*`, cliente, estado `error de timbrado` y acciones de recuperacion.
+- Se agrego auditoria local read-only de identidad de factura para explicar folio proveedor vs fallback `FAC-SBX-*`.
+
+Resultado dry-run sanitizado de identidad (`--limit 50`):
+
+- Total analizado: 50.
+- Con folio proveedor: 41.
+- Con serie+folio: 41.
+- Sin folio pero con UUID: 0.
+- Sin folio pero con provider id: 0.
+- Fallback `FAC-SBX-*`: 9.
+- `SANDBOX_ERROR`: 2.
+- `DOWNLOAD_ERROR`: 4.
+- Mock/legacy sospechoso: 4.
+- Identidad proveedor incompleta: 4.
+
+Recomendacion: no borrar datos historicos en esta fase. Primero ocultar o marcar historicos incompletos de la UX normal, o decidir reset sandbox/reconciliacion futura con autorizacion explicita.
+
+Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
+
 ## 21. Actualizacion Slice 9R 2.4I
 
 Se aplico fix correctivo para los fallos visibles posteriores al Slice 2.4H:
