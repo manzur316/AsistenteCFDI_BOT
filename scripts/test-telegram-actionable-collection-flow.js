@@ -340,7 +340,7 @@ check("ledger_general_no_muestra_botones_pago_ambiguos", () => {
     callback_query_id: "CB-LEDGER",
     callback_message_id: "99",
   }));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
   const texts = buttonTexts(result);
   assert(!texts.includes("Marcar pagada"), texts.join(","));
   assert(!texts.includes("Marcar parcial"), texts.join(","));

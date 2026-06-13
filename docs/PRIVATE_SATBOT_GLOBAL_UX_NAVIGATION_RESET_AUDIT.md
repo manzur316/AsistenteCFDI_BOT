@@ -24,6 +24,8 @@ Nota Slice 9R 2.3: Documentos ya tiene una superficie operativa inicial separada
 
 Nota Slice 9R 2.4: Documentos ya permite descarga y envio con confirmacion tokenizada. `descargar N` abre `DOCUMENT_DOWNLOAD_CONFIRM` y solo el token `DOWNLOAD_SANDBOX_ARTIFACTS` confirmado planea `sandbox.draft.download-artifacts`; `enviar N`, `correo N` y `canal N` abren `DOCUMENT_DELIVERY_CONFIRM` y solo `DELIVERY_CONFIRM_*` ejecuta el envio existente. Pagos, cancelacion, PAC real y envios/descargas en pruebas siguen fuera de alcance.
 
+Nota Slice 9R 2.4F: QA runtime detecto fuga de teclado legacy desde Documentos y acceso normal al ledger tecnico `CLIENT_INVOICE_LEDGER`. El fix aplicado depreca `cfdi_nav:client_ledger`, `cfdi_nav:pay_paid` y `cfdi_nav:pay_cancel` en UX normal, fuerza `CLIENT_INVOICES_LIST` para Facturas del cliente, bloquea pagos si `source_module=DOCUMENTS`, y recupera tokens de Documentos con `DOCUMENT_ACTION_BLOCKED`/teclado propio en lugar de `DRAFT_DETAIL`.
+
 La recomendacion central es redisenar la navegacion en dos capas:
 
 - Menu operativo normal: tareas diarias del bot personal.

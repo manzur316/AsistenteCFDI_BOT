@@ -290,54 +290,50 @@ check("workflow_clients_menu_stays_operationally_clean", () => {
   return result.action;
 });
 
-check("workflow_renders_client_invoice_ledger", () => {
+check("workflow_global_client_invoice_ledger_is_deprecated", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger"));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
-  assert(result.telegram_message.includes("Facturas por cliente"));
-  assert(result.telegram_message.includes("Cliente: Privada Rivera"));
-  assert(result.telegram_message.includes("SANDBOX_TIMBRADO | PENDIENTE | $10150.00"));
-  assert(result.telegram_message.includes("SANDBOX_TIMBRADO | PAGADO | $5000.00"));
-  assert(result.telegram_message.includes("SANDBOX_CANCELADO | NO_APLICA | $7500.00"));
-  assert(result.telegram_message.includes("Pendiente: $10150.00"));
-  assert(result.telegram_message.includes("Pagado: $5000.00"));
-  assert(result.telegram_message.includes("Cancelado separado: $7500.00"));
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
+  assert(result.telegram_message.includes("Facturas por cliente cambio de vista"));
+  assert(!result.telegram_message.includes("SANDBOX_TIMBRADO |"));
+  assert(!result.telegram_message.includes("DRAFT-"));
   assert(!hasSensitiveValue(result.telegram_message));
   return result.action;
 });
 
-check("workflow_ledger_download_ready_exposes_download_action", () => {
+check("workflow_legacy_ledger_download_ready_exposes_no_download_action", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", ROLES.OWNER, {
     update_id: 9512,
     client_invoice_ledger: [downloadReadyLedgerRow()],
   }));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
   const texts = buttonTexts(result);
-  assert(texts.includes("Descargar XML/PDF sandbox"), texts.join(","));
-  assert(texts.includes("Ver factura"), texts.join(","));
+  assert(texts.includes("Facturas"), texts.join(","));
+  assert(!texts.includes("Descargar XML/PDF sandbox"), texts.join(","));
+  assert(!texts.includes("Ver factura"), texts.join(","));
   assert(!texts.includes("Marcar pagada"), texts.join(","));
-  assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "download token missing");
-  assert(result.persistence_sql.includes("'VIEW_DRAFT'"), "view draft token missing");
+  assert(!result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "download token present");
+  assert(!result.persistence_sql.includes("'VIEW_DRAFT'"), "view draft token present");
   assert(!result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "ambiguous payment token present");
-  return "DOWNLOAD_READY";
+  return "deprecated";
 });
 
-check("workflow_ledger_downloaded_exposes_document_actions", () => {
+check("workflow_legacy_ledger_downloaded_exposes_no_document_actions", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", ROLES.OWNER, {
     update_id: 9513,
     client_invoice_ledger: [downloadedLedgerRow()],
   }));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
   const texts = buttonTexts(result);
-  assert(texts.includes("Ver estado documental"), texts.join(","));
-  assert(texts.includes("Enviar a canal documentos"), texts.join(","));
-  assert(texts.includes("Enviar por correo"), texts.join(","));
-  assert(texts.includes("Ver factura"), texts.join(","));
+  assert(!texts.includes("Ver estado documental"), texts.join(","));
+  assert(!texts.includes("Enviar a canal documentos"), texts.join(","));
+  assert(!texts.includes("Enviar por correo"), texts.join(","));
+  assert(!texts.includes("Ver factura"), texts.join(","));
   assert(!texts.includes("Marcar pagada"), texts.join(","));
-  assert(result.persistence_sql.includes("'DELIVERY_STATUS'"), "delivery status token missing");
-  assert(result.persistence_sql.includes("'DELIVERY_PREPARE_TELEGRAM_CHANNEL'"), "telegram delivery token missing");
-  assert(result.persistence_sql.includes("'DELIVERY_PREPARE_PROVIDER_EMAIL'"), "provider email delivery token missing");
+  assert(!result.persistence_sql.includes("'DELIVERY_STATUS'"), "delivery status token present");
+  assert(!result.persistence_sql.includes("'DELIVERY_PREPARE_TELEGRAM_CHANNEL'"), "telegram delivery token present");
+  assert(!result.persistence_sql.includes("'DELIVERY_PREPARE_PROVIDER_EMAIL'"), "provider email delivery token present");
   assert(!result.persistence_sql.includes("'MARK_PAYMENT_PAID'"), "ambiguous payment token present");
-  return "DOWNLOADED";
+  return "deprecated";
 });
 
 check("workflow_ledger_normal_without_artifacts_blocks_ambiguous_payment_surface", () => {
@@ -345,7 +341,7 @@ check("workflow_ledger_normal_without_artifacts_blocks_ambiguous_payment_surface
     update_id: 9514,
     client_invoice_ledger: [ledgerRows()[0]],
   }));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
   const texts = buttonTexts(result);
   assert(!texts.includes("Descargar XML/PDF sandbox"), texts.join(","));
   assert(!texts.includes("Ver estado documental"), texts.join(","));
@@ -363,13 +359,13 @@ check("workflow_renders_payment_filters", () => {
   const paid = executeCode(handleCode, baseInput("cfdi_nav:pay_paid"));
   const cancelled = executeCode(handleCode, baseInput("cfdi_nav:pay_cancel"));
   assert.strictEqual(pending.action, "COLLECTION_CLIENTS");
-  assert.strictEqual(paid.action, "CLIENT_PAYMENT_PAID");
-  assert.strictEqual(cancelled.action, "CLIENT_PAYMENT_CANCELLED");
+  assert.strictEqual(paid.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
+  assert.strictEqual(cancelled.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
   assert(pending.telegram_message.includes("Clientes con saldo abierto"));
   assert(pending.persistence_sql.includes('"kind":"COLLECTION_CLIENTS"'));
-  assert(paid.telegram_message.includes("PAGADO | $5000.00"));
+  assert(!paid.telegram_message.includes("PAGADO | $5000.00"));
   assert(!paid.telegram_message.includes("PENDIENTE | $10150.00"));
-  assert(cancelled.telegram_message.includes("SANDBOX_CANCELADO"));
+  assert(!cancelled.telegram_message.includes("SANDBOX_CANCELADO"));
   assert(!cancelled.telegram_message.includes("SANDBOX_TIMBRADO | PENDIENTE"));
   return "filters_rendered";
 });
@@ -390,7 +386,7 @@ check("workflow_cliente_command_hides_rfc_and_adds_ledger", () => {
 
 check("assistant_can_view_ledger_admin_stays_hidden", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", ROLES.ASSISTANT_OPERATOR));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
   const denied = executeCode(handleCode, baseInput("cfdi_nav:client_validate", ROLES.ASSISTANT_OPERATOR, { update_id: 9511 }));
   assert.strictEqual(denied.action, "ACCESS_DENIED");
   return "role_ok";

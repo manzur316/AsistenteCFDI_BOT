@@ -456,7 +456,7 @@ function runAudit() {
     });
   });
 
-  auditCase(cases, "LEDGER_DOWNLOAD_READY_ARTIFACT_ACTION", () => {
+  auditCase(cases, "LEGACY_LEDGER_DOWNLOAD_READY_DEPRECATED", () => {
     const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", {
       update_id: 88131,
       source_kind: "CALLBACK_QUERY",
@@ -464,16 +464,15 @@ function runAudit() {
       callback_message_id: "881",
       client_invoice_ledger: [downloadReady],
     }));
-    assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+    assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
     assertVisibleContract(result, {
-      allow: ["Descargar XML/PDF sandbox", "Ver factura"],
-      forbid: ["Timbrar sandbox"],
-      sqlIncludes: ["DOWNLOAD_SANDBOX_ARTIFACTS", "VIEW_DRAFT"],
-      sqlExcludes: ["MARK_PAYMENT_PAID", "MARK_PAYMENT_PARTIAL", "MARK_PAYMENT_OVERDUE"],
+      allow: ["Facturas", "Clientes", "Cobranza", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Ver factura", "Marcar pagada"],
+      sqlExcludes: ["DOWNLOAD_SANDBOX_ARTIFACTS", "VIEW_DRAFT", "MARK_PAYMENT_PAID", "MARK_PAYMENT_PARTIAL", "MARK_PAYMENT_OVERDUE"],
     });
   });
 
-  auditCase(cases, "LEDGER_DOWNLOADED_DOCUMENT_ACTIONS", () => {
+  auditCase(cases, "LEGACY_LEDGER_DOWNLOADED_DEPRECATED", () => {
     const result = executeCode(handleCode, baseInput("cfdi_nav:client_ledger", {
       update_id: 88132,
       source_kind: "CALLBACK_QUERY",
@@ -481,12 +480,11 @@ function runAudit() {
       callback_message_id: "881",
       client_invoice_ledger: [downloaded],
     }));
-    assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
+    assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
     assertVisibleContract(result, {
-      allow: ["Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver factura"],
-      forbid: ["Timbrar sandbox"],
-      sqlIncludes: ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL"],
-      sqlExcludes: ["MARK_PAYMENT_PAID", "MARK_PAYMENT_PARTIAL", "MARK_PAYMENT_OVERDUE"],
+      allow: ["Facturas", "Clientes", "Cobranza", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Ver factura", "Marcar pagada"],
+      sqlExcludes: ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL", "MARK_PAYMENT_PAID", "MARK_PAYMENT_PARTIAL", "MARK_PAYMENT_OVERDUE"],
     });
   });
 

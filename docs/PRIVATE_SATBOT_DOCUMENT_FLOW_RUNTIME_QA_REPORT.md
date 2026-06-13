@@ -275,3 +275,22 @@ Crear slice correctivo antes de repetir QA:
 3. Asegurar que `ver N` desde `DOCUMENTS_RECENT_LIST` abre siempre `DOCUMENT_DETAIL`.
 4. Diagnosticar `DOWNLOAD_ERROR` sin imprimir XML/PDF ni rutas sensibles.
 5. Repetir watcher 3 minutos y checklist manual sin tocar pagos ni envios reales.
+
+## 18. Actualizacion Slice 9R 2.4F
+
+Se aplico fix correctivo para los blockers del QA runtime anterior:
+
+- `cfdi_nav:client_ledger`, `cfdi_nav:pay_paid` y `cfdi_nav:pay_cancel` ya no abren `CLIENT_INVOICE_LEDGER` en UX normal. Responden con aviso `CLIENT_INVOICE_LEDGER_DEPRECATED` y rutas seguras a Facturas, Clientes, Cobranza y Menu principal.
+- `CLIENT_LEDGER` desde `CLIENT_DETAIL` y `facturas N` desde lista de clientes siguen abriendo `CLIENT_INVOICES_LIST` por folio proveedor.
+- Las recuperaciones de token `used/expired/context recovered` con `source_module=DOCUMENTS` usan teclado documental propio y no vuelven a `DRAFT_DETAIL`.
+- Cualquier token de pago con payload documental queda bloqueado con `DOCUMENT_ACTION_BLOCKED`; no muta `payment_status`.
+- El resultado documental de `DOWNLOAD_ERROR` muestra motivo humano seguro y no imprime rutas, payload crudo, UUID completo ni errores tecnicos con pipes.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-runtime-qa-fix-document-isolation.js
+node scripts/test-telegram-callback-lifecycle-delivery-response.js
+```
+
+Siguiente paso: repetir QA runtime controlado para confirmar en Telegram/n8n que la navegacion ya no hereda teclados de borrador y que `DOWNLOAD_ERROR`, si reaparece, queda como error humano seguro.

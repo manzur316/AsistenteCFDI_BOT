@@ -318,8 +318,8 @@ check("workflow_ledger_blocks_ambiguous_payment_buttons_for_active_invoice", () 
     callback_query_id: "CB-LEDGER-PAY",
     callback_message_id: "99",
   }));
-  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER");
-  assert(result.telegram_message.includes("Pendientes pago -> facturas N -> pagar N"));
+  assert.strictEqual(result.action, "CLIENT_INVOICE_LEDGER_DEPRECATED");
+  assert(result.telegram_message.includes("Facturas por cliente cambio de vista"));
   assert(!result.persistence_sql.includes("MARK_PAYMENT_PAID"));
   const callbacks = flattenCallbacks(result);
   assert(callbacks.every((item) => item.length <= 32));
