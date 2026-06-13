@@ -20,6 +20,31 @@ function text(value) {
   return cleaned.length ? cleaned : null;
 }
 
+function isLocalTechnicalIdentity(value) {
+  const raw = text(value);
+  return Boolean(raw && (/^DRAFT-/i.test(raw) || /^SANDBOX-INV-DRAFT-/i.test(raw) || /DRAFT-[0-9A-Za-z_-]+/i.test(raw)));
+}
+
+function isPlaceholderIdentityValue(value) {
+  const raw = text(value);
+  if (!raw) return true;
+  const upper = raw.toUpperCase();
+  const compact = upper.replace(/[^A-Z0-9]+/g, "");
+  if (isLocalTechnicalIdentity(raw)) return true;
+  if (["NULL", "UNDEFINED", "N/A", "NA", "NO_APLICA", "NOAPLICA", "SIN_UUID", "SINUUID", "SIN_FOLIO", "SINFOLIO", "DUMMY", "TEST"].includes(upper) || ["NOAPLICA", "SINUUID", "SINFOLIO"].includes(compact)) {
+    return true;
+  }
+  if (upper === "00000000" || upper === "UUID-00000000") return true;
+  if (/^0{8}-0{4}-0{4}-0{4}-0{12}$/i.test(raw)) return true;
+  if (/^0{8}-/i.test(raw) || /^UUID-0{8}/i.test(raw)) return true;
+  return false;
+}
+
+function identityText(value) {
+  const cleaned = text(value);
+  return cleaned && !isPlaceholderIdentityValue(cleaned) ? cleaned : null;
+}
+
 function bool(value) {
   return value === true;
 }
@@ -29,6 +54,17 @@ function firstTextFromObject(object, aliases) {
   for (const alias of aliases) {
     if (Object.prototype.hasOwnProperty.call(object, alias)) {
       const value = text(object[alias]);
+      if (value) return value;
+    }
+  }
+  return null;
+}
+
+function firstIdentityTextFromObject(object, aliases) {
+  if (!isPlainObject(object)) return null;
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(object, alias)) {
+      const value = identityText(object[alias]);
       if (value) return value;
     }
   }
@@ -76,6 +112,14 @@ function collectSources(input) {
 function pickFromSources(sources, aliases) {
   for (const source of sources) {
     const value = firstTextFromObject(source.object, aliases);
+    if (value) return { value, label: source.label };
+  }
+  return { value: null, label: null };
+}
+
+function pickIdentityFromSources(sources, aliases) {
+  for (const source of sources) {
+    const value = firstIdentityTextFromObject(source.object, aliases);
     if (value) return { value, label: source.label };
   }
   return { value: null, label: null };
@@ -134,16 +178,16 @@ function localHumanDraftIdFromDraftId(value) {
 
 function providerIdentityPieces(identity) {
   return [
-    text(identity.provider_folio || identity.folio || identity.Folio),
-    text(identity.provider_uuid || identity.uuid || identity.UUID || identity.cfdi_uuid || identity.FolioFiscal || identity.folio_fiscal),
-    text(identity.provider_invoice_uid || identity.cfdi_uid || identity.UID || identity.uid),
-    text(identity.provider_invoice_id || identity.pac_invoice_id || identity.invoice_id || identity.factura_id),
+    identityText(identity.provider_folio || identity.folio || identity.Folio),
+    identityText(identity.provider_uuid || identity.uuid || identity.UUID || identity.cfdi_uuid || identity.FolioFiscal || identity.folio_fiscal),
+    identityText(identity.provider_invoice_uid || identity.cfdi_uid || identity.UID || identity.uid),
+    identityText(identity.provider_invoice_id || identity.pac_invoice_id || identity.invoice_id || identity.factura_id),
   ].filter(Boolean);
 }
 
 function confidence(identity) {
-  const folio = text(identity.provider_folio);
-  const technical = [identity.provider_uuid, identity.provider_invoice_uid, identity.provider_invoice_id].some((item) => Boolean(text(item)));
+  const folio = identityText(identity.provider_folio);
+  const technical = [identity.provider_uuid, identity.provider_invoice_uid, identity.provider_invoice_id].some((item) => Boolean(identityText(item)));
   const present = providerIdentityPieces(identity).length;
   if (!present) return "NONE";
   if (folio && technical) return "STRONG";
@@ -202,11 +246,11 @@ function normalizeProviderInvoiceIdentity(input = {}) {
   ]);
   const provider = pickFromSources(sources, ["provider_name", "provider", "pac_provider"]);
   const environment = pickFromSources(sources, ["provider_environment", "environment", "mode", "pac_environment"]);
-  const providerInvoiceId = pickFromSources(sources, ["provider_invoice_id", "pac_invoice_id", "invoice_id", "factura_id"]);
-  const providerInvoiceUid = pickFromSources(sources, ["provider_invoice_uid", "cfdi_uid", "UID", "uid"]);
-  const providerFolio = pickFromSources(sources, ["provider_folio", "folio", "Folio"]);
-  const providerSerie = pickFromSources(sources, ["provider_serie", "serie", "Serie"]);
-  const providerUuid = pickFromSources(sources, ["provider_uuid", "uuid", "UUID", "cfdi_uuid", "FolioFiscal", "folio_fiscal"]);
+  const providerInvoiceId = pickIdentityFromSources(sources, ["provider_invoice_id", "pac_invoice_id", "invoice_id", "factura_id"]);
+  const providerInvoiceUid = pickIdentityFromSources(sources, ["provider_invoice_uid", "cfdi_uid", "UID", "uid"]);
+  const providerFolio = pickIdentityFromSources(sources, ["provider_folio", "folio", "Folio"]);
+  const providerSerie = pickIdentityFromSources(sources, ["provider_serie", "serie", "Serie"]);
+  const providerUuid = pickIdentityFromSources(sources, ["provider_uuid", "uuid", "UUID", "cfdi_uuid", "FolioFiscal", "folio_fiscal"]);
   const providerStatus = pickFromSources(sources, ["provider_status", "pac_status", "status"]);
   const stampedAt = pickFromSources(sources, ["stamped_at", "issued_at", "timbrado_at", "stamp_created_at"]);
   const xmlArtifact = pickFromSources(sources, ["xml_artifact_id"]);
@@ -297,13 +341,13 @@ function resolveProviderDisplayId(identity) {
   if (identity.schema_version !== SCHEMA_VERSION) {
     return normalizeProviderInvoiceIdentity(identity).ui_display_id;
   }
-  const serie = text(identity.provider_serie);
-  const folio = text(identity.provider_folio);
+  const serie = identityText(identity.provider_serie);
+  const folio = identityText(identity.provider_folio);
   if (serie && folio) return `${serie}-${folio}`;
   if (folio) return folio;
-  const uuid = text(identity.provider_uuid);
+  const uuid = identityText(identity.provider_uuid);
   if (uuid) return `UUID-${shortReadable(uuid, 8)}`;
-  const providerUid = text(identity.provider_invoice_uid);
+  const providerUid = identityText(identity.provider_invoice_uid);
   if (providerUid) return `PAC-${shortReadable(providerUid, 8)}`;
   const localHuman = text(identity.local_human_draft_id);
   if (localHuman && !/^DRAFT-/i.test(localHuman)) return localHuman;
@@ -374,7 +418,7 @@ function humanStatus(value) {
 
 function sanitizeProviderInvoiceIdentityForUi(identityInput = {}) {
   const identity = normalizeProviderInvoiceIdentity(identityInput);
-  const uuidShort = identity.provider_uuid ? `UUID-${shortReadable(identity.provider_uuid, 8)}` : null;
+  const uuidShort = identityText(identity.provider_uuid) ? `UUID-${shortReadable(identity.provider_uuid, 8)}` : null;
   const localHuman = text(identity.local_human_draft_id);
   return {
     schema_version: identity.schema_version,

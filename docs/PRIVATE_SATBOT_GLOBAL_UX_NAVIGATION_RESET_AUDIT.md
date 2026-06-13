@@ -549,6 +549,19 @@ La UX queda limpia cuando:
 - El usuario puede saber donde esta, que puede hacer y como volver.
 - Watcher cubre navegacion, return_to, latencia, duplicados, dispatch, HTML raw y botones por estado.
 
+## 15.1 Nota Slice 9R 2.4I
+
+Se reforzo la recuperacion contextual y la identidad visible:
+
+- UUIDs y provider IDs placeholder ya no se usan como identidad de Facturas/Documentos.
+- `UUID-00000000`, UUIDs con primer bloque `00000000`, `NO_APLICA`, `SIN_UUID`, `DUMMY`, `TEST` y valores derivados de `DRAFT-*` caen a fallback seguro.
+- Facturas/Documentos usan `FAC-SBX-<id corto>` cuando no hay identidad proveedor real.
+- La recuperacion de botones vencidos/invalidos ya no abre Borradores por default; usa el modulo detectado por `source_module`, `screen_id`, `chat_state` o contexto de lista.
+- Borradores conserva su recuperacion propia solo cuando el contexto es realmente Draft/Borradores.
+- `Factura: Factura` y `Documento: Documento` quedan prohibidos como texto de recuperacion.
+
+Nueva QA runtime observacional requerida: repetir navegacion corta sin smokes, timbrado, descargas reales ni envios reales.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

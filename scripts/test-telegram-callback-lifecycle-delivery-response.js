@@ -151,9 +151,13 @@ check("delivery_token_used_recovers_with_document_keyboard", () => {
   assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
   assert(!result.should_execute_sandbox_action);
   const labels = buttonTexts(result.reply_markup).join(",");
-  assert(labels.includes("Volver a Documentos"), labels);
+  assert(labels.includes("Documentos"), labels);
+  assert(labels.includes("Facturas"), labels);
+  assert(labels.includes("Menu principal"), labels);
+  assert(labels.includes("Ayuda"), labels);
   assert(!labels.includes("Marcar pagada"), labels);
   assert(!labels.includes("Ver factura"), labels);
+  assert(!labels.includes("Crear nuevo borrador"), labels);
   return "blocked";
 });
 

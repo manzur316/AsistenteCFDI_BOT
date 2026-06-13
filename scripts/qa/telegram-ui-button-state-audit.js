@@ -680,8 +680,8 @@ function runAudit() {
     }));
     assert.strictEqual(result.action, "CALLBACK_TOKEN_INVALID");
     assertVisibleContract(result, {
-      allow: ["Ver pendientes", "Crear nuevo borrador", "Menu principal", "Ayuda"],
-      forbid: ["Aprobar", "Descartar", "Timbrar sandbox"],
+      allow: ["Menu principal", "Facturas", "Documentos", "Ayuda"],
+      forbid: ["Por revisar", "Listos para facturar", "Crear nuevo borrador", "Aprobar", "Descartar", "Timbrar sandbox"],
     });
   });
 

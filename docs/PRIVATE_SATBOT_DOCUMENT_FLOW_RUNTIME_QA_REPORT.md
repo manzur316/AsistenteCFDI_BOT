@@ -324,6 +324,31 @@ node scripts/test-telegram-ui-button-state-audit.js
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
 
+## 21. Actualizacion Slice 9R 2.4I
+
+Se aplico fix correctivo para los fallos visibles posteriores al Slice 2.4H:
+
+- UUIDs placeholder (`00000000`, UUIDs con primer bloque `00000000`, `UUID-00000000`, `SIN_UUID`, `NO_APLICA`, `DUMMY`, `TEST`) ya no cuentan como identidad proveedor visible.
+- Facturas y Documentos caen a fallback limpio (`FAC-SBX-<id corto>`) cuando no hay folio/UUID/provider uid real.
+- Tokens vencidos/usados/invalidos recuperan por modulo:
+  - Documentos: Documentos, Facturas, Menu principal, Ayuda.
+  - Facturas: Facturas, Documentos, Menu principal, Ayuda.
+  - Borradores: Por revisar, Listos para facturar, Crear nuevo borrador, Menu principal, Ayuda.
+  - Desconocido: Menu principal, Facturas, Documentos, Ayuda.
+- La recuperacion ya no muestra por defecto botones de Borradores desde contexto de Facturas/Documentos.
+- Se elimina el texto basura `Factura: Factura` / `Documento: Documento` en recuperaciones sin identidad real.
+- `editMessageText` fallido debe tratarse como WARN recuperado si el fallback visible entrega contexto y teclado correctos.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-contextual-recovery-and-placeholder-identity.js
+node scripts/test-telegram-list-navigation-context.js
+node scripts/test-telegram-ui-button-state-audit.js
+```
+
+Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
+
 ## 20. Actualizacion Slice 9R 2.4H
 
 Se corrigieron inconsistencias visibles detectadas en QA runtime posterior:

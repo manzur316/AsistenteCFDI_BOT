@@ -614,7 +614,8 @@ if (handleCode) {
         && result.return_to === "MAIN_MENU"
         && !String(result.telegram_message || "").includes("Mostrando 11-15 de 20")
         && lacksButtons(result, ["Ver 11", "Timbrar sandbox 15", "Volver a pendientes", "Volver a aprobadas"])
-        && hasButtons(result, ["Ver pendientes", "Ver aprobadas", "Menu principal"])
+        && hasButtons(result, ["Menu principal", "Facturas", "Documentos", "Ayuda"])
+        && lacksButtons(result, ["Por revisar", "Listos para facturar", "Crear nuevo borrador"])
         && callbacksSafe(result),
     },
     {
