@@ -328,7 +328,7 @@ if (handleCode) {
       name: "pendiente_invoice_sandbox_timbrado_no_aparece",
       run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99233, recent_drafts: [pendingInvoiceStamped] })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && String(result.telegram_message || "").includes("No hay borradores pendientes.")
+        && String(result.telegram_message || "").includes("No hay borradores por revisar.")
         && !String(result.telegram_message || "").includes("DRAFT-PEND-INVOICE-STAMPED")
         && lacksButtons(result, ["Ver 1", "Aprobar 1", "Descartar 1"])
         && callbacksSafe(result),
@@ -337,7 +337,7 @@ if (handleCode) {
       name: "pendiente_artifact_downloaded_no_aparece",
       run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 99234, recent_drafts: [pendingDownloaded] })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && String(result.telegram_message || "").includes("No hay borradores pendientes.")
+        && String(result.telegram_message || "").includes("No hay borradores por revisar.")
         && !String(result.telegram_message || "").includes("DRAFT-PEND-DOWNLOADED")
         && lacksButtons(result, ["Ver 1", "Aprobar 1", "Descartar 1"])
         && callbacksSafe(result),
@@ -349,7 +349,7 @@ if (handleCode) {
         recent_drafts: [pendingInvoiceStamped, pendingNormal, pendingDownloaded],
       })),
       expect: (result) => result.action === "COMMAND_PENDIENTES"
-        && String(result.telegram_message || "").includes("Borradores pendientes")
+        && String(result.telegram_message || "").includes("Por revisar")
         && String(result.telegram_message || "").includes("Mostrando 1-1 de 1")
         && hasHumanDraftId(result)
         && lacksVisibleDraftId(result)
@@ -368,7 +368,7 @@ if (handleCode) {
       name: "aprobado_invoice_sandbox_timbrado_no_aparece",
       run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 99237, recent_drafts: [approvedInvoiceStamped] })),
       expect: (result) => result.action === "COMMAND_APROBADAS"
-        && String(result.telegram_message || "").includes("No hay borradores aprobados listos para timbrar.")
+        && String(result.telegram_message || "").includes("No hay borradores listos para facturar.")
         && !String(result.telegram_message || "").includes("DRAFT-APROB-INVOICE-STAMPED")
         && lacksButtons(result, ["Ver 1", "Timbrar sandbox 1"])
         && callbacksSafe(result),
@@ -377,7 +377,7 @@ if (handleCode) {
       name: "aprobado_artifact_download_ready_no_aparece",
       run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 99238, recent_drafts: [approvedDownloadReady] })),
       expect: (result) => result.action === "COMMAND_APROBADAS"
-        && String(result.telegram_message || "").includes("No hay borradores aprobados listos para timbrar.")
+        && String(result.telegram_message || "").includes("No hay borradores listos para facturar.")
         && !String(result.telegram_message || "").includes("DRAFT-APROB-DOWNLOAD-READY")
         && lacksButtons(result, ["Ver 1", "Timbrar sandbox 1"])
         && callbacksSafe(result),

@@ -73,6 +73,17 @@ checks.push({
   value: expectedSubmenus.join(", "),
 });
 
+const draftsLabels = SUBMENUS.drafts.buttons.map((item) => item.text);
+checks.push({
+  name: "drafts_submenu_uses_current_naming",
+  pass: draftsLabels.includes("Por revisar")
+    && draftsLabels.includes("Listos para facturar")
+    && !draftsLabels.includes("Pendientes")
+    && !draftsLabels.includes("Aprobados")
+    && !draftsLabels.includes("Documentos"),
+  value: draftsLabels.join(", "),
+});
+
 const productNavCallbacks = unique(allContractButtons()
   .map((item) => item.callback_data)
   .filter((value) => value.startsWith("cfdi_nav:")));

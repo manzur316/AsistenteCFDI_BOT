@@ -373,7 +373,7 @@ if (handleCode) {
     {
       name: "pendientes_tiene_acciones_por_draft",
       run: () => executeCode(handleCode, baseInput("/pendientes", { update_id: 9303, recent_drafts: [pending, pending2, approved] })),
-      expect: (result) => result.action === "COMMAND_PENDIENTES" && hasButtons(result, ["Ver 1", "Aprobar 1", "Descartar 1", "Aprobadas", "Menu"]) && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_PENDIENTES" && hasButtons(result, ["Ver 1", "Aprobar 1", "Descartar 1", "Listos para facturar", "Menu"]) && callbacksSafe(result),
     },
     {
       name: "detalle_pendiente_aprobar_descartar_back",
@@ -418,7 +418,7 @@ if (handleCode) {
     {
       name: "aprobadas_tiene_ver_detalle_y_nav",
       run: () => executeCode(handleCode, baseInput("/aprobadas", { update_id: 9305, recent_drafts: [pending, approved] })),
-      expect: (result) => result.action === "COMMAND_APROBADAS" && hasButtons(result, ["Ver 1", "Pendientes", "Menu"]) && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_APROBADAS" && hasButtons(result, ["Ver 1", "Por revisar", "Menu"]) && callbacksSafe(result),
     },
     {
       name: "token_expirado_tiene_recuperacion",
@@ -447,12 +447,12 @@ if (handleCode) {
     {
       name: "cancelado_tiene_menu_post_cancel",
       run: () => executeCode(handleCode, baseInput("cancelar", { update_id: 9310, chat_state: previewState(), clients: [], tax_rules: [] })),
-      expect: (result) => result.action === "CANCELLED" && hasButtons(result, ["Nueva factura", "Pendientes", "Menu"]) && callbacksSafe(result),
+      expect: (result) => result.action === "CANCELLED" && hasButtons(result, ["Nueva factura", "Por revisar", "Menu"]) && callbacksSafe(result),
     },
     {
       name: "confirmado_tiene_detalle_pendientes_nueva",
       run: () => executeCode(handleCode, baseInput("confirmar", { update_id: 9311, chat_state: previewState(), clients: [], tax_rules: [] })),
-      expect: (result) => result.action === "DRAFT_CONFIRMED" && hasButtons(result, ["Ver borrador", "Pendientes", "Nueva factura"]) && /Estado actual:<\/b> BORRADOR|Estado actual: BORRADOR/.test(String(result.telegram_message || "")) && result.parse_mode === "HTML" && callbacksSafe(result),
+      expect: (result) => result.action === "DRAFT_CONFIRMED" && hasButtons(result, ["Ver borrador", "Por revisar", "Nueva factura"]) && /Estado actual:<\/b> BORRADOR|Estado actual: BORRADOR/.test(String(result.telegram_message || "")) && result.parse_mode === "HTML" && callbacksSafe(result),
     },
     {
       name: "cliente_no_validado_tiene_botones_seguro",
@@ -462,7 +462,7 @@ if (handleCode) {
     {
       name: "approve_button_actualiza_pendiente_y_usa_token",
       run: () => executeCode(handleCode, callbackInput("APPROVE_DRAFT", { draft_id: "DRAFT-PEND-1" }, { update_id: 9313, recent_drafts: [pending] })),
-      expect: (result) => result.action === "COMMAND_APROBAR" && String(result.telegram_message || "").includes("Borrador aprobado") && hasButtons(result, ["Ver borrador", "Regresar a borrador", "Menu principal"]) && lacksButtons(result, ["Aprobar", "Descartar"]) && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'APROBADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
+      expect: (result) => result.action === "COMMAND_APROBAR" && String(result.telegram_message || "").includes("Borrador listo para facturar") && hasButtons(result, ["Ver borrador", "Regresar a borrador", "Menu principal"]) && lacksButtons(result, ["Aprobar", "Descartar"]) && result.persistence_sql.includes("UPDATE cfdi_action_tokens SET used_at") && result.persistence_sql.includes("status = 'APROBADO'") && !result.persistence_sql.includes("INSERT INTO cfdi_drafts") && callbacksSafe(result),
     },
     {
       name: "restore_button_regresa_aprobado_a_borrador",

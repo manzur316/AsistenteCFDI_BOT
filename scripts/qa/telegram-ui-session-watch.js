@@ -912,6 +912,20 @@ function deliverySendLedgerEvidence(ledgerRows = [], context = {}) {
   return { changed: false, reason: sentRows.length ? "sent_ledger_row_outside_execution_window" : "sent_ledger_row_absent" };
 }
 
+function currentExecutionSentLedgerRows(ledgerRows = [], context = {}, channel) {
+  if (String(context.route || "") !== "sandbox.documents.delivery.send") return [];
+  const expectedChannel = String(channel || "").toUpperCase();
+  return (ledgerRows || []).filter((row) => {
+    if (String(row?.delivery_status || "").toUpperCase() !== "SENT") return false;
+    if (expectedChannel && String(row?.channel || "").toUpperCase() !== expectedChannel) return false;
+    if (context.draft_id && row?.draft_id && String(row.draft_id) !== String(context.draft_id)) return false;
+    if (!Number.isFinite(context.generated_at_ms)) return true;
+    return timeInExecutionWindow(row?.sent_at, context)
+      || timeInExecutionWindow(row?.updated_at, context)
+      || timeInExecutionWindow(row?.created_at, context);
+  });
+}
+
 function dbSnapshotNewerThanExecution(draft, context) {
   const updatedAt = new Date(draft?.updated_at || "").getTime();
   const generatedAt = context?.generated_at_ms;
@@ -1003,8 +1017,7 @@ function shouldAuditDraftStateButtons(context = {}, buttons = []) {
 
 function detectStateButtonFailures({ state, buttons, context = {} }) {
   const failures = [];
-  const actions = buttons.map((button) => String(button.action || "").toUpperCase()).filter(Boolean);
-  const has = (action) => actions.includes(action);
+  const has = (action) => buttons.some((button) => buttonMatchesAction(button, action));
   const invoiceStatus = String(state.invoice_status || "").toUpperCase();
   const artifactStatus = String(state.artifact_status || "").toUpperCase();
   const legacyStatus = String(state.status || "").toUpperCase();
@@ -1031,6 +1044,30 @@ function detectStateButtonFailures({ state, buttons, context = {} }) {
     failures.push(failure("DRAFT_BEFORE_APPROVAL_SHOWS_STAMP", "Draft before approval shows stamp", { draft_id: state.draft_id }));
   }
   return failures;
+}
+
+function normalizedButtonText(button = {}) {
+  return String(button.text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buttonMatchesAction(button = {}, action) {
+  const expected = String(action || "").toUpperCase();
+  const direct = String(button.action || button.token_record?.action || "").toUpperCase();
+  if (direct === expected) return true;
+  const text = normalizedButtonText(button);
+  if (!text) return false;
+  if (expected === "DOWNLOAD_SANDBOX_ARTIFACTS") {
+    return text.includes("descargar") && text.includes("xml") && text.includes("pdf");
+  }
+  if (expected === "DELIVERY_STATUS") return text.includes("estado documental");
+  if (expected === "DELIVERY_PREPARE_TELEGRAM_CHANNEL") return text.includes("enviar") && text.includes("canal");
+  if (expected === "DELIVERY_PREPARE_PROVIDER_EMAIL") return text.includes("enviar") && (text.includes("correo") || text.includes("email"));
+  return false;
 }
 
 function isFreshTokenForExecution(row, context) {
@@ -1251,8 +1288,8 @@ function classifyExecution(execution, options = {}) {
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));
   failures = failures.concat(providerEmailFailures({ context, args: options.args || {}, ledgerRows, env: process.env, state: draft || {} }));
 
-  const providerEmailSentRows = (ledgerRows || []).filter((row) => String(row.channel || "").toUpperCase() === "PROVIDER_EMAIL" && String(row.delivery_status || "").toUpperCase() === "SENT");
-  const telegramChannelSentRows = (ledgerRows || []).filter((row) => String(row.channel || "").toUpperCase() === "TELEGRAM_DOCUMENT_CHANNEL" && String(row.delivery_status || "").toUpperCase() === "SENT");
+  const providerEmailSentRows = currentExecutionSentLedgerRows(ledgerRows, context, "PROVIDER_EMAIL");
+  const telegramChannelSentRows = currentExecutionSentLedgerRows(ledgerRows, context, "TELEGRAM_DOCUMENT_CHANNEL");
   counters.providerEmailDeliveryIds = counters.providerEmailDeliveryIds || new Set();
   counters.telegramChannelDeliveryIds = counters.telegramChannelDeliveryIds || new Set();
   for (const row of providerEmailSentRows) {

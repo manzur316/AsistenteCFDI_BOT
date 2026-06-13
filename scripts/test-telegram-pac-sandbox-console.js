@@ -131,10 +131,10 @@ check("pac_sandbox_console_muestra_proveedor_y_modo", () => {
   assert.strictEqual(result.action, "PRODUCT_PAC_SANDBOX_CONSOLE");
   assert(result.telegram_message.includes("Proveedor actual: Factura.com Sandbox"));
   assert(result.telegram_message.includes("Proveedor / pruebas tecnicas"));
-  assert(result.telegram_message.includes("Borradores aprobados para timbrado sandbox"));
+  assert(result.telegram_message.includes("Borradores listos para timbrado sandbox"));
   assert(result.telegram_message.includes("Smoke tecnico no usa borradores reales"));
   assert(result.telegram_message.includes("Factura.com Sandbox: CFDI de prueba. No es produccion fiscal real."));
-  for (const required of ["cfdi_sbx:preflight", "cfdi_nav:sbx_drafts", "cfdi_sbx:smoke_create", "cfdi_sbx:smoke_download", "cfdi_sbx:smoke_cancel", "cfdi_sbx:latest", "cfdi_sbx:audit", "cfdi_nav:admin"]) {
+  for (const required of ["cfdi_sbx:preflight", "cfdi_nav:sbx_drafts", "cfdi_sbx:smoke_menu", "cfdi_sbx:latest", "cfdi_sbx:audit", "cfdi_nav:admin"]) {
     assert(cb.includes(required), required);
   }
   return cb.join(",");

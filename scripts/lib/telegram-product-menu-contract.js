@@ -143,7 +143,7 @@ const SUBMENUS = freezeDeep({
     buttons: [
       button({
         id: "drafts_pending",
-        text: "Pendientes",
+        text: "Por revisar",
         callback_data: "cfdi_nav:pending",
         target_action: "LIST_PENDING_DRAFTS",
         roles: [ROLES.OWNER, ROLES.ASSISTANT_OPERATOR],
@@ -151,19 +151,11 @@ const SUBMENUS = freezeDeep({
       }),
       button({
         id: "drafts_approved",
-        text: "Aprobados",
+        text: "Listos para facturar",
         callback_data: "cfdi_nav:approved",
         target_action: "LIST_APPROVED_DRAFTS",
         roles: [ROLES.OWNER, ROLES.ASSISTANT_OPERATOR],
         risk: "HIGH",
-      }),
-      button({
-        id: "drafts_documents",
-        text: "Documentos",
-        callback_data: "cfdi_nav:docs",
-        target_action: "OPEN_DOCUMENTS_MENU",
-        roles: [ROLES.OWNER, ROLES.ACCOUNTANT_READONLY],
-        risk: "MEDIUM",
       }),
       button({
         id: "drafts_back",
@@ -416,7 +408,7 @@ const SUBMENUS = freezeDeep({
       }),
       button({
         id: "sandbox_approved_drafts",
-        text: "Borradores aprobados para timbrar",
+        text: "Borradores listos para timbrar",
         callback_data: "cfdi_nav:sbx_drafts",
         target_action: "LIST_APPROVED_DRAFTS_FOR_SANDBOX_STAMP",
         roles: [ROLES.OWNER],

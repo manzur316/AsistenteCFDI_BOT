@@ -167,10 +167,12 @@ check("clientes_menu_sin_ver_clientes_redundante", () => {
   assert.strictEqual(result.action, "COMMAND_CLIENTES");
   assert(!labels.includes("Ver clientes"), labels.join(","));
   assert(!data.includes("cfdi_nav:clients"), data.join(","));
-  assert(data.includes("cfdi_nav:client_ledger"));
-  assert(data.includes("cfdi_nav:pay_pending"));
-  assert(data.includes("cfdi_nav:pay_paid"));
-  assert(data.includes("cfdi_nav:pay_cancel"));
+  assert(data.includes("cfdi_nav:client_find"));
+  assert(data.includes("cfdi_nav:client_new"));
+  assert(data.includes("cfdi_nav:menu"));
+  assert(!data.includes("cfdi_nav:client_ledger"));
+  assert(!data.includes("cfdi_nav:pay_paid"));
+  assert(!data.includes("cfdi_nav:pay_cancel"));
   assertSafeCallbacks(result);
   return data.join(",");
 });
@@ -181,12 +183,12 @@ check("pac_sandbox_separa_smoke_y_borradores", () => {
   const data = callbackDataList(result);
   assert.strictEqual(result.action, "PRODUCT_PAC_SANDBOX_CONSOLE");
   assert(text.includes("Proveedor / pruebas tecnicas"));
-  assert(text.includes("Borradores aprobados para timbrado sandbox"));
+  assert(text.includes("Borradores listos para timbrado sandbox"));
   assert(text.includes("Smoke tecnico no usa borradores reales"));
   assert(!text.includes("Timbrar CFDI sandbox"));
   assert(data.includes("cfdi_nav:sbx_drafts"));
-  assert(data.includes("cfdi_sbx:smoke_create"));
-  assert(callbacks(result).some((button) => button.text === "Smoke: timbrar fixture sandbox"));
+  assert(data.includes("cfdi_sbx:smoke_menu"));
+  assert(callbacks(result).some((button) => button.text === "Smoke tests"));
   assertSafeCallbacks(result);
   return data.join(",");
 });
@@ -202,7 +204,7 @@ check("usuario_normal_no_ve_ni_ejecuta_pac_sandbox", () => {
 check("lista_vacia_de_aprobados_responde_explicito", () => {
   const result = executeCode(handleCode, baseInput("cfdi_nav:sbx_drafts", ROLES.OWNER, { update_id: 10140, recent_drafts: [] }));
   assert.strictEqual(result.action, "PAC_SANDBOX_DRAFT_SELECTION_EMPTY");
-  assert(result.telegram_message.includes("No hay borradores aprobados listos para timbrado sandbox."));
+  assert(result.telegram_message.includes("No hay borradores listos para timbrado sandbox."));
   assertSafeCallbacks(result);
   return result.action;
 });

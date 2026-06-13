@@ -180,6 +180,7 @@ function assertNoLiteralEscapedLineBreaks(result) {
 function assertNoTechnicalInvoiceUx(result) {
   const text = String(result.telegram_message || "");
   assert(!text.includes("DRAFT-"), text);
+  assert(!text.includes("SANDBOX-INV-DRAFT"), text);
   assert(!text.includes("SANDBOX_TIMBRADO"), text);
   assert(!text.includes(" | "), text);
   assert(!text.includes("123e4567-e89b-12d3-a456-426614174000"), text);
@@ -264,6 +265,13 @@ check("sin_identidad_proveedor_usa_fallback_local_seguro_y_advierte", () => {
   assert(result.telegram_message.includes("Folio proveedor: no disponible"));
   assertNoTechnicalInvoiceUx(result);
   return "safe local fallback";
+});
+
+check("provider_id_tecnico_sandbox_inv_draft_no_se_muestra", () => {
+  const result = executeCode(handleCode, baseInput("/facturas", { provider_invoice_links: [providerLink({ provider_folio: "", provider_serie: "", provider_uuid: "", provider_invoice_uid: "", provider_invoice_id: "SANDBOX-INV-DRAFT-20260612-5412", draft_id: "DRAFT-20260612-5412" })] }));
+  assert(result.telegram_message.includes("FAC-SBX-"), result.telegram_message);
+  assertNoTechnicalInvoiceUx(result);
+  return "technical provider id hidden";
 });
 
 check("lista_no_muestra_draft_uuid_estado_crudo_ni_pipes", () => {

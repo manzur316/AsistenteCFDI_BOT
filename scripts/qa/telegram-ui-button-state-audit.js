@@ -377,7 +377,7 @@ function runAudit() {
     const result = executeCode(handleCode, baseInput("confirmar", { update_id: 88103, chat_state: previewState() }));
     assert.strictEqual(result.action, "DRAFT_CONFIRMED");
     assertVisibleContract(result, {
-      allow: ["Ver borrador", "Pendientes", "Nueva factura"],
+      allow: ["Ver borrador", "Por revisar", "Nueva factura"],
       forbid: ["Timbrar sandbox", "Aprobar", "Descartar"],
       sqlIncludes: ["INSERT INTO cfdi_drafts"],
     });

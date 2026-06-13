@@ -28,6 +28,8 @@ Nota Slice 9R 2.4F: QA runtime detecto fuga de teclado legacy desde Documentos y
 
 Nota Slice 9R 2.4G: QA runtime posterior confirmo un defecto mas profundo de routing de entidad. El fix aplicado separa `BORRADOR`, `FACTURA TIMBRADA`, `DOCUMENTO` y `COBRANZA`: una entidad timbrada ya no se presenta como "Borrador aprobado", `VIEW_DRAFT` de factura timbrada cae en `INVOICE_DETAIL`, `/start` y `/menu` son rutas absolutas al menu principal, y download/delivery solo se planean desde `DOCUMENT_DOWNLOAD_CONFIRM`/`DOCUMENT_DELIVERY_CONFIRM` con `source_module=DOCUMENTS`, token vigente, estado valido y referencia proveedor suficiente. El fallback visible sin folio ya no expone `SANDBOX-INV-DRAFT-*`; usa `FAC-SBX-<id corto>`.
 
+Nota Slice 9R 2.4H: Se reforzo el fallback visible para ignorar provider ids tecnicos derivados de `DRAFT-*`; Facturas y Documentos usan folio, UUID corto, PAC corto o `FAC-SBX-<id corto>`, nunca `SANDBOX-INV-DRAFT-*`. Borradores fue renombrado en UX normal a `Por revisar` y `Listos para facturar`, y se retiro `Documentos` de ese modulo. El triage del watcher clasifico `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON` como mismatch de clasificador por boton tokenizado y `TELEGRAM_CHANNEL_SEND_OBSERVED` como falso positivo por ledger historico fuera de una ejecucion delivery real.
+
 La recomendacion central es redisenar la navegacion en dos capas:
 
 - Menu operativo normal: tareas diarias del bot personal.

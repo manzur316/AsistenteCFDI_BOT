@@ -321,7 +321,7 @@ function run() {
       run: () => executeDispatchPlan(dispatchCode, {
         chat_id: chatId,
         source_kind: "MESSAGE",
-        telegram_message: "<b>Borrador aprobado</b>",
+        telegram_message: "<b>Borrador listo para facturar</b>",
       }),
       expect: (result) => {
         assert.strictEqual(result.parse_mode, "HTML");
@@ -335,7 +335,7 @@ function run() {
         source_kind: "CALLBACK_QUERY",
         callback_query_id: "cb-presentation",
         callback_message_id: "77",
-        telegram_message: "<b>Borrador aprobado</b>",
+        telegram_message: "<b>Borrador listo para facturar</b>",
         parse_mode: "HTML",
       }),
       expect: (result) => {

@@ -323,3 +323,26 @@ node scripts/test-telegram-ui-button-state-audit.js
 ```
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
+
+## 20. Actualizacion Slice 9R 2.4H
+
+Se corrigieron inconsistencias visibles detectadas en QA runtime posterior:
+
+- Facturas y Documentos ya no usan provider ids tecnicos tipo `SANDBOX-INV-DRAFT-*` como identidad visible. Si no hay folio, UUID ni provider uid/id usable, la UX muestra `FAC-SBX-<id corto>` y conserva `BOR-*` solo como borrador origen.
+- `INVOICE_DETAIL` y `DOCUMENT_DETAIL` dejan de listar texto redundante de `Opciones:` cuando los botones ya estan en el teclado.
+- El modulo `Borradores` ahora usa `Por revisar` y `Listos para facturar`; `/aprobadas` queda como alias operativo, pero la pantalla visible se titula `Listos para facturar`.
+- `Borradores` ya no incluye `Documentos`; XML/PDF y envios viven en `/documentos`.
+
+Triage watcher sin ejecutar watcher nuevo:
+
+- `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON`: clasificado como `CLASSIFIER_NEEDS_UPDATE`. En la evidencia de execution 3396 el reply_markup si tenia boton visible `Descargar XML/PDF sandbox`, pero el watcher lo veia con `action=null` por ser tokenizado. Se actualizo el clasificador para aceptar el texto visible del boton como evidencia de descarga disponible.
+- `TELEGRAM_CHANNEL_SEND_OBSERVED x2`: clasificado como `WATCHER_FALSE_POSITIVE`. Las executions 3402/3403 fueron `INVOICE_DETAIL` sin route `sandbox.documents.delivery.send`; el watcher conto filas historicas `SENT` del `document_delivery_ledger`. Se ajusto para contar envios observados solo cuando pertenecen a una ejecucion real de `sandbox.documents.delivery.send` y caen dentro de la ventana de ejecucion.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-invoice-fallback-and-borradores-naming.js
+node scripts/test-telegram-ui-session-watch.js
+```
+
+Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.

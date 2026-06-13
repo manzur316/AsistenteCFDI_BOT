@@ -16,8 +16,8 @@ const SUBMENU_TEXT = Object.freeze({
   drafts: [
     "Borradores",
     "",
-    "Gestiona facturas antes de timbrar.",
-    "Pendientes y aprobados viven aqui; facturas historicas viven en Facturas.",
+    "Gestiona borradores antes de timbrar.",
+    "Por revisar y Listos para facturar viven aqui; facturas historicas viven en Facturas.",
   ].join("\n"),
   invoices: [
     "Facturas",

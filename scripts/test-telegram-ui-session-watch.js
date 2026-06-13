@@ -193,6 +193,18 @@ check("allows DOWNLOAD_READY ledger surface with download action", () => {
   return "ledger download action accepted";
 });
 
+check("allows DOWNLOAD_READY tokenized button text without action field", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-TOKENIZED-DOWNLOAD", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOAD_READY" },
+    buttons: [
+      { text: "Descargar XML/PDF sandbox", action: null, callback_data_present: true },
+      { text: "Ver estado documental", action: null, callback_data_present: true },
+    ],
+  }).map((item) => item.code);
+  assert(!codes.includes("DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON"));
+  return "tokenized download text accepted";
+});
+
 check("allows DOWNLOADED ledger surface with delivery actions", () => {
   const codes = detectStateButtonFailures({
     state: { draft_id: "DRAFT-WATCH-LEDGER-DOWNLOADED", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
@@ -252,7 +264,7 @@ check("does not enforce downloaded draft buttons on global menus", () => {
       reply_markup: {
         inline_keyboard: [
           [{ text: "Nueva factura", callback_data: "cfdi_nav:new" }],
-          [{ text: "Pendientes", callback_data: "cfdi_nav:pending" }],
+          [{ text: "Por revisar", callback_data: "cfdi_nav:pending" }],
         ],
       },
     },
@@ -344,14 +356,14 @@ check("detects raw HTML tags without parse_mode", () => {
       callback_message_id: "703",
       chat_id: "6573879494",
       action: "COMMAND_DETALLE",
-      telegram_message: "<b>Borrador aprobado</b>",
+      telegram_message: "<b>Borrador listo para facturar</b>",
     },
     plan: {
       source_kind: "CALLBACK_QUERY",
       callback_query_id: "cb-html",
       callback_message_id: "703",
       chat_id: "6573879494",
-      telegram_message: "<b>Borrador aprobado</b>",
+      telegram_message: "<b>Borrador listo para facturar</b>",
       should_send_telegram: true,
       telegram_dispatch_method: "editMessageText",
       telegram_dispatch_payload_built: true,
@@ -372,14 +384,14 @@ check("allows HTML tags when dispatch parse_mode is HTML", () => {
       callback_message_id: "704",
       chat_id: "6573879494",
       action: "COMMAND_DETALLE",
-      telegram_message: "<b>Borrador aprobado</b>",
+      telegram_message: "<b>Borrador listo para facturar</b>",
     },
     plan: {
       source_kind: "CALLBACK_QUERY",
       callback_query_id: "cb-html-ok",
       callback_message_id: "704",
       chat_id: "6573879494",
-      telegram_message: "<b>Borrador aprobado</b>",
+      telegram_message: "<b>Borrador listo para facturar</b>",
       parse_mode: "HTML",
       should_send_telegram: true,
       telegram_dispatch_method: "editMessageText",
@@ -652,6 +664,43 @@ check("delivery_send_warns_db_unchanged_when_sent_ledger_is_stale", () => {
   assert(item);
   assert.strictEqual(item.details.ledger_evidence, "sent_ledger_row_outside_execution_window");
   return item.code;
+});
+
+check("does not classify historical telegram channel ledger on invoice detail as current send", () => {
+  const draftId = "DRAFT-WATCH-HISTORICAL-CHANNEL";
+  const draftRow = draft(draftId, "SANDBOX_TIMBRADO", "DOWNLOADED");
+  const sample = execution({
+    id: "exec-invoice-detail-with-historical-channel",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:04.000Z",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      callback_query_id: "cb-invoice-detail",
+      callback_message_id: "708",
+      chat_id: "6573879494",
+      action: "INVOICE_DETAIL",
+      draft_id: draftId,
+    },
+    plan: { chat_id: "6573879494", reply_markup: markup([]) },
+  });
+  const historicalLedger = {
+    delivery_id: "DELIV-WATCH-HISTORICAL-CHANNEL",
+    draft_id: draftId,
+    channel: "TELEGRAM_DOCUMENT_CHANNEL",
+    delivery_status: "SENT",
+    sent_at: "2026-06-11T11:00:00.000Z",
+    created_at: "2026-06-11T11:00:00.000Z",
+    updated_at: "2026-06-11T11:00:00.000Z",
+  };
+  const result = classifyExecution(sample, {
+    db: dbMock({ draftRow, ledgerRows: [historicalLedger] }),
+    args: {},
+    previousDraftSnapshots: new Map(),
+    previousTokenSnapshots: new Map(),
+    counters: {},
+  });
+  assert(!failureCodes(result).includes("TELEGRAM_CHANNEL_SEND_OBSERVED"));
+  return "historical ledger ignored";
 });
 
 check("classifies fast execution latency as OK", () => {

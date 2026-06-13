@@ -107,6 +107,18 @@ checks.push({
   value: `${submenuPayloads.length} submenus`,
 });
 
+const draftsSubmenu = renderTelegramSubmenu("drafts", ROLES.OWNER);
+const draftsSubmenuLabels = flattenButtons(draftsSubmenu).map((button) => button.text);
+checks.push({
+  name: "drafts_submenu_removes_documents_and_uses_current_naming",
+  pass: draftsSubmenu.text.includes("Por revisar")
+    && draftsSubmenu.text.includes("Listos para facturar")
+    && draftsSubmenuLabels.includes("Por revisar")
+    && draftsSubmenuLabels.includes("Listos para facturar")
+    && !draftsSubmenuLabels.includes("Documentos"),
+  value: draftsSubmenuLabels.join(", "),
+});
+
 checks.push({
   name: "normal_user_does_not_see_admin_or_sandbox",
   pass: !mainAssistantCallbacks.includes("cfdi_nav:admin")
