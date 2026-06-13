@@ -324,6 +324,26 @@ node scripts/test-telegram-ui-button-state-audit.js
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
 
+## 23. Actualizacion Slice 9R 2.4K
+
+Se corrigio el caso watcher `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON` observado en execution 3498:
+
+- Cuando el resultado final de `sandbox.draft.stamp` queda `SANDBOX_TIMBRADO + DOWNLOAD_READY`, el resumen post-stamp muestra `Descargar XML/PDF sandbox`.
+- El primer CTA no descarga directo. Usa token `DOWNLOAD_SANDBOX_ARTIFACTS` con contexto `POST_STAMP_DOWNLOAD_READY` y abre `DOCUMENT_DOWNLOAD_CONFIRM`.
+- La confirmacion secundaria mantiene los guards documentales existentes antes de ejecutar `sandbox.draft.download-artifacts`.
+- `SANDBOX_ERROR` mantiene bloqueo de acciones documentales.
+- `DOWNLOADED` no muestra descarga primaria duplicada.
+- `DOWNLOAD_ERROR` muestra motivo humano seguro y ruta a Documentos/Admin QA sin payloads, rutas ni UUID completo.
+- El clasificador watcher sigue marcando BREAK si `DOWNLOAD_READY` no tiene accion/token/texto de descarga, pero no lo exige para `SANDBOX_ERROR` ni `DOWNLOADED`.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-post-stamp-success-download-cta.js
+```
+
+Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
+
 ## 22. Actualizacion Slice 9R 2.4J
 
 Se corrigio el caso detectado por watcher `APPROVED_BEFORE_STAMP_SHOWS_DOWNLOAD`:

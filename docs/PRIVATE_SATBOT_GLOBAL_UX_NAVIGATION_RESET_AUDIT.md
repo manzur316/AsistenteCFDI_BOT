@@ -576,6 +576,20 @@ Resultado local sanitizado del dry-run `--limit 50`: 41 con folio proveedor, 9 c
 
 Nueva QA runtime observacional requerida: repetir navegacion corta y confirmar que un error de timbrado no deja botones documentales.
 
+## 15.3 Nota Slice 9R 2.4K
+
+Se corrigio el flujo post-timbrado exitoso:
+
+- `SANDBOX_TIMBRADO + DOWNLOAD_READY` ahora muestra `Descargar XML/PDF sandbox` en el resumen final del timbrado.
+- El CTA queda tokenizado y abre confirmacion documental; no descarga XML/PDF en el primer toque.
+- El payload conserva `draft_id`, `display_id` seguro, `source_module=DOCUMENTS` y `screen_id=POST_STAMP_DOWNLOAD_READY`.
+- `SANDBOX_ERROR` sigue sin mostrar acciones documentales.
+- `DOWNLOADED` no muestra descarga primaria; muestra Documentos y estado documental.
+- `DOWNLOAD_ERROR` muestra ruta humana segura hacia Documentos/Admin QA sin rutas, payloads ni UUID completo.
+- El watcher acepta boton tokenizado o texto visible `Descargar XML/PDF` como evidencia valida para `DOWNLOAD_READY`, y no exige descarga en `SANDBOX_ERROR` ni `DOWNLOADED`.
+
+Nueva QA runtime observacional requerida: repetir timbrado sandbox controlado solo cuando se autorice, o navegar resultados existentes sin ejecutar descargas reales.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

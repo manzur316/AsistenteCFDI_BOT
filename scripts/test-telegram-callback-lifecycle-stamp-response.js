@@ -105,7 +105,8 @@ check("stamp_action_summary_builds_visible_response_and_buttons", () => {
   assert(callbacks.includes("cfdi_nav:docs"), "documents callback missing");
   assert(callbacks.includes("cfdi_nav:invoices"), "invoices callback missing");
   assert(callbacks.includes("cfdi_nav:menu"), "menu callback missing");
-  assert(!result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "stamp summary must route to Documents instead of creating legacy download token");
+  assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"), "stamp summary must create post-stamp download CTA token");
+  assert(result.persistence_sql.includes("POST_STAMP_DOWNLOAD_READY"), "post-stamp download CTA context missing");
   assert(!result.persistence_sql.includes("'STAMP_DRAFT_SANDBOX'"), "post-stamp summary must not create stamp token");
   return result.sandbox_draft_status;
 });

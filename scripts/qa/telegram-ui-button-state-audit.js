@@ -519,9 +519,9 @@ function runAudit() {
     const result = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({ draft_id: "DRAFT-AUDIT-STAMP" }) }]);
     assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_RESULT");
     assertVisibleContract(result, {
-      allow: ["Documentos", "Facturas", "Menu principal"],
-      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Ver factura"],
-      sqlExcludes: ["DOWNLOAD_SANDBOX_ARTIFACTS"],
+      allow: ["Descargar XML/PDF sandbox", "Documentos", "Facturas", "Ver ultimo resultado sandbox", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Ver factura"],
+      sqlIncludes: ["DOWNLOAD_SANDBOX_ARTIFACTS", "POST_STAMP_DOWNLOAD_READY"],
     });
   });
 
