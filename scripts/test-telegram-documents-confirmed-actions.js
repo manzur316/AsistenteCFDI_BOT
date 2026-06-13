@@ -327,8 +327,9 @@ check("resultado_descarga_muestra_completada_y_folio", () => {
     },
   });
   const result = runSummaryFromSource(source, stdout);
-  assert(result.telegram_message.includes("Descarga completada"));
+  assert(result.telegram_message.includes("XML/PDF descargados"));
   assert(result.telegram_message.includes("Factura: F66"));
+  assert(result.telegram_message.includes("Elige como entregar los documentos"));
   assert(!/[A-Z]:[\\/]/i.test(result.telegram_message), result.telegram_message);
 });
 

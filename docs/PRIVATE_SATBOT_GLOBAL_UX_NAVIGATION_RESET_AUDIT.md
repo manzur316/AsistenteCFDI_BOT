@@ -590,6 +590,19 @@ Se corrigio el flujo post-timbrado exitoso:
 
 Nueva QA runtime observacional requerida: repetir timbrado sandbox controlado solo cuando se autorice, o navegar resultados existentes sin ejecutar descargas reales.
 
+## 15.4 Nota Slice 9R 2.4L
+
+Se completo la superficie posterior a descarga documental:
+
+- `DOCUMENT_DOWNLOAD_RESULT` exitoso con `DOWNLOADED`, XML y PDF validos ahora muestra `Enviar por correo`, `Enviar a canal`, `Ver estado documental`, `Documentos` y `Menu principal`.
+- Los botones de envio preparan entrega y abren confirmacion; no ejecutan envio directo.
+- `DOCUMENT_DETAIL` sigue siendo la superficie principal para acciones documentales: descarga si esta listo, envio si XML/PDF ya estan descargados y solo estado si ya fue enviado/protegido.
+- El watcher `DOWNLOADED_MISSING_DELIVERY_BUTTON` se limita a `DOCUMENT_DOWNLOAD_RESULT` y `DOCUMENT_DETAIL`; no aplica en listas, recuperaciones, menus ni Cobranza.
+- Cobranza queda fuera de alcance funcional en este slice. Hallazgo registrado: `COLLECTION-PAYMENT-CONFIRMATION-001`, donde QA runtime vio confirmacion de pago pero no ejecucion posterior de `MARK_PAYMENT_PAID`.
+- Decision de arquitectura: `Marcar pagada` es estado local de cobranza salvo integracion futura explicita; no debe actualizar PAC/proveedor ni emitir complemento de pago de forma silenciosa.
+
+Nueva QA runtime documental requerida: repetir descarga controlada y verificar que el siguiente paso natural sea preparar entrega o revisar estado documental.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

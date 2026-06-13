@@ -553,9 +553,10 @@ function runAudit() {
     const result = executeCode(summaryCode, { stdout }, () => [{ json: baseSource({ draft_id: "DRAFT-AUDIT-DOWNLOAD-ACTION" }) }]);
     assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_RESULT");
     assertVisibleContract(result, {
-      allow: ["Documentos", "Menu principal"],
-      forbid: ["Timbrar sandbox", "Enviar por correo", "Enviar a canal documentos", "Ver factura"],
-      sqlExcludes: ["DELIVERY_PREPARE_PROVIDER_EMAIL", "DELIVERY_PREPARE_TELEGRAM_CHANNEL"],
+      allow: ["Enviar por correo", "Enviar a canal", "Ver estado documental", "Documentos", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Confirmar envio correo", "Confirmar envio canal", "Ver factura", "Marcar pagada"],
+      sqlIncludes: ["DELIVERY_PREPARE_PROVIDER_EMAIL", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_STATUS"],
+      sqlExcludes: ["DELIVERY_CONFIRM_PROVIDER_EMAIL", "DELIVERY_CONFIRM_TELEGRAM_CHANNEL"],
     });
   });
 

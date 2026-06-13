@@ -205,20 +205,14 @@ check("allows DOWNLOAD_READY tokenized button text without action field", () => 
   return "tokenized download text accepted";
 });
 
-check("allows DOWNLOADED ledger surface with delivery actions", () => {
+check("does not require delivery buttons on downloaded ledger surface", () => {
   const codes = detectStateButtonFailures({
     state: { draft_id: "DRAFT-WATCH-LEDGER-DOWNLOADED", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
-    buttons: [
-      { action: "DELIVERY_STATUS" },
-      { action: "DELIVERY_PREPARE_TELEGRAM_CHANNEL" },
-      { action: "DELIVERY_PREPARE_PROVIDER_EMAIL" },
-      { action: "VIEW_DRAFT" },
-      { action: "MARK_PAYMENT_PAID" },
-    ],
+    buttons: [{ action: "VIEW_DRAFT" }, { action: "MARK_PAYMENT_PAID" }],
     context: { action: "CLIENT_INVOICE_LEDGER" },
   }).map((item) => item.code);
   assert(!codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
-  return "ledger delivery actions accepted";
+  return "ledger surface ignored";
 });
 
 check("allows stamp button for approved draft with BORRADOR invoice status", () => {
@@ -300,10 +294,44 @@ check("detects DOWNLOADED missing delivery buttons", () => {
   const codes = detectStateButtonFailures({
     state: { draft_id: "DRAFT-WATCH-003", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
     buttons: [{ action: "DELIVERY_STATUS" }],
+    context: { action: "DOCUMENT_DOWNLOAD_RESULT" },
   }).map((item) => item.code);
   assert(codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
-  assert.strictEqual(codes.filter((code) => code === "DOWNLOADED_MISSING_DELIVERY_BUTTON").length, 2);
+  assert.strictEqual(codes.filter((code) => code === "DOWNLOADED_MISSING_DELIVERY_BUTTON").length, 1);
   return codes.length;
+});
+
+check("allows DOWNLOADED document detail with tokenized delivery text", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-DOC-DETAIL", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
+    buttons: [
+      { text: "Enviar por correo", callback_data_present: true },
+      { text: "Ver estado documental", callback_data_present: true },
+    ],
+    context: { action: "DOCUMENT_DETAIL" },
+  }).map((item) => item.code);
+  assert(!codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
+  return "document detail accepted";
+});
+
+check("does not require delivery buttons on downloaded document list", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-DOC-LIST", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
+    buttons: [{ action: "VIEW_DOCUMENT_DETAIL" }],
+    context: { action: "DOCUMENTS_RECENT_LIST" },
+  }).map((item) => item.code);
+  assert(!codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
+  return "document list ignored";
+});
+
+check("does not require delivery buttons after sent status", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-SENT", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED", delivery_status: "SENT" },
+    buttons: [{ action: "DELIVERY_STATUS" }],
+    context: { action: "DOCUMENT_DETAIL" },
+  }).map((item) => item.code);
+  assert(!codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
+  return "sent ignored";
 });
 
 check("allows delivery confirmation surface without full delivery menu", () => {

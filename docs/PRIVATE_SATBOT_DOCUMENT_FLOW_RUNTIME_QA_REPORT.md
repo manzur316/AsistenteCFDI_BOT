@@ -344,6 +344,26 @@ node scripts/test-telegram-post-stamp-success-download-cta.js
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
 
+## 24. Actualizacion Slice 9R 2.4L
+
+Se corrigio el caso watcher `DOWNLOADED_MISSING_DELIVERY_BUTTON` observado despues de una descarga exitosa:
+
+- `DOCUMENT_DOWNLOAD_RESULT` con `SANDBOX_TIMBRADO + DOWNLOADED + xml=true + pdf=true` ahora muestra `Enviar por correo`, `Enviar a canal`, `Ver estado documental`, `Documentos` y `Menu principal`.
+- Esos botones no envian directo. Crean tokens de preparacion `DELIVERY_PREPARE_PROVIDER_EMAIL` y `DELIVERY_PREPARE_TELEGRAM_CHANNEL`; el envio real sigue reservado para `DELIVERY_CONFIRM_PROVIDER_EMAIL` y `DELIVERY_CONFIRM_TELEGRAM_CHANNEL` despues de confirmacion.
+- `DOCUMENT_DETAIL` conserva la superficie contextual: descarga cuando esta listo, envio cuando XML/PDF estan descargados, y solo estado si ya fue enviado/protegido.
+- `DOCUMENTS_RECENT_LIST` puede seguir simple con `Ver N`; el detalle es la superficie de accion.
+- El watcher ya no exige boton de envio en listas, recuperaciones, menu principal, Cobranza ni pantallas de ayuda.
+
+Observacion read-only de Cobranza:
+
+- `COLLECTION-PAYMENT-CONFIRMATION-001`: se observo `PAYMENT_ACTION_CONFIRMATION_REQUIRED` y boton `Confirmar pagada:MARK_PAYMENT_PAID`, pero esa QA runtime no observo ejecucion posterior de `MARK_PAYMENT_PAID`.
+- No hay evidencia en esa observacion de que el pago local haya cambiado a pagado.
+- No hay evidencia de actualizacion PAC/proveedor ni complemento de pago.
+- Decision: marcar pagada debe seguir siendo estado local de cobranza salvo integracion futura explicita.
+- Siguiente slice propuesto: `Fase 9R Slice 2.4M - Collection Payment Confirmation Persistence + Provider Payment Boundary`.
+
+Veredicto documental post-fix: requiere nueva QA runtime documental corta. No se ejecuto watcher en este slice correctivo.
+
 ## 22. Actualizacion Slice 9R 2.4J
 
 Se corrigio el caso detectado por watcher `APPROVED_BEFORE_STAMP_SHOWS_DOWNLOAD`:

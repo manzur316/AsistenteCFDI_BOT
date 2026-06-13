@@ -965,6 +965,45 @@ function isDeliveryActionSurface(context = {}) {
     || action.startsWith("DELIVERY_FORCE_");
 }
 
+function contextActionName(context = {}) {
+  return String(
+    context.action
+    || context.screen_id
+    || context.handle?.action
+    || context.handle?.screen_id
+    || context.summary?.action
+    || context.summary?.screen_id
+    || context.dispatch_plan?.action
+    || context.dispatch_plan?.screen_id
+    || context.plan?.action
+    || context.plan?.screen_id
+    || "",
+  ).toUpperCase();
+}
+
+function isDownloadedDeliveryExpectedSurface(context = {}) {
+  const action = contextActionName(context);
+  const route = String(context.route || "").trim();
+  if (route.startsWith("sandbox.documents.delivery.")) return false;
+  return action === "DOCUMENT_DOWNLOAD_RESULT" || action === "DOCUMENT_DETAIL";
+}
+
+function isDeliveryAlreadySentState(state = {}, context = {}) {
+  const values = [
+    state.delivery_status,
+    state.delivery_kind,
+    state.document_delivery_status,
+    state.last_delivery_status,
+    context.delivery_status,
+    context.delivery_kind,
+    context.handle?.delivery_status,
+    context.handle?.delivery_kind,
+    context.summary?.delivery_status,
+    context.summary?.delivery_kind,
+  ].map((value) => String(value || "").toUpperCase());
+  return values.some((value) => ["SENT", "PROTECTED", "YA_ENVIADO", "ALREADY_SENT"].includes(value));
+}
+
 function shouldAuditDraftStateButtons(context = {}, buttons = []) {
   const route = String(context.route || "").trim();
   const action = String(context.action || "").toUpperCase();
@@ -1030,10 +1069,15 @@ function detectStateButtonFailures({ state, buttons, context = {} }) {
       failures.push(failure("DOWNLOAD_READY_SHOWS_STAMP", "Draft DOWNLOAD_READY shows STAMP_DRAFT_SANDBOX", { draft_id: state.draft_id }));
     }
   }
-  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOADED" && !isDeliveryActionSurface(context)) {
-    for (const action of ["DELIVERY_STATUS", "DELIVERY_PREPARE_TELEGRAM_CHANNEL", "DELIVERY_PREPARE_PROVIDER_EMAIL"]) {
-      if (!has(action)) failures.push(failure("DOWNLOADED_MISSING_DELIVERY_BUTTON", `Draft DOWNLOADED missing ${action}`, { draft_id: state.draft_id, action }));
-    }
+  if (
+    invoiceStatus === "SANDBOX_TIMBRADO"
+    && artifactStatus === "DOWNLOADED"
+    && isDownloadedDeliveryExpectedSurface(context)
+    && !isDeliveryAlreadySentState(state, context)
+  ) {
+    const hasDeliveryPrepare = has("DELIVERY_PREPARE_TELEGRAM_CHANNEL") || has("DELIVERY_PREPARE_PROVIDER_EMAIL") || buttons.some((button) => normalizedButtonText(button).includes("enviar documentos"));
+    if (!has("DELIVERY_STATUS")) failures.push(failure("DOWNLOADED_MISSING_DELIVERY_BUTTON", "Draft DOWNLOADED missing DELIVERY_STATUS", { draft_id: state.draft_id, action: "DELIVERY_STATUS" }));
+    if (!hasDeliveryPrepare) failures.push(failure("DOWNLOADED_MISSING_DELIVERY_BUTTON", "Draft DOWNLOADED missing delivery prepare action", { draft_id: state.draft_id, action: "DELIVERY_PREPARE" }));
   }
   if (invoiceStatus === "APROBADO" || legacyStatus === "APROBADO") {
     if (artifactStatus !== "DOWNLOAD_READY" && artifactStatus !== "DOWNLOADED" && has("DOWNLOAD_SANDBOX_ARTIFACTS")) {
@@ -1065,8 +1109,8 @@ function buttonMatchesAction(button = {}, action) {
     return text.includes("descargar") && text.includes("xml") && text.includes("pdf");
   }
   if (expected === "DELIVERY_STATUS") return text.includes("estado documental");
-  if (expected === "DELIVERY_PREPARE_TELEGRAM_CHANNEL") return text.includes("enviar") && text.includes("canal");
-  if (expected === "DELIVERY_PREPARE_PROVIDER_EMAIL") return text.includes("enviar") && (text.includes("correo") || text.includes("email"));
+  if (expected === "DELIVERY_PREPARE_TELEGRAM_CHANNEL") return text.includes("enviar") && (text.includes("canal") || text.includes("documentos"));
+  if (expected === "DELIVERY_PREPARE_PROVIDER_EMAIL") return text.includes("enviar") && (text.includes("correo") || text.includes("email") || text.includes("documentos"));
   return false;
 }
 
