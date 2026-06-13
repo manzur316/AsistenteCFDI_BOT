@@ -22,6 +22,8 @@ Nota Slice 9R 2.2: Facturas ya tiene una superficie operativa inicial separada. 
 
 Nota Slice 9R 2.3: Documentos ya tiene una superficie operativa inicial separada. `/documentos` abre `DOCUMENTS_RECENT_LIST`, usa folio proveedor como identidad principal, resume XML/PDF y envio desde `provider_invoice_links`/`document_delivery_ledger`, y bloquea descarga/envio/pago como consulta segura hasta un flujo confirmado posterior.
 
+Nota Slice 9R 2.4: Documentos ya permite descarga y envio con confirmacion tokenizada. `descargar N` abre `DOCUMENT_DOWNLOAD_CONFIRM` y solo el token `DOWNLOAD_SANDBOX_ARTIFACTS` confirmado planea `sandbox.draft.download-artifacts`; `enviar N`, `correo N` y `canal N` abren `DOCUMENT_DELIVERY_CONFIRM` y solo `DELIVERY_CONFIRM_*` ejecuta el envio existente. Pagos, cancelacion, PAC real y envios/descargas en pruebas siguen fuera de alcance.
+
 La recomendacion central es redisenar la navegacion en dos capas:
 
 - Menu operativo normal: tareas diarias del bot personal.
@@ -166,7 +168,7 @@ Ayuda
 | Clientes | Buscar, abrir detalle y facturas por cliente | `CLIENTS_MENU_CLEAN` | `/clientes`, `/cliente TEXTO`, `cliente N` | opcional list_context | actual con reestructura |
 | Facturas | Historial reciente y facturas por cliente | `INVOICES_MENU` | `/facturas`, `facturas N` | opcional cliente/list_context | futuro/parcial |
 | Cobranza | Clientes con saldo y facturas por cobrar | `COLLECTION_CLIENTS` | `/cobranza`, `/pendientes_pago`, `facturas N`, `pagar N` | contexto de cobranza | actual con reestructura |
-| Documentos | XML/PDF, estado documental y envios | `DOCUMENTS_MENU` | `/documentos`, `descargar N`, `enviar N` | factura/draft concreta | futuro/parcial |
+| Documentos | XML/PDF, estado documental y envios | `DOCUMENTS_RECENT_LIST` / `DOCUMENT_DETAIL` | `/documentos`, `descargar N`, `enviar N`, `correo N`, `canal N` | factura/draft concreta | implementado con confirmacion |
 | Sincronizar proveedor | Sync/consulta con Factura.com/PAC | `PROVIDER_SYNC_MENU` | `/sync`, `/proveedor` | OWNER | futuro |
 | Ayuda | Comandos y explicacion breve | `HELP` | `/help`, `/ayuda` | ninguno | actual |
 
@@ -487,9 +489,9 @@ DEFERRED_PROVIDER_FISCAL_RECONCILIATION
 
 - Objetivo: modulo para XML/PDF, download ready, downloaded, envios, errores.
 - Archivos probables: workflow delivery/download, watcher/audit.
-- Pruebas: `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON`, delivery buttons, duplicate send guard.
+- Pruebas: `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON`, confirmacion de descarga, confirmacion de envio, token usado/vencido, duplicate send guard.
 - Requiere workflow-sync: si.
-- Requiere watcher/manual: si, sin envios reales salvo dry-run/allowlist.
+- Requiere watcher/manual: si, sin envios reales salvo confirmacion controlada/allowlist.
 - Riesgos: reenvio duplicado.
 - No-alcance: storage historico masivo.
 

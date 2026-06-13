@@ -389,17 +389,45 @@ Screen ownership aplicado:
 
 - `DOCUMENTS_RECENT_LIST` y sus filtros tienen texto y teclado propios.
 - `DOCUMENT_DETAIL` tiene texto y teclado propios, sin heredar botones de Facturas, Clientes, Cobranza ni Admin/QA.
-- `descargar N`, `enviar N`, `correo N`, `canal N` y `pagar N` dentro de Documentos responden como consulta segura y no mutan datos.
+- `pagar N` dentro de Documentos responde como consulta segura y no muta pagos.
 
-## 12. Que NO implementa este slice
+## 12. Acciones documentales confirmadas
+
+Slice 9R 2.4 habilita acciones documentales desde Documentos con confirmacion explicita:
+
+- `descargar N` y `/descargar N` abren `DOCUMENT_DOWNLOAD_CONFIRM`.
+- El boton `Descargar XML/PDF` en `DOCUMENT_DETAIL` abre la misma confirmacion.
+- La confirmacion crea token `DOWNLOAD_SANDBOX_ARTIFACTS`; no descarga en el primer comando.
+- `enviar N`, `/enviar N`, `correo N`, `/correo N`, `canal N` y `/canal N` abren `DOCUMENT_DELIVERY_CONFIRM` cuando XML/PDF ya estan descargados.
+- La confirmacion por correo usa `DELIVERY_CONFIRM_PROVIDER_EMAIL`.
+- La confirmacion por canal usa `DELIVERY_CONFIRM_TELEGRAM_CHANNEL`.
+- Si XML/PDF no estan descargados, el flujo responde `Primero descarga XML/PDF` y no envia.
+- Si ya fue enviado, responde `Ya enviado / protegido` y no reenvia directo.
+
+Guards aplicados:
+
+- No se ejecuta descarga sin token confirmado.
+- No se ejecuta envio sin token confirmado.
+- Token usado o vencido no duplica descarga ni envio.
+- Descarga requiere `draft_id` y referencia proveedor suficiente (`uuid`, `cfdi_uid` o provider id).
+- Envio requiere XML/PDF descargados.
+- Las pantallas `DOCUMENT_DOWNLOAD_CONFIRM`, `DOCUMENT_DOWNLOAD_RESULT`, `DOCUMENT_DELIVERY_CONFIRM`, `DOCUMENT_DELIVERY_RESULT` y `DOCUMENT_ACTION_BLOCKED` tienen texto y teclado propios.
+- La UX normal sigue sin mostrar `DRAFT-*`, UUID completo, rutas locales, raw snapshots, payloads ni estados crudos.
+
+El runtime reutiliza la action layer existente:
+
+- Descarga: `sandbox.draft.download-artifacts`.
+- Envio: `sandbox.documents.delivery.send`.
+
+## 13. Que NO implementa este slice
 
 Este slice no:
 
 - Modifica SQL/schema.
-- Ejecuta descarga real de XML/PDF desde Documentos.
-- Ejecuta envio real por correo o canal desde Documentos.
+- Ejecuta descargas o envios durante pruebas offline.
 - Muta pagos/cobranza funcional desde Facturas.
 - Ejecuta backfill historico.
-- Ejecuta timbrado, descargas, smokes, watcher ni llamadas PAC/Factura.com.
+- Ejecuta timbrado, smokes, watcher ni llamadas PAC/Factura.com durante validacion.
+- Implementa reenvio manual fuera del duplicate guard existente.
 
-Siguiente slice recomendado: flujo confirmado de descarga/envio desde Documentos, o detalle Factura -> Documento especifico cuando se autorice accion documental real.
+Siguiente slice recomendado: QA runtime controlado del flujo documental en entorno local, o endurecer reintento/reenvio owner-only con evidencia documental.

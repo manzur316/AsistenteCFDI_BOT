@@ -214,7 +214,7 @@ function assertNoTechnicalDocumentUx(result) {
 
 function assertNoForbiddenButtons(result) {
   const text = buttonTexts(result).join(",");
-  for (const label of ["Editar RFC", "Editar regimen", "Editar CP fiscal", "Editar razon social", "Marcar validado", "Marcar pagada", "Resumen cobranza", "Timbrar", "Cancelar", "Descargar XML/PDF sandbox", "Enviar a canal documentos", "Enviar por correo", "Smoke", "Preflight"]) {
+  for (const label of ["Editar RFC", "Editar regimen", "Editar CP fiscal", "Editar razon social", "Marcar validado", "Marcar pagada", "Resumen cobranza", "Timbrar", "Cancelar", "Descargar XML/PDF sandbox", "Enviar a canal documentos", "Smoke", "Preflight"]) {
     assert(!text.includes(label), text);
   }
 }
@@ -369,16 +369,22 @@ check("document_detail_teclado_propio", () => {
   assert(buttonTexts(result).includes("Menu principal"), buttonTexts(result).join(","));
 });
 
-check("descargar_falla_seguro", () => {
+check("descargar_ya_descargado_falla_seguro", () => {
   const result = executeCode(handleCode, baseInput("descargar 1", { update_id: 99126, chat_state: documentListState(recentLinks()) }));
-  assert.strictEqual(result.action, "DOCUMENT_ACTION_BLOCKED");
-  assert(result.telegram_message.includes("modo consulta"));
+  assert.strictEqual(result.action, "DOCUMENT_DOWNLOAD_RESULT");
+  assert(result.telegram_message.includes("Los documentos ya estan descargados"));
+  assert(!result.should_execute_sandbox_action);
+  assertNoTechnicalDocumentUx(result);
 });
 
-check("enviar_falla_seguro", () => {
+check("enviar_abre_confirmacion_segura", () => {
   const result = executeCode(handleCode, baseInput("enviar 1", { update_id: 99127, chat_state: documentListState(recentLinks()) }));
-  assert.strictEqual(result.action, "DOCUMENT_ACTION_BLOCKED");
-  assert(result.telegram_message.includes("fase posterior"));
+  assert.strictEqual(result.action, "DOCUMENT_DELIVERY_CONFIRM");
+  assert(result.telegram_message.includes("Confirmar envio"));
+  assert(result.telegram_message.includes("F66"));
+  assert(result.persistence_sql.includes("DELIVERY_CONFIRM_PROVIDER_EMAIL"));
+  assert(!result.should_execute_sandbox_action);
+  assertNoTechnicalDocumentUx(result);
 });
 
 check("pagar_falla_seguro", () => {
