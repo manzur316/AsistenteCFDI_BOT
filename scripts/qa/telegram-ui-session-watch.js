@@ -1488,6 +1488,107 @@ function detectDownloadedDocumentMissingArtifactAccess({ state = {}, buttons = [
   return [failure("DOWNLOADED_DOCUMENT_MISSING_ARTIFACT_ACCESS", "Downloaded document detail missing XML/PDF access action", { draft_id: state.draft_id || context.draft_id || null })];
 }
 
+function isCollectionPaymentConfirmContext(context = {}) {
+  const action = contextActionName(context);
+  const screen = String(context.screen_id || context.handle?.screen_id || context.summary?.screen_id || "").toUpperCase();
+  return action === "PAYMENT_ACTION_CONFIRMATION_REQUIRED" || screen === "COLLECTION_PAYMENT_CONFIRM";
+}
+
+function detectPaymentConfirmProviderBoundaryMissing(context = {}) {
+  if (!isCollectionPaymentConfirmContext(context)) return [];
+  const text = normalizedTextBlock(contextVisibleText(context));
+  const hasLocal = /\blocal\b/.test(text);
+  const hasNoProvider = /no actualiza/.test(text) && /\bsat\b/.test(text) && /\bpac\b/.test(text) && /\bproveedor\b/.test(text);
+  const hasNoComplement = /no emite/.test(text) && /complemento de pago/.test(text);
+  if (hasLocal && hasNoProvider && hasNoComplement) return [];
+  return [failure("PAYMENT_CONFIRM_PROVIDER_BOUNDARY_MISSING", "Payment confirmation missing local/no-provider/no-complement boundary", {
+    action: contextActionName(context),
+    screen_id: context.screen_id || context.handle?.screen_id || null,
+  })];
+}
+
+function detectCollectionUsesLocalDraftIdWhenProviderAvailable(context = {}, state = {}) {
+  const action = contextActionName(context);
+  const screen = String(context.screen_id || context.handle?.screen_id || "").toUpperCase();
+  if (action !== "COLLECTION_INVOICES" && screen !== "COLLECTION_INVOICES") return [];
+  const providerAvailable = Boolean(
+    context.provider_identity_available === true
+    || context.handle?.provider_identity_available === true
+    || context.provider_folio
+    || context.handle?.provider_folio
+    || context.handle?.provider_serie
+    || state.provider_folio
+    || state.provider_serie
+  );
+  if (!providerAvailable) return [];
+  const text = normalizedTextBlock(contextVisibleText(context));
+  if (/\bbor-[a-z0-9-]+\b/.test(text) && !/borrador origen/.test(text)) {
+    return [failure("COLLECTION_USES_LOCAL_DRAFT_ID_WHEN_PROVIDER_ID_AVAILABLE", "Collection list uses BOR identity while provider identity is available", {
+      action,
+    })];
+  }
+  return [];
+}
+
+function isPaymentMarkedPaidContext(context = {}) {
+  const action = contextActionName(context);
+  const callbackAction = String(context.callback_action || context.handle?.callback_action || context.handle?.action_token?.action || "").toUpperCase();
+  return action === "PAYMENT_STATUS_MARKED_PAID" || callbackAction === "MARK_PAYMENT_PAID";
+}
+
+function isPaymentAlreadyPaidIdempotent(context = {}) {
+  const action = contextActionName(context);
+  const text = normalizedTextBlock(contextVisibleText(context));
+  return action === "PAYMENT_STATUS_ALREADY_PAGADO" || /ya estaba marcada como pagada/.test(text);
+}
+
+function detectPaymentConfirmWithoutStateChange({ context = {}, draftAfter = {} }) {
+  if (!isPaymentMarkedPaidContext(context)) return [];
+  if (isPaymentAlreadyPaidIdempotent(context)) return [];
+  const status = String(draftAfter?.payment_status || context.payment_status || context.handle?.payment_status || "").toUpperCase();
+  if (status === "PAGADO" || status === "PAGADA") return [];
+  return [failure("PAYMENT_CONFIRM_WITHOUT_STATE_CHANGE", "Payment confirmation completed without local payment_status change", {
+    draft_id: context.draft_id || context.handle?.draft_id || null,
+    payment_status: status || null,
+  })];
+}
+
+function rememberConfirmedLocalPayment(counters = {}, context = {}, draftAfter = {}) {
+  if (!isPaymentMarkedPaidContext(context)) return;
+  if (isPaymentAlreadyPaidIdempotent(context)) return;
+  const status = String(draftAfter?.payment_status || context.handle?.payment_status || context.payment_status || "").toUpperCase();
+  if (status !== "PAGADO" && status !== "PAGADA") return;
+  const draftId = String(context.draft_id || context.handle?.draft_id || draftAfter?.draft_id || "").trim();
+  if (!draftId) return;
+  counters.localPaidInvoices = counters.localPaidInvoices || new Map();
+  counters.localPaidInvoices.set(draftId, {
+    draft_id: draftId,
+    display_id: String(context.handle?.display_id || context.display_id || "").trim(),
+    marked_at_ms: Number(context.generated_at_ms || Date.now()),
+  });
+}
+
+function detectPaymentConfirmedButStillListedPending({ context = {}, counters = {} }) {
+  const action = contextActionName(context);
+  const screen = String(context.screen_id || context.handle?.screen_id || "").toUpperCase();
+  if (action !== "COLLECTION_INVOICES" && screen !== "COLLECTION_INVOICES") return [];
+  const paid = counters.localPaidInvoices instanceof Map ? Array.from(counters.localPaidInvoices.values()) : [];
+  if (!paid.length) return [];
+  const text = normalizedTextBlock(contextVisibleText(context));
+  const failures = [];
+  for (const item of paid) {
+    const display = normalizedTextBlock(item.display_id || "");
+    const appears = display ? text.includes(display) : text.includes(normalizedTextBlock(item.draft_id || ""));
+    if (appears && /\bpendiente\b/.test(text)) {
+      failures.push(failure("PAYMENT_CONFIRMED_BUT_STILL_LISTED_PENDING", "Paid invoice still appears as pending in collection list", {
+        draft_id: item.draft_id,
+        display_id: item.display_id || null,
+      }));
+    }
+  }
+  return failures;
+}
+
 function normalizedButtonText(button = {}) {
   return String(button.text || "")
     .normalize("NFD")
@@ -1775,6 +1876,7 @@ function detectActionFailures({ execution, context, draftBefore, draftAfter, led
       }));
     }
   }
+  failures.push(...detectPaymentConfirmWithoutStateChange({ context, draftAfter }));
   return failures;
 }
 
@@ -1835,6 +1937,9 @@ function classifyExecution(execution, options = {}) {
   failures = failures.concat(detectDocumentNavCallbackInvalid(context));
   failures = failures.concat(detectDocumentStatusReturnsToList(context));
   failures = failures.concat(detectDocumentStatusLostCurrentItem(context));
+  failures = failures.concat(detectPaymentConfirmProviderBoundaryMissing(context));
+  failures = failures.concat(detectCollectionUsesLocalDraftIdWhenProviderAvailable(context, state));
+  failures = failures.concat(detectPaymentConfirmedButStillListedPending({ context, counters }));
   failures = failures.concat(detectPresentationFailures(context));
   failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));
@@ -1866,6 +1971,7 @@ function classifyExecution(execution, options = {}) {
   if (telegramChannelSent && options.args?.allowTelegramChannelSend !== true) {
     failures.push(warning("TELEGRAM_CHANNEL_SEND_OBSERVED", "Telegram channel send observed without explicit watcher allow flag", { draft_id: context.draft_id }));
   }
+  rememberConfirmedLocalPayment(counters, context, draft);
   rememberFreshDeliveryConfirmTokens(counters, tokenChanges, context);
 
   const event = {

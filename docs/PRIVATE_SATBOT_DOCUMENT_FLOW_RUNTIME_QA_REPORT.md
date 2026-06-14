@@ -391,6 +391,49 @@ node scripts/test-local-ingest-workflow-contract.js
 
 Veredicto documental post-fix: requiere repetir QA runtime de Facturas/Documentos enfocada en reenviar y acceso XML/PDF. No se ejecuto watcher interactivo en este slice correctivo.
 
+## 31. Actualizacion Slice 9R 2.4S
+
+Se corrigio el flujo minimo de pago local en Cobranza:
+
+- Las listas de Cobranza usan folio proveedor cuando existe, en lugar de mostrar `BOR-*` como identidad principal.
+- Si no hay folio/UUID/PAC util, la UX usa `FAC-SBX-*` y deja `BOR-*` solo como origen/fallback explicito.
+- `pagar N` y `pagarN` abren `COLLECTION_PAYMENT_CONFIRM`, no aplican pago directo.
+- La pantalla de confirmacion declara que el cambio es local, no actualiza SAT/PAC/proveedor y no emite complemento de pago.
+- `Confirmar pagada` usa token `MARK_PAYMENT_PAID` con `source_capability=LOCAL_PAYMENT_STATUS`.
+- Al confirmar se actualiza el estado local existente (`PAGADO` internamente, `Pagada` en UX) y se registra monto/fecha local cuando las columnas existen.
+- `provider_invoice_links.payment_status_local` se actualiza cuando existe el link.
+- `provider_invoice_links.payment_status_provider` no se actualiza.
+- No se modifican folio, UUID, XML/PDF, delivery ledger, PAC/proveedor, cancelacion, complemento de pago, `.env`, schema ni datos ajenos.
+
+Auditoria previa de columnas existentes:
+
+- `cfdi_drafts.payment_status`
+- `cfdi_drafts.payment_amount_paid`
+- `cfdi_drafts.payment_paid_at`
+- `cfdi_drafts.updated_at`
+- `provider_invoice_links.payment_status_local`
+- `provider_invoice_links.payment_status_provider`
+- `cfdi_payment_status_events`
+
+No se creo schema nuevo. El enum historico usa `PAGADO`, por lo que no se introduce `PAGADA` como valor DB.
+
+Watcher/classifier actualizado:
+
+- `PAYMENT_CONFIRM_WITHOUT_STATE_CHANGE`
+- `PAYMENT_CONFIRM_PROVIDER_BOUNDARY_MISSING`
+- `COLLECTION_USES_LOCAL_DRAFT_ID_WHEN_PROVIDER_ID_AVAILABLE`
+- `PAYMENT_CONFIRMED_BUT_STILL_LISTED_PENDING`
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-collection-payment-local-state-and-provider-boundary.js
+node scripts/test-telegram-collection-payment-confirmation-observation.js
+node scripts/test-telegram-ui-session-watch.js
+```
+
+Veredicto post-fix: requiere QA runtime corta de Cobranza. No se ejecuto watcher interactivo en este slice correctivo.
+
 ## 25. Actualizacion Slice 9R 2.4M
 
 Se aplico fix correctivo para la navegacion documental rota en preparacion y confirmacion de entrega:

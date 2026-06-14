@@ -498,6 +498,83 @@ check("does not flag callback recovery copy for real callback query", () => {
   return "callback ignored";
 });
 
+check("detects payment confirmation without local state change", () => {
+  const draftId = "DRAFT-WATCH-PAYMENT-NOCHANGE";
+  const result = classify(execution({
+    id: "exec-payment-nochange",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      action: "PAYMENT_STATUS_MARKED_PAID",
+      callback_action: "MARK_PAYMENT_PAID",
+      draft_id: draftId,
+      telegram_message: "Pago registrado localmente\nFactura: F-72",
+    },
+  }), dbMock({ draftRow: draft(draftId, "SANDBOX_TIMBRADO", "DOWNLOADED", { payment_status: "PENDIENTE" }) }));
+  const codes = failureCodes(result);
+  assert(codes.includes("PAYMENT_CONFIRM_WITHOUT_STATE_CHANGE"));
+  return codes.join(",");
+});
+
+check("detects payment confirmation missing provider boundary", () => {
+  const result = classify(execution({
+    id: "exec-payment-boundary-missing",
+    handle: {
+      source_kind: "MESSAGE",
+      action: "PAYMENT_ACTION_CONFIRMATION_REQUIRED",
+      screen_id: "COLLECTION_PAYMENT_CONFIRM",
+      telegram_message: "Confirmar pago\nFactura: F-72",
+    },
+  }), null);
+  const codes = failureCodes(result);
+  assert(codes.includes("PAYMENT_CONFIRM_PROVIDER_BOUNDARY_MISSING"));
+  return codes.join(",");
+});
+
+check("detects collection list using BOR when provider folio exists", () => {
+  const result = classify(execution({
+    id: "exec-collection-bor-provider",
+    handle: {
+      source_kind: "MESSAGE",
+      action: "COLLECTION_INVOICES",
+      screen_id: "COLLECTION_INVOICES",
+      provider_folio: "72",
+      telegram_message: "Facturas pendientes\n\n1. BOR-0001 | Real Bilbao | $928.00 | Pendiente",
+    },
+  }), dbMock({ draftRow: draft("DRAFT-WATCH-COLLECTION-BOR", "SANDBOX_TIMBRADO", "DOWNLOADED", { provider_folio: "72" }) }));
+  const codes = failureCodes(result);
+  assert(codes.includes("COLLECTION_USES_LOCAL_DRAFT_ID_WHEN_PROVIDER_ID_AVAILABLE"));
+  return codes.join(",");
+});
+
+check("detects paid invoice still listed as pending", () => {
+  const counters = {};
+  const draftId = "DRAFT-WATCH-PAID-STILL-PENDING";
+  classifyWithCounters(execution({
+    id: "exec-paid-local",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      action: "PAYMENT_STATUS_MARKED_PAID",
+      callback_action: "MARK_PAYMENT_PAID",
+      draft_id: draftId,
+      display_id: "F-72",
+      payment_status: "PAGADO",
+      telegram_message: "Pago registrado localmente\nFactura: F-72",
+    },
+  }), counters, dbMock({ draftRow: draft(draftId, "SANDBOX_TIMBRADO", "DOWNLOADED", { payment_status: "PAGADO" }) }));
+  const listed = classifyWithCounters(execution({
+    id: "exec-paid-listed",
+    handle: {
+      source_kind: "MESSAGE",
+      action: "COLLECTION_INVOICES",
+      screen_id: "COLLECTION_INVOICES",
+      telegram_message: "Facturas pendientes\n\n1. F-72 | Real Bilbao | $928.00 | Pendiente",
+    },
+  }), counters);
+  const codes = failureCodes(listed);
+  assert(codes.includes("PAYMENT_CONFIRMED_BUT_STILL_LISTED_PENDING"));
+  return codes.join(",");
+});
+
 check("detects failed Telegram dispatch", () => {
   const sample = execution({
     id: "exec-dispatch-fail",

@@ -747,6 +747,27 @@ Watcher/classifier:
 
 Siguiente QA runtime requerida: repetir QA runtime de Facturas/Documentos enfocada en reenviar y acceso XML/PDF.
 
+## 15.11 Nota Slice 9R 2.4S
+
+Se inicio el bloque de Cobranza con el flujo minimo de pago local:
+
+- `Marcar pagada` es estado local de cobranza. No actualiza SAT, PAC, Factura.com ni proveedor, y no emite complemento de pago.
+- Cobranza usa la misma identidad visible que Facturas: serie-folio, folio, UUID corto, PAC corto, `FAC-SBX-*`; `BOR-*` queda solo como origen/fallback explicito.
+- `pagar N` y `pagarN` resuelven la factura visible desde `COLLECTION_INVOICES` y abren `COLLECTION_PAYMENT_CONFIRM`.
+- El token `MARK_PAYMENT_PAID` incluye `source_module=COLLECTION`, `source_capability=LOCAL_PAYMENT_STATUS`, `screen_id=COLLECTION_PAYMENT_CONFIRM`, factura, cliente, total, estado actual, estado destino y banderas `provider_update=false` / `pac_update=false`.
+- Al confirmar, se persiste el estado local existente: `cfdi_drafts.payment_status=PAGADO`, `payment_amount_paid`, `payment_paid_at`, `updated_at` y `provider_invoice_links.payment_status_local=PAGADO` cuando existe el link.
+- El enum existente usa `PAGADO` internamente; la UX muestra `Pagada`. No se cambia schema.
+- No se modifica `payment_status_provider`, folio, UUID, XML/PDF, delivery ledger, cancelacion, complemento de pago, PAC/proveedor ni datos ajenos.
+
+Watcher/classifier:
+
+- `PAYMENT_CONFIRM_WITHOUT_STATE_CHANGE` rompe si una confirmacion `MARK_PAYMENT_PAID` no deja el estado local pagado y no era idempotente.
+- `PAYMENT_CONFIRM_PROVIDER_BOUNDARY_MISSING` rompe si la confirmacion no explica local/no PAC/proveedor/no complemento.
+- `COLLECTION_USES_LOCAL_DRAFT_ID_WHEN_PROVIDER_ID_AVAILABLE` rompe si Cobranza muestra `BOR-*` como identidad principal teniendo folio proveedor.
+- `PAYMENT_CONFIRMED_BUT_STILL_LISTED_PENDING` rompe si una factura confirmada como pagada vuelve a aparecer pendiente.
+
+Siguiente QA runtime requerida: repetir QA runtime corta de Cobranza con `/cobranza`, `facturas N`, `pagar N`, confirmacion y regreso a pendientes.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

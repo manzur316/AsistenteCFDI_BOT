@@ -130,6 +130,7 @@ function baseInput(text, extra = {}) {
 
 function callbackInput(action, draftId, extra = {}) {
   const token = extra.token || "COLLECTPAYTOKEN1";
+  const row = (extra.client_invoice_ledger || ledger).find((item) => item.draft_id === draftId) || {};
   return baseInput(`cfdi:${token}`, {
     update_id: extra.update_id || 93101,
     source_kind: "CALLBACK_QUERY",
@@ -143,7 +144,23 @@ function callbackInput(action, draftId, extra = {}) {
       action,
       expires_at: "2099-01-01T00:00:00.000Z",
       used_at: extra.used_at || null,
-      payload: { draft_id: draftId, action, state: "PAYMENT_CONFIRMATION", source_list_kind: "COLLECTION_INVOICES" },
+      payload: {
+        draft_id: draftId,
+        action,
+        state: "COLLECTION_PAYMENT_CONFIRM",
+        screen_id: "COLLECTION_PAYMENT_CONFIRM",
+        source_module: "COLLECTION",
+        source_capability: "LOCAL_PAYMENT_STATUS",
+        source_list_kind: "COLLECTION_INVOICES",
+        provider_invoice_link_id: row.provider_invoice_link_id || null,
+        display_id: row.provider_folio ? `${row.provider_serie ? `${row.provider_serie}-` : ""}${row.provider_folio}` : "FAC-SBX-TEST",
+        client_id: row.client_id || null,
+        amount_total: row.total || null,
+        current_payment_status: row.payment_status || null,
+        target_payment_status: "PAGADO",
+        provider_update: false,
+        pac_update: false,
+      },
     },
     ...extra,
   });
@@ -261,9 +278,10 @@ check("pagar_1_prepara_confirmacion_sin_mutar", () => {
   const state = collectionInvoicesState([{ draft_id: "DRAFT-COLLECT-PARTIAL", client_id: "CLIENT-PARCIAL" }]);
   const result = executeCode(handleCode, baseInput("pagar 1", { update_id: 93005, chat_state: state }));
   assert.strictEqual(result.action, "PAYMENT_ACTION_CONFIRMATION_REQUIRED");
-  assert.strictEqual(result.screen_id, "PAYMENT_CONFIRMATION");
-  assert(result.telegram_message.includes("Confirmar pago"));
-  assert(result.telegram_message.includes("Saldo abierto"));
+  assert.strictEqual(result.screen_id, "COLLECTION_PAYMENT_CONFIRM");
+  assert(result.telegram_message.includes("Confirmar pago local"));
+  assert(result.telegram_message.includes("No actualiza SAT, PAC ni proveedor"));
+  assert(result.telegram_message.includes("No emite complemento de pago"));
   assert(buttonTexts(result).includes("Confirmar pagada"));
   assert(result.persistence_sql.includes("'MARK_PAYMENT_PAID'"));
   assert(!result.persistence_sql.includes("UPDATE cfdi_drafts SET payment_status"));
@@ -273,8 +291,10 @@ check("pagar_1_prepara_confirmacion_sin_mutar", () => {
 check("confirmacion_pago_marca_pagada_solo_factura_concreta", () => {
   const result = executeCode(handleCode, callbackInput("MARK_PAYMENT_PAID", "DRAFT-COLLECT-PARTIAL", { update_id: 93006 }));
   assert.strictEqual(result.action, "PAYMENT_STATUS_MARKED_PAID");
-  assert(result.telegram_message.includes("Pago actualizado"));
+  assert(result.telegram_message.includes("Pago registrado localmente"));
   assert(result.persistence_sql.includes("UPDATE cfdi_drafts SET payment_status = 'PAGADO'"));
+  assert(result.persistence_sql.includes("UPDATE provider_invoice_links SET payment_status_local = 'PAGADO'"));
+  assert(!result.persistence_sql.includes("payment_status_provider ="));
   assert(result.persistence_sql.includes("draft_id = 'DRAFT-COLLECT-PARTIAL'"));
   assert(!result.persistence_sql.includes("draft_id = 'DRAFT-COLLECT-001'"));
   return result.action;
@@ -352,8 +372,8 @@ check("ledger_general_no_muestra_botones_pago_ambiguos", () => {
 check("payment_status_dispatch_visible", () => {
   const result = executeCode(handleCode, callbackInput("MARK_PAYMENT_PAID", "DRAFT-COLLECT-001", { update_id: 93016 }));
   assert.strictEqual(result.should_send_telegram, true);
-  assert(result.telegram_message.includes("Pago actualizado"));
-  assert(result.send_text.includes("Pago actualizado"));
+  assert(result.telegram_message.includes("Pago registrado localmente"));
+  assert(result.send_text.includes("Pago registrado localmente"));
   return result.action;
 });
 

@@ -115,8 +115,10 @@ function buttonTexts(result) {
 check("pagar_n_abre_confirmacion_no_marca_pagada_directo", () => {
   const result = executeCode(handleCode, baseInput("pagar 1"));
   assert.strictEqual(result.action, "PAYMENT_ACTION_CONFIRMATION_REQUIRED");
-  assert.strictEqual(result.screen_id, "PAYMENT_CONFIRMATION");
-  assert(result.telegram_message.includes("Confirmar pago"), result.telegram_message);
+  assert.strictEqual(result.screen_id, "COLLECTION_PAYMENT_CONFIRM");
+  assert(result.telegram_message.includes("Confirmar pago local"), result.telegram_message);
+  assert(result.telegram_message.includes("No actualiza SAT, PAC ni proveedor"), result.telegram_message);
+  assert(result.telegram_message.includes("No emite complemento de pago"), result.telegram_message);
   assert(!result.persistence_sql.includes("UPDATE cfdi_drafts SET payment_status = 'PAGADO'"), result.persistence_sql);
 });
 
@@ -149,7 +151,7 @@ check("acepta_pagar_1_y_documenta_deuda_2_4m", () => {
   assert(workflowPath.endsWith("cfdi_telegram_local_ingest.n8n.json"));
   assert.strictEqual(executeCode(handleCode, baseInput("pagar 1", { update_id: 101006 })).action, "PAYMENT_ACTION_CONFIRMATION_REQUIRED");
   assert(fs.readFileSync(workflowPath, "utf8").includes("MARK_PAYMENT_PAID"));
-  return "COLLECTION-PAYMENT-CONFIRMATION-001 deferred to Slice 2.4M";
+  return "COLLECTION-PAYMENT-CONFIRMATION-001 repaired in Slice 2.4S";
 });
 
 console.log("Telegram Collection Payment Confirmation Observation Tests");
