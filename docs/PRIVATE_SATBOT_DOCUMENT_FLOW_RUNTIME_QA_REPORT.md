@@ -483,6 +483,36 @@ node scripts/test-telegram-stable-document-navigation-callbacks.js
 
 Veredicto documental post-fix: requiere repetir QA runtime de Documentos sin tocar flujos nuevos, cubriendo `/documentos`, filtros, paginacion, `Ver N` y callback viejo real. No se ejecuto watcher interactivo en este slice correctivo.
 
+## 29. Actualizacion Slice 9R 2.4Q
+
+Se convirtio `Estado documental` en una pantalla accionable del documento actual:
+
+- `Ver estado documental` desde `DOCUMENT_DETAIL` ya no regresa a `DOCUMENTS_RECENT_LIST` ni dispara `DOCUMENT_LIST_ITEM_CHANGED`.
+- La nueva superficie `DOCUMENT_STATUS_DETAIL` conserva el `draft_id` actual en contexto y respuesta, con `source_capability=DOCUMENT_STATUS`.
+- `INVOICE_DETAIL` tambien resuelve el estado del mismo documento/factura, sin usar estado global de Documentos.
+- `DOWNLOAD_READY` muestra descarga con confirmacion y ultimo resultado sandbox; no muestra envio.
+- `DOWNLOADED` con envio pendiente muestra correo/canal y actualizar estado; no descarga duplicada.
+- `SENT/PROTECTED` muestra estado sin reenvio duplicado.
+- `DOWNLOAD_ERROR` muestra error humano seguro y reintento de descarga via confirmacion; no ejecuta descarga directa.
+- `SANDBOX_ERROR` muestra que no hay documento fiscal valido, y no expone descarga, envio, cancelacion, eliminacion, cobranza ni ledger.
+- `TELEGRAM_EDIT_MESSAGE_TEXT_FAILED` se clasifica como warning recuperado cuando hubo fallback visible correcto; sin fallback util sigue siendo fallo.
+- Cobranza funcional queda fuera de alcance.
+
+Watcher/classifier actualizado:
+
+- `DOCUMENT_STATUS_RETURNS_TO_LIST` detecta estado documental que vuelve a listas.
+- `DOCUMENT_STATUS_LOST_CURRENT_ITEM` detecta perdida/cambio del documento actual.
+- `DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS` valida acciones por estado.
+- `TELEGRAM_EDIT_MESSAGE_TEXT_FAILED_RECOVERED` documenta edit fallido con fallback visible correcto.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-document-status-action-surface.js
+```
+
+Veredicto documental post-fix: requiere repetir QA runtime de Documentos enfocada en `Ver estado documental`. No se ejecuto watcher interactivo en este slice correctivo.
+
 ## 23. Actualizacion Slice 9R 2.4K
 
 Se corrigio el caso watcher `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON` observado en execution 3498:

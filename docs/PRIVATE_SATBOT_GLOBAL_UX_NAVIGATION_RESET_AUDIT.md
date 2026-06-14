@@ -699,6 +699,30 @@ Watcher/classifier:
 
 Siguiente QA runtime requerida: repetir QA runtime de Documentos sin tocar flujos nuevos, enfocada en lista, filtros, paginacion, `Ver N` y callback viejo real.
 
+## 15.9 Nota Slice 9R 2.4Q
+
+Se normalizo `Estado documental` como superficie accionable del documento actual:
+
+- `Ver estado documental` abre `DOCUMENT_STATUS_DETAIL` o refresca detalle accionable del mismo documento; no debe volver automaticamente a listas ni ejecutar `DOCUMENT_LIST_ITEM_CHANGED`.
+- La pantalla conserva identidad operativa (`draft_id` interno en contexto, folio visible seguro, UUID/PAC corto si aplica), cliente, estado fiscal, estado XML/PDF, estado de envio y pago local solo como lectura.
+- `DOWNLOAD_READY` muestra descarga y ultimo resultado sandbox; no muestra envio.
+- `DOWNLOADED` con envio pendiente muestra `Enviar por correo`, `Enviar a canal` y actualizar estado; no duplica descarga primaria.
+- `SENT/PROTECTED` muestra estado y navegacion; no implementa reenvio en este slice.
+- `DOWNLOAD_ERROR` muestra error humano seguro y reintento de descarga via confirmacion; no muestra envio listo.
+- `SANDBOX_ERROR` muestra que no hay documento fiscal valido y oculta descarga, envio, cancelacion, eliminacion, cobranza y ledger.
+- `Ver estado documental` desde `INVOICE_DETAIL`, `DOCUMENT_DETAIL`, post-descarga y confirmaciones mantiene el documento actual en `selected_document`.
+- `TELEGRAM_EDIT_MESSAGE_TEXT_FAILED` puede clasificarse como warning recuperado si existe fallback visible correcto; si no hay pantalla util, sigue siendo fallo.
+- Cobranza funcional, PAC real, XML/PDF reales, envios reales, pagos, cancelacion, eliminacion, `.env`, schema y datos quedan fuera de alcance.
+
+Watcher/classifier:
+
+- `DOCUMENT_STATUS_RETURNS_TO_LIST` rompe si el estado documental vuelve a una lista o a `DOCUMENT_LIST_ITEM_CHANGED`.
+- `DOCUMENT_STATUS_LOST_CURRENT_ITEM` rompe si la accion pierde/cambia el `draft_id` actual.
+- `DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS` rompe si las acciones no corresponden al estado documental.
+- `TELEGRAM_EDIT_MESSAGE_TEXT_FAILED_RECOVERED` registra recuperacion cuando el fallback visible fue correcto.
+
+Siguiente QA runtime requerida: repetir QA runtime de Documentos enfocada en `Ver estado documental`.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

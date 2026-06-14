@@ -1093,6 +1093,7 @@ function detectStateButtonFailures({ state, buttons, context = {} }) {
   failures.push(...detectDeliveryChannelMismatches({ buttons, context }));
   failures.push(...detectDeliveryPrepareResultErrors({ context }));
   failures.push(...detectDocumentNavUsesEphemeralToken({ buttons, context }));
+  failures.push(...detectDocumentStatusMissingExpectedActions({ state, buttons, context }));
   return failures;
 }
 
@@ -1270,6 +1271,105 @@ function detectDocumentNavCallbackInvalid(context = {}) {
   })];
 }
 
+function isDocumentStatusIntentContext(context = {}) {
+  const values = [
+    context.previous_action,
+    context.previous_button_text,
+    context.button_text,
+    context.callback_action,
+    context.requested_action,
+    context.message_text,
+    context.screen_id,
+    context.action,
+    context.handle?.callback_action,
+    context.handle?.text,
+    context.handle?.action_token?.action,
+    context.handle?.action_token?.payload?.screen_id,
+    context.summary?.callback_action,
+    context.summary?.screen_id,
+  ].map((value) => String(value || "").toUpperCase()).join(" ");
+  return values.includes("VER ESTADO DOCUMENTAL")
+    || values.includes("ACTUALIZAR ESTADO")
+    || values.includes("CFDI_DOC:STATUS")
+    || values.includes("DELIVERY_STATUS")
+    || values.includes("DOCUMENT_STATUS_DETAIL");
+}
+
+function detectDocumentStatusReturnsToList(context = {}) {
+  if (!isDocumentStatusIntentContext(context)) return [];
+  const action = contextActionName(context);
+  const text = normalizedTextBlock(contextVisibleText(context));
+  const returnedToList = [
+    "DOCUMENTS_RECENT_LIST",
+    "DOCUMENTS_DOWNLOADED_LIST",
+    "DOCUMENTS_ERROR_LIST",
+    "DOCUMENTS_PENDING_LIST",
+    "DOCUMENTS_SENT_LIST",
+    "DOCUMENT_LIST_ITEM_CHANGED",
+  ].includes(action);
+  const hasStatusSurface = action === "DOCUMENT_STATUS_DETAIL" || action === "DOCUMENT_DETAIL" || text.includes("estado documental");
+  if (returnedToList && !hasStatusSurface) {
+    return [failure("DOCUMENT_STATUS_RETURNS_TO_LIST", "Document status action returned to a document list instead of current document", { action })];
+  }
+  return [];
+}
+
+function detectDocumentStatusLostCurrentItem(context = {}) {
+  if (!isDocumentStatusIntentContext(context)) return [];
+  const expected = String(
+    context.expected_draft_id
+    || context.previous_draft_id
+    || context.status_source_draft_id
+    || context.handle?.expected_draft_id
+    || context.handle?.previous_draft_id
+    || context.handle?.action_token?.payload?.draft_id
+    || "",
+  ).trim();
+  const actual = String(context.draft_id || context.handle?.draft_id || context.summary?.draft_id || "").trim();
+  if (expected && actual && expected !== actual) {
+    return [failure("DOCUMENT_STATUS_LOST_CURRENT_ITEM", "Document status action changed current draft", { expected_draft_id: expected, actual_draft_id: actual })];
+  }
+  return [];
+}
+
+function isDocumentStatusScreen(context = {}) {
+  const action = contextActionName(context);
+  return action === "DOCUMENT_STATUS_DETAIL" || String(context.screen_id || context.handle?.screen_id || context.summary?.screen_id || "").toUpperCase() === "DOCUMENT_STATUS_DETAIL";
+}
+
+function detectDocumentStatusMissingExpectedActions({ state = {}, buttons = [], context = {} }) {
+  if (!isDocumentStatusScreen(context)) return [];
+  const failures = [];
+  const hasDownload = buttons.some((button) => buttonMatchesAction(button, "DOWNLOAD_SANDBOX_ARTIFACTS"));
+  const hasEmail = buttons.some((button) => buttonMatchesAction(button, "DELIVERY_PREPARE_PROVIDER_EMAIL"));
+  const hasChannel = buttons.some((button) => buttonMatchesAction(button, "DELIVERY_PREPARE_TELEGRAM_CHANNEL"));
+  const hasDelivery = hasEmail || hasChannel;
+  const labels = buttons.map((button) => normalizedButtonText(button)).join(" ");
+  const invoiceStatus = String(state.invoice_status || context.invoice_status || context.handle?.invoice_status || "").toUpperCase();
+  const artifactStatus = String(state.artifact_status || context.artifact_status || context.handle?.artifact_status || "").toUpperCase();
+  const deliverySent = isDeliveryAlreadySentState(state, context);
+  if (invoiceStatus === "SANDBOX_ERROR") {
+    if (hasDownload || hasDelivery || /cancel|eliminar|pago|cobranza|ledger/.test(labels)) {
+      failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "SANDBOX_ERROR document status exposed forbidden actions", { invoice_status: invoiceStatus }));
+    }
+    return failures;
+  }
+  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOAD_READY" && !hasDownload) {
+    failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "DOWNLOAD_READY document status missing download action", { artifact_status: artifactStatus }));
+  }
+  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOADED" && !deliverySent) {
+    if (!hasEmail || !hasChannel) failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "DOWNLOADED pending document status missing delivery actions", { artifact_status: artifactStatus }));
+  }
+  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOADED" && deliverySent && hasDelivery) {
+    failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "Sent/protected document status shows duplicate delivery actions", { artifact_status: artifactStatus }));
+  }
+  if (/DOWNLOAD_ERROR|ERROR|FAILED|FAIL/.test(artifactStatus)) {
+    if (hasDelivery) failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "DOWNLOAD_ERROR document status shows delivery as ready", { artifact_status: artifactStatus }));
+    if (!hasDownload && !labels.includes("ultimo resultado")) failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "DOWNLOAD_ERROR document status missing retry or last-result action", { artifact_status: artifactStatus }));
+  }
+  return failures;
+}
+
 function normalizedButtonText(button = {}) {
   return String(button.text || "")
     .normalize("NFD")
@@ -1402,12 +1502,26 @@ function detectDispatchFailures({ execution, context, dispatch }) {
     addedCodes.add(code);
     failures.push(failure(code, message, details));
   };
+  const addDispatchWarning = (code, message, details) => {
+    addedCodes.add(code);
+    failures.push(warning(code, message, details));
+  };
+  const fallback = telegramNodeResult(execution, "Telegram fallback sendMessage") || telegramNodeResult(execution, "Telegram sendMessage");
+  const visibleFallback = Boolean(fallback?.ok && (context.plan?.telegram_message || context.summary?.telegram_message || context.handle?.telegram_message || context.plan?.send_text || context.summary?.send_text || context.handle?.send_text));
   const analysis = analyzeExecution(execution);
   for (const message of analysis.failures || []) {
+    if (visibleFallback && /editMessageText/i.test(String(message || ""))) {
+      addDispatchWarning("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED_RECOVERED", "Telegram editMessageText failed but fallback message was sent", { execution_id: context.execution_id });
+      continue;
+    }
     addDispatchFailure("TELEGRAM_DISPATCH_ANALYSIS_FAIL", message, { execution_id: context.execution_id });
   }
   for (const method of dispatch.methods || []) {
     if (!method.failed) continue;
+    if (method.node === "Telegram editMessageText" && visibleFallback) {
+      addDispatchWarning("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED_RECOVERED", "Telegram editMessageText failed but fallback message was sent", { execution_id: context.execution_id });
+      continue;
+    }
     const code = method.node === "Telegram editMessageText"
       ? "TELEGRAM_EDIT_MESSAGE_TEXT_FAILED"
       : method.node === "Telegram sendMessage"
@@ -1420,8 +1534,9 @@ function detectDispatchFailures({ execution, context, dispatch }) {
     addDispatchFailure(code, `${method.node} failed`, { execution_id: context.execution_id });
   }
   const edit = telegramNodeResult(execution, "Telegram editMessageText");
-  if (edit?.failed && !addedCodes.has("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED")) {
-    addDispatchFailure("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED", "Telegram editMessageText failed", { execution_id: context.execution_id });
+  if (edit?.failed && !addedCodes.has("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED") && !addedCodes.has("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED_RECOVERED")) {
+    if (visibleFallback) addDispatchWarning("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED_RECOVERED", "Telegram editMessageText failed but fallback message was sent", { execution_id: context.execution_id });
+    else addDispatchFailure("TELEGRAM_EDIT_MESSAGE_TEXT_FAILED", "Telegram editMessageText failed", { execution_id: context.execution_id });
   }
   if (!dispatch.attempted && (context.handle?.telegram_message || context.summary?.telegram_message || context.signals?.action_executed)) {
     failures.push(failure("TELEGRAM_DISPATCH_MISSING", "Telegram dispatch did not occur", { execution_id: context.execution_id }));
@@ -1598,6 +1713,8 @@ function classifyExecution(execution, options = {}) {
   failures = failures.concat(detectDeliveryConfirmTokenInvalidAfterPrepare({ context, counters, handle }));
   failures = failures.concat(detectFreeTextCallbackRecoveryFailures(context));
   failures = failures.concat(detectDocumentNavCallbackInvalid(context));
+  failures = failures.concat(detectDocumentStatusReturnsToList(context));
+  failures = failures.concat(detectDocumentStatusLostCurrentItem(context));
   failures = failures.concat(detectPresentationFailures(context));
   failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));
