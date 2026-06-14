@@ -723,6 +723,30 @@ Watcher/classifier:
 
 Siguiente QA runtime requerida: repetir QA runtime de Documentos enfocada en `Ver estado documental`.
 
+## 15.10 Nota Slice 9R 2.4R
+
+Se amplio la superficie documental para facturas ya enviadas. Esta nota supersede la limitacion del Slice 2.4Q donde `SENT/PROTECTED` solo mostraba estado y navegacion:
+
+- Una factura timbrada ya enviada puede reenviarse de forma explicita, siempre con confirmacion.
+- `SENT/PROTECTED` ya no oculta acciones documentales; convierte `Enviar por correo` y `Enviar a canal` en `Reenviar por correo` y `Reenviar a canal`.
+- El reenvio no es automatico: requiere que el usuario toque `Reenviar...`, vea una pantalla de confirmacion de reenvio y confirme con token vigente.
+- Toda factura timbrada conserva acceso documental. Si XML/PDF ya estan descargados, la UX muestra `Descargar XML/PDF` como acceso seguro a artefactos, sin imprimir rutas locales.
+- Si `DOWNLOAD_READY`, se muestra `Descargar XML/PDF sandbox`; si `DOWNLOAD_ERROR`, se muestra `Reintentar descarga XML/PDF sandbox` via confirmacion; si `SANDBOX_ERROR`, no se muestra descarga, envio ni reenvio.
+- `Facturas` y `Documentos` son entradas distintas a la misma superficie operativa de la factura timbrada: `INVOICE_DETAIL`, `DOCUMENT_DETAIL` y `DOCUMENT_STATUS_DETAIL` respetan las mismas reglas de acceso, envio y reenvio.
+- Se agrego `Historial de envios` como consulta sanitizada basada en el ledger existente, sin cambiar schema ni exponer emails completos, UUID completo, rutas, payloads o IDs tecnicos.
+- La deteccion de archivos locales faltantes queda como deuda si no hay comprobacion segura disponible; por ahora la accion `Descargar XML/PDF` se basa en estado documental registrado.
+- Cobranza queda fuera de alcance funcional. No se toca pago local, proveedor/PAC, complemento de pago, cancelacion, eliminacion, `.env`, schema ni datos.
+
+Watcher/classifier:
+
+- `SENT_DOCUMENT_HIDES_RESEND` rompe si una factura descargada y enviada/protegida no muestra reenvio explicito en detalle/status/factura.
+- `DOWNLOADED_DOCUMENT_MISSING_ARTIFACT_ACCESS` rompe si una factura con artefactos descargados no ofrece acceso a XML/PDF.
+- `RESEND_PREPARE_SHOWS_SEND_ERROR` rompe si una preparacion de reenvio se renderiza como error o muestra estados tecnicos.
+- `RESEND_CHANNEL_MISMATCH` rompe si reenvio a canal/correo cruza el destino en la confirmacion.
+- Estos detectores no aplican a listas generales que solo muestran `Ver N`.
+
+Siguiente QA runtime requerida: repetir QA runtime de Facturas/Documentos enfocada en reenviar y acceso XML/PDF.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

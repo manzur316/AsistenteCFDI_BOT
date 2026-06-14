@@ -56,7 +56,7 @@ function callbacksSafe(result) {
     const parsed = callbackData.startsWith("cfdi_nav:") || callbackData.startsWith("cfdi_sbx:")
       ? validateTelegramCallbackData(callbackData).ok
       : callbackData.startsWith("cfdi_doc:")
-        ? /^cfdi_doc:(view|filter|page|list|back|status|download|email|channel)(?::[a-z0-9_-]+){0,2}$/.test(callbackData)
+        ? /^cfdi_doc:(view|filter|page|list|back|status|download|email|channel|history|resend_email|resend_channel)(?::[a-z0-9_-]+){0,2}$/.test(callbackData)
       : Boolean(parseCallbackData(callbackData));
     return callbackData.length <= CALLBACK_DATA_LIMIT
       && parsed

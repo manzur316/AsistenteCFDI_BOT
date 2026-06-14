@@ -324,6 +324,73 @@ node scripts/test-telegram-ui-button-state-audit.js
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
 
+## 30. Actualizacion Slice 9R 2.4R
+
+Se agrego la superficie de reenvio y acceso a artefactos para facturas/documentos timbrados ya enviados:
+
+- `SENT/PROTECTED` deja de ocultar acciones documentales. Ahora muestra `Reenviar por correo` y `Reenviar a canal`, con confirmacion obligatoria.
+- `Enviar` y `Reenviar` quedan diferenciados en copy, token y auditoria: el envio inicial usa intencion normal; el reenvio usa intencion `RESEND` y requiere accion explicita del usuario.
+- `DOCUMENT_DETAIL`, `DOCUMENT_STATUS_DETAIL` e `INVOICE_DETAIL` muestran acceso a `Descargar XML/PDF` cuando el estado documental esta `DOWNLOADED`.
+- `DOWNLOAD_READY` muestra solo descarga sandbox con confirmacion; `DOWNLOAD_ERROR` muestra reintento o ultimo resultado; `SANDBOX_ERROR` no muestra descarga, envio ni reenvio.
+- `Historial de envios` queda como pantalla de consulta sanitizada basada en `document_delivery_ledger`, sin cambiar schema.
+- Si no hay registros de envio, el historial muestra un mensaje humano seguro.
+- No se implementa reenvio automatico.
+- No se implementa deteccion nueva de archivos locales faltantes; queda como deuda si se requiere comprobar disco de forma segura.
+- Facturas y Documentos son entradas distintas a la misma superficie operativa de una factura timbrada.
+- Cobranza queda fuera de alcance. No se modifican pagos, PAC/proveedor, cancelacion, eliminacion, `.env`, schema ni datos.
+
+Watcher/classifier actualizado:
+
+- `SENT_DOCUMENT_HIDES_RESEND` detecta detalle/status/factura enviada que oculta reenvio.
+- `DOWNLOADED_DOCUMENT_MISSING_ARTIFACT_ACCESS` detecta detalle/status/factura descargada sin acceso XML/PDF.
+- `RESEND_PREPARE_SHOWS_SEND_ERROR` detecta preparacion de reenvio renderizada como error o con estados tecnicos.
+- `RESEND_CHANNEL_MISMATCH` detecta cruce canal/correo en confirmaciones de reenvio.
+- Las listas generales de Documentos no se marcan si solo exponen `Ver N`.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-document-resend-and-artifact-access.js
+node scripts/test-telegram-document-status-action-surface.js
+node scripts/test-telegram-stable-document-navigation-callbacks.js
+node scripts/test-telegram-free-text-precedence-and-callback-recovery-boundary.js
+node scripts/test-telegram-delivery-confirm-token-validity-and-error-render.js
+node scripts/test-telegram-document-capability-surfaces-and-delivery-confirmation.js
+node scripts/test-telegram-downloaded-delivery-cta.js
+node scripts/test-telegram-documents-confirmed-actions.js
+node scripts/test-telegram-post-stamp-success-download-cta.js
+node scripts/test-telegram-stamp-error-document-action-guard.js
+node scripts/test-telegram-invoice-fallback-and-borradores-naming.js
+node scripts/test-telegram-contextual-recovery-and-placeholder-identity.js
+node scripts/test-telegram-entity-state-routing-and-delivery-guard.js
+node scripts/test-telegram-runtime-qa-fix-document-isolation.js
+node scripts/test-telegram-documents-provider-folio.js
+node scripts/test-telegram-invoices-provider-folio.js
+node scripts/test-telegram-callback-lifecycle-download-response.js
+node scripts/test-telegram-callback-lifecycle-delivery-response.js
+node scripts/test-telegram-product-menu-contract.js
+node scripts/test-telegram-product-menu-renderer.js
+node scripts/test-telegram-product-menu-router-adapter.js
+node scripts/test-telegram-product-flow-integration.js
+node scripts/test-telegram-client-list-navigation.js
+node scripts/test-telegram-list-navigation-context.js
+node scripts/test-telegram-ui-state-buttons.js
+node scripts/test-telegram-ui-button-state-audit.js
+node scripts/test-telegram-ui-session-watch.js
+node scripts/test-repo-safety.js
+git diff --check
+```
+
+Resultado: PASS. Tambien pasaron los contratos de workflow porque se modifico `cfdi_telegram_local_ingest.n8n.json`:
+
+```text
+node scripts/test-n8n-workflow-contract.js
+node scripts/test-n8n-workflow-guardrails.js
+node scripts/test-local-ingest-workflow-contract.js
+```
+
+Veredicto documental post-fix: requiere repetir QA runtime de Facturas/Documentos enfocada en reenviar y acceso XML/PDF. No se ejecuto watcher interactivo en este slice correctivo.
+
 ## 25. Actualizacion Slice 9R 2.4M
 
 Se aplico fix correctivo para la navegacion documental rota en preparacion y confirmacion de entrega:

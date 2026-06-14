@@ -1092,8 +1092,12 @@ function detectStateButtonFailures({ state, buttons, context = {} }) {
   }
   failures.push(...detectDeliveryChannelMismatches({ buttons, context }));
   failures.push(...detectDeliveryPrepareResultErrors({ context }));
+  failures.push(...detectResendChannelMismatches({ buttons, context }));
+  failures.push(...detectResendPrepareResultErrors({ context }));
   failures.push(...detectDocumentNavUsesEphemeralToken({ buttons, context }));
   failures.push(...detectDocumentStatusMissingExpectedActions({ state, buttons, context }));
+  failures.push(...detectSentDocumentHidesResend({ state, buttons, context }));
+  failures.push(...detectDownloadedDocumentMissingArtifactAccess({ state, buttons, context }));
   return failures;
 }
 
@@ -1112,7 +1116,7 @@ function contextVisibleText(context = {}) {
 function contextDeliveryIntent(context = {}, buttons = []) {
   const confirmationButtons = buttons.filter((button) => {
     const action = String(button.action || button.token_record?.action || "").toUpperCase();
-    return action.includes("DELIVERY_CONFIRM");
+    return action.includes("DELIVERY_CONFIRM") || action.includes("DELIVERY_FORCE");
   });
   const values = [
     context.action,
@@ -1154,6 +1158,7 @@ function isDeliveryPrepareOrConfirmContext(context = {}, buttons = []) {
   ].map((value) => String(value || "").toUpperCase()).join(" ");
   return actionText.includes("DELIVERY_PREPARE")
     || actionText.includes("DELIVERY_CONFIRM")
+    || actionText.includes("DELIVERY_FORCE")
     || actionText.includes("DOCUMENT_DELIVERY_CONFIRM")
     || String(context.route || "").startsWith("sandbox.documents.delivery.prepare");
 }
@@ -1188,6 +1193,66 @@ function detectDeliveryPrepareResultErrors({ context = {} }) {
     return [failure("DELIVERY_PREPARE_SHOWS_RESULT_ERROR", "Delivery prepare screen rendered result error or technical state", { action, route: route || null })];
   }
   return [];
+}
+
+function isResendPrepareOrConfirmContext(context = {}, buttons = []) {
+  const actionText = [
+    context.action,
+    context.callback_action,
+    context.requested_action,
+    context.screen_id,
+    context.route,
+    context.delivery_intent,
+    context.handle?.action,
+    context.handle?.callback_action,
+    context.handle?.screen_id,
+    context.handle?.delivery_intent,
+    context.handle?.resend,
+    context.handle?.action_token?.action,
+    context.handle?.action_token?.payload?.delivery_intent,
+    context.summary?.action,
+    context.summary?.screen_id,
+    context.plan?.action,
+  ].map((value) => String(value || "").toUpperCase()).join(" ");
+  const text = normalizedTextBlock(contextVisibleText(context));
+  const buttonText = buttons.map((button) => normalizedButtonText(button)).join(" ");
+  return actionText.includes("DELIVERY_FORCE")
+    || actionText.includes("RESEND")
+    || actionText.includes("REENVIO")
+    || actionText.includes("REENVIO")
+    || text.includes("reenvio")
+    || text.includes("reenviar")
+    || buttonText.includes("reenvio")
+    || buttonText.includes("reenviar");
+}
+
+function detectResendPrepareResultErrors({ context = {} }) {
+  if (!isResendPrepareOrConfirmContext(context)) return [];
+  const rawText = contextVisibleText(context);
+  const text = normalizedTextBlock(rawText);
+  const technicalReason = /motivo:\s*(ready|token_valid|guard_ok|pending)\b/i.test(rawText);
+  if (text.includes("no se pudo enviar") || technicalReason) {
+    return [failure("RESEND_PREPARE_SHOWS_SEND_ERROR", "Resend prepare screen rendered send error or technical state", { action: contextActionName(context) })];
+  }
+  return [];
+}
+
+function detectResendChannelMismatches({ buttons = [], context = {} }) {
+  if (!isResendPrepareOrConfirmContext(context, buttons)) return [];
+  const text = normalizedTextBlock(contextVisibleText(context));
+  if (!text) return [];
+  const intent = contextDeliveryIntent(context, buttons);
+  if (intent.wantsChannel && intent.wantsEmail) return [];
+  const mentionsCorreo = /\bcorreo\b|\bemail\b/.test(text);
+  const mentionsCanal = /\bcanal\b|\btelegram\b/.test(text);
+  const failures = [];
+  if (intent.wantsChannel && mentionsCorreo && !mentionsCanal) {
+    failures.push(failure("RESEND_CHANNEL_MISMATCH", "Resend channel action rendered email confirmation text", { expected: "TELEGRAM_DOCUMENT_CHANNEL" }));
+  }
+  if (intent.wantsEmail && mentionsCanal && !mentionsCorreo) {
+    failures.push(failure("RESEND_CHANNEL_MISMATCH", "Resend email action rendered channel confirmation text", { expected: "PROVIDER_EMAIL" }));
+  }
+  return failures;
 }
 
 function isDocumentNavContext(context = {}) {
@@ -1337,6 +1402,41 @@ function isDocumentStatusScreen(context = {}) {
   return action === "DOCUMENT_STATUS_DETAIL" || String(context.screen_id || context.handle?.screen_id || context.summary?.screen_id || "").toUpperCase() === "DOCUMENT_STATUS_DETAIL";
 }
 
+function isDocumentOperationalDetailSurface(context = {}) {
+  const action = contextActionName(context);
+  const screenId = String(context.screen_id || context.handle?.screen_id || context.summary?.screen_id || "").toUpperCase();
+  return ["DOCUMENT_DETAIL", "DOCUMENT_STATUS_DETAIL", "INVOICE_DETAIL"].includes(action)
+    || ["DOCUMENT_DETAIL", "DOCUMENT_STATUS_DETAIL", "INVOICE_DETAIL"].includes(screenId);
+}
+
+function buttonIsInitialDelivery(button = {}) {
+  const text = normalizedButtonText(button);
+  const action = String(button.action || button.token_record?.action || "").toUpperCase();
+  return action.includes("DELIVERY_PREPARE") || /^enviar\b/.test(text);
+}
+
+function buttonIsResendEmail(button = {}) {
+  const text = normalizedButtonText(button);
+  const action = String(button.action || button.token_record?.action || "").toUpperCase();
+  return action === "DELIVERY_FORCE_PROVIDER_EMAIL" || (text.includes("reenviar") && (text.includes("correo") || text.includes("email")));
+}
+
+function buttonIsResendChannel(button = {}) {
+  const text = normalizedButtonText(button);
+  const action = String(button.action || button.token_record?.action || "").toUpperCase();
+  return action === "DELIVERY_FORCE_TELEGRAM_CHANNEL" || (text.includes("reenviar") && (text.includes("canal") || text.includes("telegram")));
+}
+
+function buttonHasArtifactAccess(button = {}) {
+  const text = normalizedButtonText(button);
+  const action = String(button.action || button.token_record?.action || "").toUpperCase();
+  return action === "DOWNLOAD_SANDBOX_ARTIFACTS"
+    || text.includes("descargar xml/pdf")
+    || text.includes("re-descargar xml/pdf")
+    || text.includes("redescargar xml/pdf")
+    || text.includes("ver documentos");
+}
+
 function detectDocumentStatusMissingExpectedActions({ state = {}, buttons = [], context = {} }) {
   if (!isDocumentStatusScreen(context)) return [];
   const failures = [];
@@ -1360,14 +1460,32 @@ function detectDocumentStatusMissingExpectedActions({ state = {}, buttons = [], 
   if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOADED" && !deliverySent) {
     if (!hasEmail || !hasChannel) failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "DOWNLOADED pending document status missing delivery actions", { artifact_status: artifactStatus }));
   }
-  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOADED" && deliverySent && hasDelivery) {
-    failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "Sent/protected document status shows duplicate delivery actions", { artifact_status: artifactStatus }));
+  if (invoiceStatus === "SANDBOX_TIMBRADO" && artifactStatus === "DOWNLOADED" && deliverySent && buttons.some(buttonIsInitialDelivery)) {
+    failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "Sent/protected document status shows initial delivery actions", { artifact_status: artifactStatus }));
   }
   if (/DOWNLOAD_ERROR|ERROR|FAILED|FAIL/.test(artifactStatus)) {
     if (hasDelivery) failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "DOWNLOAD_ERROR document status shows delivery as ready", { artifact_status: artifactStatus }));
     if (!hasDownload && !labels.includes("ultimo resultado")) failures.push(failure("DOCUMENT_STATUS_MISSING_EXPECTED_ACTIONS", "DOWNLOAD_ERROR document status missing retry or last-result action", { artifact_status: artifactStatus }));
   }
   return failures;
+}
+
+function detectSentDocumentHidesResend({ state = {}, buttons = [], context = {} }) {
+  if (!isDocumentOperationalDetailSurface(context)) return [];
+  const invoiceStatus = String(state.invoice_status || context.invoice_status || context.handle?.invoice_status || "").toUpperCase();
+  const artifactStatus = String(state.artifact_status || context.artifact_status || context.handle?.artifact_status || "").toUpperCase();
+  if (invoiceStatus !== "SANDBOX_TIMBRADO" || artifactStatus !== "DOWNLOADED" || !isDeliveryAlreadySentState(state, context)) return [];
+  if (buttons.some(buttonIsResendEmail) && buttons.some(buttonIsResendChannel)) return [];
+  return [failure("SENT_DOCUMENT_HIDES_RESEND", "Sent/protected document detail hides explicit resend actions", { draft_id: state.draft_id || context.draft_id || null })];
+}
+
+function detectDownloadedDocumentMissingArtifactAccess({ state = {}, buttons = [], context = {} }) {
+  if (!isDocumentOperationalDetailSurface(context)) return [];
+  const invoiceStatus = String(state.invoice_status || context.invoice_status || context.handle?.invoice_status || "").toUpperCase();
+  const artifactStatus = String(state.artifact_status || context.artifact_status || context.handle?.artifact_status || "").toUpperCase();
+  if (invoiceStatus !== "SANDBOX_TIMBRADO" || artifactStatus !== "DOWNLOADED") return [];
+  if (buttons.some(buttonHasArtifactAccess)) return [];
+  return [failure("DOWNLOADED_DOCUMENT_MISSING_ARTIFACT_ACCESS", "Downloaded document detail missing XML/PDF access action", { draft_id: state.draft_id || context.draft_id || null })];
 }
 
 function normalizedButtonText(button = {}) {
@@ -1398,8 +1516,10 @@ function buttonMatchesAction(button = {}, action) {
     return text.includes("descargar") && text.includes("xml") && text.includes("pdf");
   }
   if (expected === "DELIVERY_STATUS") return text.includes("estado documental");
-  if (expected === "DELIVERY_PREPARE_TELEGRAM_CHANNEL") return text.includes("enviar") && (text.includes("canal") || text.includes("documentos"));
-  if (expected === "DELIVERY_PREPARE_PROVIDER_EMAIL") return text.includes("enviar") && (text.includes("correo") || text.includes("email") || text.includes("documentos"));
+  if (expected === "DELIVERY_PREPARE_TELEGRAM_CHANNEL") return !text.includes("reenviar") && text.includes("enviar") && (text.includes("canal") || text.includes("documentos"));
+  if (expected === "DELIVERY_PREPARE_PROVIDER_EMAIL") return !text.includes("reenviar") && text.includes("enviar") && (text.includes("correo") || text.includes("email") || text.includes("documentos"));
+  if (expected === "DELIVERY_FORCE_TELEGRAM_CHANNEL") return text.includes("reenviar") && (text.includes("canal") || text.includes("telegram"));
+  if (expected === "DELIVERY_FORCE_PROVIDER_EMAIL") return text.includes("reenviar") && (text.includes("correo") || text.includes("email"));
   return false;
 }
 
