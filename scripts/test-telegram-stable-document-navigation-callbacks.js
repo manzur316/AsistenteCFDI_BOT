@@ -370,7 +370,10 @@ check("28_callback_viejo_real_recupera_seguro", () => {
     },
     provider_invoice_links: [downloadReady],
   });
-  assert(["CALLBACK_TOKEN_INVALID", "DOCUMENT_ACTION_BLOCKED", "CALLBACK_TOKEN_CONTEXT_RECOVERED"].includes(result.action), result.action);
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
+  assert(buttonTexts(result).includes("Descargar XML/PDF sandbox"), buttonTexts(result).join(","));
+  assert.strictEqual(result.json_debug?.token_recovered_to_document_detail, true);
+  assert.strictEqual(result.json_debug?.action_executed, false);
   assert.notStrictEqual(result.action, "NEEDS_CONFIRM_DRAFT");
 });
 check("29_message_libre_desde_documentos_abre_wizard", () => {

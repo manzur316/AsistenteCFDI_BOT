@@ -363,9 +363,10 @@ check("20_callback_expirado_documentos_muestra_recuperacion", () => {
     screenId: "DOCUMENTS_RECENT_LIST",
   }));
   assert.strictEqual(result.source_kind, "CALLBACK_QUERY");
-  assert(["CALLBACK_TOKEN_INVALID", "CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
+  assert(["DOCUMENT_DETAIL", "CALLBACK_TOKEN_INVALID", "CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
+  assert.notStrictEqual(result.action, "NEEDS_CONFIRM_DRAFT");
   const labels = buttonTexts(result).join(",");
-  assert(/Documentos/.test(labels) && /Facturas/.test(labels) && /Menu principal|Men[uú] principal/.test(labels), labels);
+  assert(/Documentos|Volver a Documentos/.test(labels) && /Facturas/.test(labels) && /Menu principal|Men[u??] principal/.test(labels), labels);
 });
 check("21_callback_usado_facturas_muestra_recuperacion", () => {
   const result = executeCode(handleCode, recoveryCallbackInput({
@@ -377,7 +378,8 @@ check("21_callback_usado_facturas_muestra_recuperacion", () => {
     expiresAt: "2099-01-01T00:00:00.000Z",
   }));
   assert.strictEqual(result.source_kind, "CALLBACK_QUERY");
-  assert(["CALLBACK_TOKEN_INVALID", "CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
+  assert(["INVOICE_DETAIL", "DOCUMENT_DETAIL", "CALLBACK_TOKEN_INVALID", "CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(result.action), result.action);
+  assert.notStrictEqual(result.action, "NEEDS_CONFIRM_DRAFT");
 });
 check("22_callback_invalido_no_inicia_wizard", () => {
   const result = executeCode(handleCode, baseInput("cfdi:missingtoken", {

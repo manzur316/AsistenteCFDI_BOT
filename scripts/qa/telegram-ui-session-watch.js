@@ -1012,6 +1012,7 @@ function shouldAuditDraftStateButtons(context = {}, buttons = []) {
   const action = String(context.action || "").toUpperCase();
   const responseText = String(context.handle?.telegram_message || context.summary?.telegram_message || context.dispatch_plan?.telegram_message || context.plan?.telegram_message || "");
   if (/No encontre ese borrador/i.test(responseText)) return false;
+  if (isNonActionableCallbackRecoveryContext(context)) return false;
   if (route.startsWith("sandbox.")) return true;
   if ([
     "COMMAND_DETALLE",
@@ -1055,6 +1056,25 @@ function shouldAuditDraftStateButtons(context = {}, buttons = []) {
     "MARK_PAYMENT_OVERDUE",
   ]);
   return (buttons || []).some((button) => draftSpecificActions.has(String(button.action || "").toUpperCase()));
+}
+
+function isNonActionableCallbackRecoveryContext(context = {}) {
+  const action = String(context.action || "").toUpperCase();
+  if (!["CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_USED_RECOVERY"].includes(action)) return false;
+  const handle = context.handle || {};
+  const summary = context.summary || {};
+  const screenKind = String(firstNonEmpty(handle.screen_kind, handle.json_debug?.screen_kind, summary.screen_kind, summary.json_debug?.screen_kind) || "").toUpperCase();
+  const screenId = String(firstNonEmpty(handle.screen_id, handle.json_debug?.screen_id, summary.screen_id, summary.json_debug?.screen_id) || "").toUpperCase();
+  const actionExecutedSignals = [
+    handle.action_executed,
+    handle.json_debug?.action_executed,
+    handle.json_debug?.callback_lifecycle?.action_executed,
+    summary.action_executed,
+    summary.json_debug?.action_executed,
+    summary.json_debug?.callback_lifecycle?.action_executed,
+  ];
+  const actionExplicitlyNotExecuted = actionExecutedSignals.some((value) => value === false || String(value).toLowerCase() === "false");
+  return actionExplicitlyNotExecuted || ["NOTICE", "RECOVERY"].includes(screenKind) || ["DOCUMENT_ACTION_BLOCKED", "CALLBACK_TOKEN_RECOVERY", "RECOVERY"].includes(screenId);
 }
 
 function detectStateButtonFailures({ state, buttons, context = {} }) {

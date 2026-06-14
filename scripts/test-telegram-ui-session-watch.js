@@ -160,6 +160,40 @@ check("classifies CALLBACK_TOKEN_CONTEXT_RECOVERED", () => {
   return result.event.draft_id;
 });
 
+check("does not audit non-actionable callback recovery as document detail", () => {
+  const draftId = "DRAFT-WATCH-RECOVERY-NOTICE";
+  const sample = execution({
+    id: "exec-recovery-notice",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:02.000Z",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      chat_id: "6573879494",
+      action: "CALLBACK_TOKEN_CONTEXT_RECOVERED",
+      draft_id: draftId,
+      telegram_message: "El boton de Documentos vencio.\nNo se ejecuto ninguna accion nueva.",
+      json_debug: {
+        callback_reason: "token_expirado",
+        screen_id: "DOCUMENT_ACTION_BLOCKED",
+        screen_kind: "NOTICE",
+        action_executed: false,
+      },
+    },
+    plan: {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "Documentos", callback_data: "cfdi_nav:docs" }],
+          [{ text: "Menu principal", callback_data: "cfdi_nav:menu" }],
+        ],
+      },
+    },
+  });
+  const result = classify(sample, dbMock({ draftRow: draft(draftId, "SANDBOX_TIMBRADO", "DOWNLOAD_READY") }));
+  const codes = failureCodes(result);
+  assert(!codes.includes("DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON"), codes.join(","));
+  return "recovery notice skipped";
+});
+
 check("detects DOWNLOAD_READY without DOWNLOAD_SANDBOX_ARTIFACTS", () => {
   const codes = detectStateButtonFailures({
     state: { draft_id: "DRAFT-WATCH-001", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOAD_READY" },

@@ -278,14 +278,16 @@ check("confirmar_descarga_planea_action_existente", () => {
 
 check("token_descarga_usado_no_duplica", () => {
   const result = executeCode(handleCode, documentCallbackInput("docdownused01", "DOWNLOAD_SANDBOX_ARTIFACTS", downloadable, { used_at: "2026-01-01T00:00:00.000Z" }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
+  assert(buttonTexts(result).includes("Descargar XML/PDF sandbox"), buttonTexts(result).join(","));
   assert(!result.should_execute_sandbox_action);
 });
 
 check("token_descarga_expirado_falla_seguro", () => {
   const result = executeCode(handleCode, documentCallbackInput("docdownexp001", "DOWNLOAD_SANDBOX_ARTIFACTS", downloadable, { expires_at: "2000-01-01T00:00:00.000Z" }));
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
+  assert(buttonTexts(result).includes("Descargar XML/PDF sandbox"), buttonTexts(result).join(","));
   assert(!result.should_execute_sandbox_action);
-  assert(/vencio|invalido|expir/i.test(result.telegram_message));
 });
 
 check("descarga_bloqueada_sin_identidad_proveedor", () => {
@@ -406,14 +408,16 @@ check("confirmar_envio_canal_usa_action_token", () => {
 
 check("token_envio_usado_no_duplica", () => {
   const result = executeCode(handleCode, documentCallbackInput("docsendused01", "DELIVERY_CONFIRM_PROVIDER_EMAIL", downloaded, { downloaded: true, used_at: "2026-01-01T00:00:00.000Z" }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
+  assert(buttonTexts(result).includes("Enviar por correo"), buttonTexts(result).join(","));
   assert(!result.should_execute_sandbox_action);
 });
 
 check("token_envio_expirado_falla_seguro", () => {
   const result = executeCode(handleCode, documentCallbackInput("docsendexp001", "DELIVERY_CONFIRM_PROVIDER_EMAIL", downloaded, { downloaded: true, expires_at: "2000-01-01T00:00:00.000Z" }));
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
+  assert(buttonTexts(result).includes("Enviar por correo"), buttonTexts(result).join(","));
   assert(!result.should_execute_sandbox_action);
-  assert(/vencio|invalido|expir/i.test(result.telegram_message));
 });
 
 check("envio_duplicado_responde_protegido", () => {

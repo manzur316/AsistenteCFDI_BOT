@@ -768,6 +768,19 @@ Watcher/classifier:
 
 Siguiente QA runtime requerida: repetir QA runtime corta de Cobranza con `/cobranza`, `facturas N`, `pagar N`, confirmacion y regreso a pendientes.
 
+## 15.12 Nota correctiva - Token recovery documental
+
+Se endurecio la recuperacion de callbacks tokenizados heredados en Documentos:
+
+- La navegacion normal de Documentos sigue usando callbacks estables `cfdi_doc:*`; no debe entrar al resolver de `cfdi:<token>`.
+- Si un boton documental viejo tokenizado ya vencio o fue usado, pero su payload conserva `draft_id` o `provider_invoice_link_id`, el bot reconstruye `DOCUMENT_DETAIL` actual con botones frescos en vez de mostrar una recuperacion generica.
+- La recuperacion a detalle no ejecuta accion sensible: no descarga, no envia, no timbra y no marca pagos. Solo refresca la superficie documental.
+- Tokens sensibles siguen existiendo para confirmar descarga, confirmar envio/reenvio y confirmar pago local.
+- El watcher ya no exige botones de descarga/envio sobre recuperaciones no accionables con `screen_kind=NOTICE/RECOVERY` o `action_executed=false`; los sigue exigiendo sobre `DOCUMENT_DETAIL`, `INVOICE_DETAIL` y resultados accionables reales.
+- Cobranza conserva la frontera local: la factura puede estar ligada a identidad PAC/proveedor para mostrar folio y auditar, pero `MARK_PAYMENT_PAID` no sincroniza pago con SAT/PAC/proveedor ni emite complemento.
+
+Siguiente QA runtime recomendada: repetir flujo corto con `/documentos`, boton viejo real si queda en pantalla, `Ver N`, `/cobranza`, `pagar N`, `Confirmar pagada` y vista `Ver pagadas`.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

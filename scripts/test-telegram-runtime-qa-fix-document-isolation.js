@@ -573,17 +573,18 @@ check("enviar_99_falla_seguro", () => {
 
 check("token_usado_recupera_documentos_sin_duplicar", () => {
   const result = executeCode(handleCode, documentCallbackInput("docusedqa001", "DOWNLOAD_SANDBOX_ARTIFACTS", downloadable, { used_at: "2026-01-01T00:00:00.000Z", update_id: 99628 }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
-  assert.strictEqual(result.should_execute_sandbox_action, undefined);
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
+  assert(!result.should_execute_sandbox_action);
   assertNoForbiddenDocumentButtons(result);
   assert(!result.telegram_message.includes("DRAFT-"), result.telegram_message);
 });
 
 check("token_vencido_recupera_documentos_sin_duplicar", () => {
   const result = executeCode(handleCode, documentCallbackInput("docexpired001", "DELIVERY_CONFIRM_PROVIDER_EMAIL", downloaded, { downloaded: true, expires_at: "2000-01-01T00:00:00.000Z", update_id: 99629 }));
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
   assert(!result.should_execute_sandbox_action);
   assertNoForbiddenDocumentButtons(result);
-  assert(result.telegram_message.includes("Documentos"), result.telegram_message);
+  assert(buttonTexts(result).includes("Volver a Documentos"), buttonTexts(result).join(","));
 });
 
 check("facturas_sigue_funcionando", () => {

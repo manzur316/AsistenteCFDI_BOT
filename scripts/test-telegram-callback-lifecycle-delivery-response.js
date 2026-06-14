@@ -150,13 +150,13 @@ check("delivery_action_summary_builds_document_result", () => {
 
 check("delivery_token_used_recovers_with_document_keyboard", () => {
   const result = executeCode(handleCode, documentCallbackInput("delcycleused", "DELIVERY_CONFIRM_PROVIDER_EMAIL", link, { used_at: "2026-01-01T00:00:00.000Z" }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
   assert(!result.should_execute_sandbox_action);
   const labels = buttonTexts(result.reply_markup).join(",");
-  assert(labels.includes("Documentos"), labels);
+  assert(labels.includes("Volver a Documentos"), labels);
   assert(labels.includes("Facturas"), labels);
   assert(labels.includes("Menu principal"), labels);
-  assert(labels.includes("Ayuda"), labels);
+  assert(labels.includes("Enviar por correo"), labels);
   assert(!labels.includes("Marcar pagada"), labels);
   assert(!labels.includes("Ver factura"), labels);
   assert(!labels.includes("Crear nuevo borrador"), labels);

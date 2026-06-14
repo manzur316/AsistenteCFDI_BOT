@@ -35,6 +35,8 @@ It also must not emit a complemento de pago.
 
 The payment record is still linked to the provider/PAC invoice identity by `provider_invoice_link_id`, provider folio/serie, and short safe display ids. That link is for lookup and audit only; it is not a provider payment synchronization.
 
+Runtime note: if a payment confirmation appears to fail, first distinguish token validity from provider sync. `MARK_PAYMENT_PAID` must validate a fresh `COLLECTION_PAYMENT_CONFIRM` token and then update local fields only. A missing PAC/provider payment update is expected behavior in this slice, not a failure.
+
 ## Visible Identity
 
 Cobranza uses the same invoice identity contract as Facturas:

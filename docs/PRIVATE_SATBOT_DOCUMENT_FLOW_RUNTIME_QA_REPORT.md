@@ -643,6 +643,36 @@ node scripts/test-telegram-post-stamp-success-download-cta.js
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
 
+## 25. Actualizacion correctiva - Token recovery documental estable
+
+Se corrigio el caso observado en watcher donde una pantalla `DOCUMENTS_RECENT_LIST` seguida por un callback tokenizado viejo terminaba como `CALLBACK_TOKEN_CONTEXT_RECOVERED` y el watcher lo marcaba como `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON`.
+
+Decision tecnica:
+
+- `cfdi_doc:*` es navegacion estable y se resuelve antes de `cfdi:<token>`.
+- `cfdi:<token>` queda para acciones sensibles o confirmables.
+- Si un token documental viejo esta usado/vencido pero trae contexto suficiente (`draft_id`, `provider_invoice_link_id`, `source_module=DOCUMENTS`), la recuperacion reconstruye `DOCUMENT_DETAIL` actual con botones frescos.
+- Esa recuperacion no ejecuta accion sensible y queda marcada con `action_executed=false`.
+- El watcher no audita pantallas no accionables de recuperacion como si fueran detalle documental; si el detalle real no muestra descarga/envio esperado, sigue rompiendo.
+
+Cobranza revisada durante este correctivo:
+
+- `pagar N` / `pagarN` abren confirmacion `MARK_PAYMENT_PAID`.
+- `Confirmar pagada` persiste estado local y conserva `provider_update=false` / `pac_update=false`.
+- La identidad visible de Cobranza usa folio/identidad proveedor cuando existe.
+- El enlace PAC/proveedor es de identidad y auditoria; no implica sincronizar pago con PAC, SAT o Factura.com.
+
+Validacion offline principal:
+
+```text
+node scripts/test-telegram-stable-document-navigation-callbacks.js
+node scripts/test-telegram-ui-session-watch.js
+node scripts/test-telegram-collection-payment-local-state-and-provider-boundary.js
+node scripts/test-telegram-callback-lifecycle-delivery-response.js
+```
+
+Veredicto: requiere repetir QA runtime corta sin watcher interactivo continuo: `/documentos`, `Ver N`, callback viejo real si existe, `/cobranza`, `pagar N`, confirmacion y vista de pagadas.
+
 ## 24. Actualizacion Slice 9R 2.4L
 
 Se corrigio el caso watcher `DOWNLOADED_MISSING_DELIVERY_BUTTON` observado despues de una descarga exitosa:

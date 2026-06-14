@@ -347,10 +347,10 @@ check("recuperacion_token_usado_documentos_no_muestra_borradores", () => {
       },
     }),
   }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
   assert(!/Factura: Factura/i.test(result.telegram_message), result.telegram_message);
   assert(!/Documento: Documento/i.test(result.telegram_message), result.telegram_message);
-  assert(buttonTexts(result).includes("Documentos"), buttonTexts(result).join("|"));
+  assert(buttonTexts(result).includes("Volver a Documentos"), buttonTexts(result).join("|"));
   assert(buttonTexts(result).includes("Facturas"), buttonTexts(result).join("|"));
   assertNoDraftRecoveryButtons(result);
 });
@@ -369,8 +369,8 @@ check("recuperacion_token_expirado_documentos_no_muestra_borradores", () => {
       },
     }),
   }));
-  assert.strictEqual(result.action, "CALLBACK_TOKEN_CONTEXT_RECOVERED");
-  assert(buttonTexts(result).includes("Documentos"), buttonTexts(result).join("|"));
+  assert.strictEqual(result.action, "DOCUMENT_DETAIL");
+  assert(buttonTexts(result).includes("Volver a Documentos"), buttonTexts(result).join("|"));
   assertNoDraftRecoveryButtons(result);
 });
 
