@@ -234,7 +234,7 @@ function assertNoLiteralEscapedLineBreaks(result) {
 
 function assertNoButtonsWithoutHandler(result) {
   for (const callback of callbackDataList(result)) {
-    assert(/^(cfdi:|cfdi_nav:|cfdi_sbx:)/.test(callback), callback);
+    assert(/^(cfdi:|cfdi_nav:|cfdi_sbx:|cfdi_doc:)/.test(callback), callback);
   }
 }
 

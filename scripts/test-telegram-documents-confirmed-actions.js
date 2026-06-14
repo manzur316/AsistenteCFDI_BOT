@@ -546,7 +546,7 @@ check("cobranza_sigue_funcionando", () => {
 
 check("sin_botones_sin_handler", () => {
   const result = executeCode(handleCode, baseInput("ver 1", { provider_invoice_links: [downloaded], update_id: 99222 }));
-  callbackDataList(result).forEach((callbackData) => assert(callbackData.startsWith("cfdi_nav:") || callbackData.startsWith("cfdi:"), callbackData));
+  callbackDataList(result).forEach((callbackData) => assert(callbackData.startsWith("cfdi_nav:") || callbackData.startsWith("cfdi_doc:") || callbackData.startsWith("cfdi:"), callbackData));
   assert(handleCode.includes("DOCUMENT_DOWNLOAD_PREPARE"));
   assert(handleCode.includes("DOCUMENT_DELIVERY_PREPARE_PROVIDER_EMAIL"));
   assert(handleCode.includes("DELIVERY_CONFIRM_PROVIDER_EMAIL"));

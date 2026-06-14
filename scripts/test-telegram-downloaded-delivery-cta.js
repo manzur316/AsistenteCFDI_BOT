@@ -427,7 +427,7 @@ check("regresiones_basicas_siguen_funcionando_y_sin_html_crudo", () => {
 check("no_hay_botones_sin_handler_obvios_en_post_descarga", () => {
   const result = runSummaryFromSource(downloadResultSource(downloaded), downloadedStdout(downloaded));
   for (const callbackData of callbackDataList(result)) {
-    assert(callbackData === "cfdi_nav:docs" || callbackData === "cfdi_nav:menu" || callbackData.startsWith("cfdi:"), callbackData);
+    assert(callbackData === "cfdi_nav:docs" || callbackData === "cfdi_nav:menu" || callbackData === "cfdi_nav:invoices" || callbackData === "cfdi_nav:help" || callbackData.startsWith("cfdi:") || callbackData.startsWith("cfdi_doc:"), callbackData);
   }
 });
 

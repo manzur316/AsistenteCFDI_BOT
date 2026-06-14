@@ -678,6 +678,27 @@ Watcher/classifier:
 
 Siguiente QA runtime requerida: repetir una QA corta con texto libre desde Documentos, texto libre desde Facturas, callback viejo real y flujo documental de confirmacion.
 
+## 15.8 Nota Slice 9R 2.4P
+
+Se estabilizo la navegacion normal del contenedor `/documentos`:
+
+- La navegacion documental usa callbacks estables `cfdi_doc:*`.
+- Tokens efimeros `cfdi:<token>` quedan reservados para acciones sensibles o confirmables: confirmar descarga, confirmar envio por correo, confirmar envio a canal y confirmaciones mutantes.
+- `Ver N`, filtros (`Recientes`, `Pendientes/listos`, `Descargados`, `Enviados`, `Errores`) y paginacion (`Mas documentos`) ya no dependen de `action_tokens`.
+- `/documentos` debe ser operable sin caer en `CALLBACK_TOKEN_INVALID` ni `CALLBACK_TOKEN_CONTEXT_RECOVERED` para botones recien emitidos.
+- `DOCUMENT_DETAIL` usa callbacks estables para volver, ver estado documental y preparar descarga/envio; los botones finales de confirmacion siguen tokenizados.
+- `Ver N` resuelve contra `chat_state.context.list_context` y abre `DOCUMENT_DETAIL`; si la lista ya no existe, muestra una recuperacion humana para abrir Documentos.
+- Los filtros y la paginacion crean una lista nueva y guardan un `list_context` nuevo.
+- Cobranza queda fuera de alcance funcional; no se modifican pagos ni confirmaciones de pago.
+
+Watcher/classifier:
+
+- `DOC_NAV_CALLBACK_INVALID` rompe si navegacion documental vigente cae en recuperacion de token.
+- `DOCUMENT_NAV_USES_EPHEMERAL_TOKEN` rompe si botones normales de navegacion documental usan `cfdi:<token>`.
+- No se marca este bug para tokens sensibles de confirmacion vencidos/usados.
+
+Siguiente QA runtime requerida: repetir QA runtime de Documentos sin tocar flujos nuevos, enfocada en lista, filtros, paginacion, `Ver N` y callback viejo real.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

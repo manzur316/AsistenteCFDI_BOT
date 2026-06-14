@@ -211,7 +211,7 @@ function assertNoUnsafeInvoiceIdentity(result) {
 
 function assertCallbacksHandled(result) {
   for (const callback of callbackDataList(result)) {
-    assert(/^cfdi:[A-Za-z0-9_-]{12,40}$/.test(callback) || /^cfdi_nav:[a-z0-9_:-]+$/.test(callback), callback);
+    assert(/^cfdi:[A-Za-z0-9_-]{12,40}$/.test(callback) || /^cfdi_nav:[a-z0-9_:-]+$/.test(callback) || /^cfdi_doc:[a-z0-9_:-]+$/.test(callback), callback);
   }
 }
 

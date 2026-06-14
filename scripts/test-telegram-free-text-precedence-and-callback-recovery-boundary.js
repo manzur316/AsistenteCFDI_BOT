@@ -312,7 +312,7 @@ function assertNoUnsafeUx(result) {
 
 function assertNoButtonsWithoutHandler(result) {
   for (const callbackData of callbackDataList(result)) {
-    assert(/^cfdi:|^cfdi_nav:|^cfdi_sbx:/.test(callbackData), callbackData);
+    assert(/^cfdi:|^cfdi_nav:|^cfdi_sbx:|^cfdi_doc:/.test(callbackData), callbackData);
   }
 }
 

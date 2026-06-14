@@ -455,6 +455,34 @@ node scripts/test-telegram-ui-session-watch.js
 
 Veredicto documental post-fix: requiere repetir QA runtime corta con texto libre desde Documentos, texto libre desde Facturas, callback viejo real y flujo documental de confirmacion. No se ejecuto watcher interactivo en este slice correctivo.
 
+## 28. Actualizacion Slice 9R 2.4P
+
+Se estabilizo la navegacion del contenedor `/documentos`:
+
+- Los botones normales de Documentos usan callbacks estables `cfdi_doc:*`.
+- `Ver N`, filtros y paginacion no usan `action_tokens` ni callbacks `cfdi:<token>`.
+- Los tokens se conservan solo para acciones sensibles: `DOWNLOAD_SANDBOX_ARTIFACTS`, `DELIVERY_CONFIRM_PROVIDER_EMAIL`, `DELIVERY_CONFIRM_TELEGRAM_CHANNEL` y pagos confirmables.
+- `cfdi_doc:view:N` abre `DOCUMENT_DETAIL` usando el `list_context` vigente.
+- `cfdi_doc:filter:*` abre una lista nueva y guarda un nuevo `list_context`.
+- `cfdi_doc:page:N` pagina sin pasar por el resolver de tokens.
+- `DOCUMENT_DETAIL` usa callbacks estables para `Ver estado documental`, `Volver a Documentos`, preparar descarga y preparar envio; las confirmaciones finales siguen tokenizadas.
+- `/documentos` debe ser operable sin `CALLBACK_TOKEN_INVALID` ni `CALLBACK_TOKEN_CONTEXT_RECOVERED` para botones recien emitidos.
+- Cobranza queda fuera de alcance funcional; no se agregaron mutaciones de pago, PAC, XML/PDF reales, envios reales ni cancelacion.
+
+Watcher/classifier actualizado:
+
+- `DOC_NAV_CALLBACK_INVALID` detecta navegacion documental que cae en recuperacion de token.
+- `DOCUMENT_NAV_USES_EPHEMERAL_TOKEN` detecta botones normales de navegacion documental con `cfdi:<token>`.
+- El detector no aplica a tokens sensibles de confirmacion expirados/usados.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-stable-document-navigation-callbacks.js
+```
+
+Veredicto documental post-fix: requiere repetir QA runtime de Documentos sin tocar flujos nuevos, cubriendo `/documentos`, filtros, paginacion, `Ver N` y callback viejo real. No se ejecuto watcher interactivo en este slice correctivo.
+
 ## 23. Actualizacion Slice 9R 2.4K
 
 Se corrigio el caso watcher `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON` observado en execution 3498:

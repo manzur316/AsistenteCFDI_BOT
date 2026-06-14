@@ -176,11 +176,12 @@ check("post_stamp_cta_does_not_download_directly", () => {
   assert(result.persistence_sql.includes("'DOWNLOAD_SANDBOX_ARTIFACTS'"));
 });
 
-check("post_stamp_confirmation_has_confirm_and_cancel", () => {
+check("post_stamp_confirmation_has_confirm_and_navigation", () => {
   const result = executeCode(handleCode, postStampTokenInput());
   const labels = buttonTexts(result.reply_markup);
   assert(labels.includes("Confirmar descarga"), labels.join(","));
-  assert(labels.includes("Cancelar"), labels.join(","));
+  assert(labels.includes("Volver a documento"), labels.join(","));
+  assert(labels.includes("Menu principal"), labels.join(","));
 });
 
 check("post_stamp_confirmation_safe_ux", () => {

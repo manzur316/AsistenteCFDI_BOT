@@ -283,6 +283,10 @@ function assertCallbackDataSafe(result) {
       assert(validateTelegramCallbackData(callbackData).ok, `${button.text}: invalid product callback ${callbackData}`);
       assert(!/[A-Z&]{3,4}\d{6}[A-Z0-9]{3}/i.test(callbackData), `${button.text}: RFC in callback`);
       assert(!/DRAFT-|CLI-|Privada|Rivera|81111811|concept|clave|monto|total/i.test(callbackData), `${button.text}: domain data in callback`);
+    } else if (callbackData.startsWith("cfdi_doc:")) {
+      assert(/^cfdi_doc:(view|filter|page|list|back|status|download|email|channel)(?::[a-z0-9_-]+){0,2}$/.test(callbackData), `${button.text}: invalid document callback ${callbackData}`);
+      assert(!/[A-Z&]{3,4}\d{6}[A-Z0-9]{3}/i.test(callbackData), `${button.text}: RFC in callback`);
+      assert(!/DRAFT-|CLI-|Privada|Rivera|81111811|concept|clave|monto|total/i.test(callbackData), `${button.text}: domain data in callback`);
     } else {
       assert(parseCallbackData(callbackData), `${button.text}: invalid token callback ${callbackData}`);
     }

@@ -392,7 +392,7 @@ check("botones_de_facturas_tienen_handler", () => {
   const callbacks = callbackDataList(result);
   assert(callbacks.length > 0);
   for (const callback of callbacks) {
-    assert(/^cfdi:[A-Za-z0-9_-]{12,40}$/.test(callback) || /^cfdi_nav:[a-z0-9_:-]+$/.test(callback), callback);
+    assert(/^cfdi:[A-Za-z0-9_-]{12,40}$/.test(callback) || /^cfdi_nav:[a-z0-9_:-]+$/.test(callback) || /^cfdi_doc:[a-z0-9_:-]+$/.test(callback), callback);
   }
   assert(result.persistence_sql.includes("'VIEW_INVOICE_DETAIL'"));
   return callbacks.length;

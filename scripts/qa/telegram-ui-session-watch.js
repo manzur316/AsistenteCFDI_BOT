@@ -1092,6 +1092,7 @@ function detectStateButtonFailures({ state, buttons, context = {} }) {
   }
   failures.push(...detectDeliveryChannelMismatches({ buttons, context }));
   failures.push(...detectDeliveryPrepareResultErrors({ context }));
+  failures.push(...detectDocumentNavUsesEphemeralToken({ buttons, context }));
   return failures;
 }
 
@@ -1186,6 +1187,87 @@ function detectDeliveryPrepareResultErrors({ context = {} }) {
     return [failure("DELIVERY_PREPARE_SHOWS_RESULT_ERROR", "Delivery prepare screen rendered result error or technical state", { action, route: route || null })];
   }
   return [];
+}
+
+function isDocumentNavContext(context = {}) {
+  const text = [
+    context.action,
+    context.screen_id,
+    context.callback_action,
+    context.handle?.action,
+    context.handle?.screen_id,
+    context.summary?.action,
+    context.summary?.screen_id,
+  ].map((value) => String(value || "").toUpperCase()).join(" ");
+  return text.includes("DOCUMENTS_RECENT_LIST")
+    || text.includes("DOCUMENTS_PENDING_LIST")
+    || text.includes("DOCUMENTS_DOWNLOADED_LIST")
+    || text.includes("DOCUMENTS_SENT_LIST")
+    || text.includes("DOCUMENTS_ERROR_LIST")
+    || text.includes("DOCUMENT_DETAIL");
+}
+
+function isDocumentNavigationButton(button = {}) {
+  const text = normalizedButtonText(button);
+  const callbackData = String(button.callback_data || "").trim();
+  if (callbackData.startsWith("cfdi_doc:") || callbackData === "cfdi_nav:docs") return true;
+  return /^ver \d{1,3}$/.test(text)
+    || text === "recientes"
+    || text === "pendientes/listos"
+    || text === "descargados"
+    || text === "enviados"
+    || text === "errores"
+    || text.startsWith("mas documentos")
+    || text === "volver a documentos"
+    || text === "documentos";
+}
+
+function detectDocumentNavUsesEphemeralToken({ buttons = [], context = {} }) {
+  if (!isDocumentNavContext(context)) return [];
+  const failures = [];
+  for (const button of buttons || []) {
+    const callbackData = String(button.callback_data || "").trim();
+    if (!isDocumentNavigationButton(button)) continue;
+    if (/^cfdi:[A-Za-z0-9_-]+$/.test(callbackData)) {
+      failures.push(failure("DOCUMENT_NAV_USES_EPHEMERAL_TOKEN", "Document navigation button uses ephemeral action token", {
+        text: button.text || "",
+        action: button.action || button.token_record?.action || null,
+      }));
+    }
+  }
+  return failures;
+}
+
+function detectDocumentNavCallbackInvalid(context = {}) {
+  const action = String(context.action || "").trim().toUpperCase();
+  if (!["CALLBACK_TOKEN_INVALID", "CALLBACK_TOKEN_CONTEXT_RECOVERED"].includes(action)) return [];
+  const sourceKind = String(context.source_kind || "").trim().toUpperCase();
+  if (sourceKind && sourceKind !== "CALLBACK_QUERY") return [];
+  const messageText = String(context.message_text || context.handle?.text || "").trim();
+  const tokenAction = String(context.handle?.action_token?.action || context.summary?.action_token?.action || "").trim().toUpperCase();
+  const payload = context.handle?.action_token?.payload || context.summary?.action_token?.payload || {};
+  const payloadModule = String(payload.source_module || payload.sourceModule || "").trim().toUpperCase();
+  const payloadState = [payload.state, payload.screen_id, payload.source_list_kind, payload.return_to]
+    .map((value) => String(value || "").trim().toUpperCase())
+    .join(" ");
+  const docNavTokenAction = [
+    "VIEW_DOCUMENT_DETAIL",
+    "DOCUMENTS_RECENT_PAGE",
+    "DOCUMENTS_PENDING_PAGE",
+    "DOCUMENTS_DOWNLOADED_PAGE",
+    "DOCUMENTS_SENT_PAGE",
+    "DOCUMENTS_ERROR_PAGE",
+    "DOCUMENTS_LIST_RETURN",
+  ].includes(tokenAction);
+  const isDocNav = messageText.startsWith("cfdi_doc:")
+    || docNavTokenAction
+    || (payloadModule === "DOCUMENTS" && (payloadState.includes("DOCUMENTS_") || payloadState.includes("DOCUMENT_DETAIL")));
+  if (!isDocNav) return [];
+  return [failure("DOC_NAV_CALLBACK_INVALID", "Document navigation callback fell into token recovery", {
+    action,
+    callback_data_prefix: messageText.startsWith("cfdi_doc:") ? "cfdi_doc" : messageText.startsWith("cfdi:") ? "cfdi_token" : "",
+    token_action: tokenAction || null,
+  })];
 }
 
 function normalizedButtonText(button = {}) {
@@ -1515,6 +1597,7 @@ function classifyExecution(execution, options = {}) {
   failures = failures.concat(detectTokenFailures({ context, tokens, buttons: visibleButtons }));
   failures = failures.concat(detectDeliveryConfirmTokenInvalidAfterPrepare({ context, counters, handle }));
   failures = failures.concat(detectFreeTextCallbackRecoveryFailures(context));
+  failures = failures.concat(detectDocumentNavCallbackInvalid(context));
   failures = failures.concat(detectPresentationFailures(context));
   failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));

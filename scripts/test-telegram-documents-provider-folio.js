@@ -459,7 +459,7 @@ check("sin_botones_sin_handler", () => {
   const result = executeCode(handleCode, baseInput("/documentos", { update_id: 99141 }));
   const callbacks = callbackDataList(result);
   assert(callbacks.length > 0);
-  callbacks.forEach((callbackData) => assert(callbackData === "cfdi_nav:menu" || callbackData.startsWith("cfdi:"), callbackData));
+  callbacks.forEach((callbackData) => assert(/^cfdi:|^cfdi_nav:|^cfdi_doc:/.test(callbackData), callbackData));
   assert(handleCode.includes("VIEW_DOCUMENT_DETAIL"));
   assert(handleCode.includes("DOCUMENTS_RECENT_PAGE"));
 });
