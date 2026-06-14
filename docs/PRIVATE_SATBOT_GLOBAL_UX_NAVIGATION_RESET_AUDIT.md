@@ -636,6 +636,28 @@ Watcher/classifier:
 
 Nueva QA runtime documental requerida: repetir una navegacion corta sin smokes live, sin watcher interactivo durante el fix, sin timbrado nuevo, sin descargas reales y sin envios reales.
 
+## 15.6 Nota Slice 9R 2.4N
+
+Se reparo el ciclo de confirmacion de entrega documental posterior a descarga:
+
+- La preparacion `DELIVERY_PREPARE_PROVIDER_EMAIL` y `DELIVERY_PREPARE_TELEGRAM_CHANNEL` ahora genera tokens de confirmacion con `screen_id=DOCUMENT_DELIVERY_CONFIRM`, `source_capability=DOCUMENT_DELIVERY`, `requested_channel`, `draft_id`, referencia proveedor suficiente, `return_to`, `created_at` y `expires_at`.
+- `PREPARE` no consume el token de confirmacion; el token se consume solo al confirmar.
+- El guard de confirmacion acepta la capacidad `DOCUMENT_DELIVERY` y la pantalla `DOCUMENT_DELIVERY_CONFIRM`; ya no depende de venir exclusivamente desde `/documentos`.
+- `Enviar por correo` confirma con `DELIVERY_CONFIRM_PROVIDER_EMAIL` y `requested_channel=PROVIDER_EMAIL`.
+- `Enviar a canal` confirma con `DELIVERY_CONFIRM_TELEGRAM_CHANNEL` y `requested_channel=TELEGRAM_DOCUMENT_CHANNEL`.
+- La preparacion sigue siendo una pantalla de confirmacion, no un resultado de error: no debe renderizar `No se pudo enviar`, `Motivo: READY`, `TOKEN_VALID`, `GUARD_OK` ni `PENDING`.
+- Las ramas de error/recuperacion documental renderizan saltos reales y no `\n` literal.
+- La navegacion basica (`Documentos`, `Facturas`, `Menu principal`, `Volver a documento`, `Volver a Documentos`, `Ver estado documental`) conserva callback estable o token vigente.
+- Cobranza funcional queda fuera de alcance y no se modifica.
+
+Watcher/classifier:
+
+- `DELIVERY_CHANNEL_MISMATCH` aplica solo a preparaciones/confirmaciones de entrega, no a pantallas post-descarga o detalle que muestran ambos canales correctamente.
+- `DELIVERY_PREPARE_SHOWS_RESULT_ERROR` rompe si una preparacion se renderiza como resultado fallido.
+- `DELIVERY_CONFIRM_TOKEN_INVALID_AFTER_PREPARE` rompe si un token de confirmacion recien generado cae en `DOCUMENT_ACTION_BLOCKED` sin estar usado ni expirado.
+
+Siguiente QA runtime requerida: repetir QA runtime documental corta enfocada en post-descarga, confirmacion por correo y confirmacion a canal, sin watcher interactivo durante el fix.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

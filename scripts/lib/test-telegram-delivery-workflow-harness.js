@@ -116,11 +116,29 @@ function prepareStdout(channel, overrides = {}) {
 function callbackInput(token, action, overrides = {}) {
   const draft = overrides.draft || sandboxStampedDraft(overrides.draft_id);
   const draftId = draft.draft_id;
+  const normalizedAction = String(action || "").toUpperCase();
+  const isDeliveryConfirm = normalizedAction.startsWith("DELIVERY_CONFIRM_");
+  const isDeliveryForce = normalizedAction.startsWith("DELIVERY_FORCE_");
+  const isDeliveryAction = isDeliveryConfirm || isDeliveryForce;
+  const isDownloadAction = normalizedAction === "DOWNLOAD_SANDBOX_ARTIFACTS";
+  const channel = overrides.channel || (String(action).includes("PROVIDER_EMAIL") ? "PROVIDER_EMAIL" : "TELEGRAM_DOCUMENT_CHANNEL");
+  const defaultState = isDeliveryAction
+    ? "DOCUMENT_DELIVERY_CONFIRM"
+    : isDownloadAction
+      ? "DOCUMENT_DOWNLOAD_CONFIRM"
+      : undefined;
   const payload = {
-    state: "SANDBOX_DOCUMENT_DELIVERY_CONFIRM",
+    ...(defaultState ? { state: defaultState, screen_id: defaultState } : {}),
     action,
     draft_id: draftId,
-    channel: overrides.channel || (String(action).includes("PROVIDER_EMAIL") ? "PROVIDER_EMAIL" : "TELEGRAM_DOCUMENT_CHANNEL"),
+    ...(isDeliveryAction || isDownloadAction ? {
+      channel,
+      requested_channel: channel,
+      source_module: "DOCUMENTS",
+      source_capability: isDeliveryAction ? "DOCUMENT_DELIVERY" : "DOCUMENT_DOWNLOAD",
+      display_id: overrides.display_id || "F-TEST",
+      provider_invoice_link_id: overrides.provider_invoice_link_id || "PIL-TEST",
+    } : {}),
     confirmation_required: true,
     force: String(action).includes("FORCE"),
   };

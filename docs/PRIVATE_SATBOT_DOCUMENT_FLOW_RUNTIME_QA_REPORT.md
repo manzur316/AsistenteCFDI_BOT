@@ -396,6 +396,38 @@ Confirmacion de alcance:
 
 Veredicto documental post-fix: requiere nueva QA runtime documental corta enfocada en post-timbrado, post-descarga, `INVOICE_DETAIL`, `DOCUMENT_DETAIL`, confirmacion por correo y confirmacion a canal.
 
+## 26. Actualizacion Slice 9R 2.4N
+
+Se reparo el bloqueo `DOCUMENT_ACTION_BLOCKED` observado al tocar un boton de confirmacion recien generado despues de preparar entrega:
+
+- La confirmacion de entrega ahora usa el contrato `DOCUMENT_DELIVERY_CONFIRM`.
+- El token de confirmacion generado por preparacion incluye `source_capability=DOCUMENT_DELIVERY`, `screen_id=DOCUMENT_DELIVERY_CONFIRM`, `requested_channel`, `draft_id`, referencia proveedor/local suficiente, `display_id`, `return_to`, `created_at` y `expires_at`.
+- `DELIVERY_PREPARE_*` no marca como usado el token de confirmacion. El consumo queda en `DELIVERY_CONFIRM_PROVIDER_EMAIL` o `DELIVERY_CONFIRM_TELEGRAM_CHANNEL`.
+- El guard de confirmacion valida token vigente, accion esperada, canal coherente, factura `SANDBOX_TIMBRADO`, XML/PDF descargados y referencia proveedor/local suficiente.
+- Confirmar desde post-descarga, factura detalle o documento detalle es valido porque el origen viaja en `return_to`; `screen_id` permanece en `DOCUMENT_DELIVERY_CONFIRM`.
+- `Enviar por correo` prepara copy de correo y confirma con `requested_channel=PROVIDER_EMAIL`.
+- `Enviar a canal` prepara copy de canal y confirma con `requested_channel=TELEGRAM_DOCUMENT_CHANNEL`.
+- La preparacion no renderiza `No se pudo enviar`, `Motivo: READY`, `TOKEN_VALID`, `GUARD_OK` ni `PENDING`.
+- Las ramas de error y recuperacion documental renderizan saltos reales, no `\n` literal.
+- La navegacion estable (`Documentos`, `Facturas`, `Menu principal`, `Volver a documento`, `Volver a Documentos`, `Ver estado documental`) no debe nacer vencida.
+- Cobranza funcional, pagos, cancelacion, complemento de pago y sincronizacion de pago con PAC/proveedor no fueron modificados.
+
+Watcher/classifier actualizado:
+
+- `DELIVERY_CHANNEL_MISMATCH` se limita a `DOCUMENT_DELIVERY_CONFIRM`, `DELIVERY_PREPARE_PROVIDER_EMAIL` y `DELIVERY_PREPARE_TELEGRAM_CHANNEL`.
+- No aplica en `DOCUMENT_DOWNLOAD_RESULT`, `DOCUMENT_DETAIL` ni `INVOICE_DETAIL` cuando muestran correctamente ambos botones de envio.
+- `DELIVERY_PREPARE_SHOWS_RESULT_ERROR` cubre preparaciones con copy de resultado fallido o motivos tecnicos.
+- `DELIVERY_CONFIRM_TOKEN_INVALID_AFTER_PREPARE` detecta un confirm token fresco que cae en bloqueo sin estar usado ni expirado.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-delivery-confirm-token-validity-and-error-render.js
+node scripts/test-telegram-ui-session-watch.js
+```
+
+Veredicto documental post-fix: requiere repetir QA runtime documental corta enfocada en post-descarga, confirmacion por correo, confirmacion a canal y recuperacion de error sin `\n` literal. No se ejecuto watcher interactivo en este slice correctivo.
+
 ## 23. Actualizacion Slice 9R 2.4K
 
 Se corrigio el caso watcher `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON` observado en execution 3498:

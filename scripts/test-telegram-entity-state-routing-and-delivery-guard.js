@@ -191,13 +191,15 @@ function documentTokenInput(action, link, options = {}) {
   const screen = options.screen_id || (isDownload ? "DOCUMENT_DOWNLOAD_CONFIRM" : isDelivery ? "DOCUMENT_DELIVERY_CONFIRM" : "DOCUMENT_DETAIL");
   return tokenInput(action, {
     source_module: options.source_module || "DOCUMENTS",
+    source_capability: options.source_capability || (isDownload ? "DOCUMENT_DOWNLOAD" : isDelivery ? "DOCUMENT_DELIVERY" : undefined),
     screen_id: screen,
     state: screen,
     draft_id: options.omit_draft_id ? undefined : link.draft_id,
     provider_invoice_link_id: options.provider_invoice_link_id === undefined ? link.provider_invoice_link_id : options.provider_invoice_link_id,
     display_id: options.display_id || link.provider_folio || "FAC-SBX-test",
-    return_to: "DOCUMENT_DETAIL",
+    return_to: options.return_to || (isDelivery && screen !== "DOCUMENT_DELIVERY_CONFIRM" ? screen : "DOCUMENT_DETAIL"),
     channel: options.channel || (String(action).includes("TELEGRAM") ? "TELEGRAM_DOCUMENT_CHANNEL" : "PROVIDER_EMAIL"),
+    requested_channel: options.requested_channel || options.channel || (String(action).includes("TELEGRAM") ? "TELEGRAM_DOCUMENT_CHANNEL" : "PROVIDER_EMAIL"),
     confirmation_required: options.confirmation_required === undefined ? true : options.confirmation_required,
   }, {
     link,
@@ -331,7 +333,7 @@ check("menu_siempre_abre_main_menu", () => {
 });
 
 check("delivery_permitido_desde_invoice_detail_capability_surface", () => {
-  const result = executeCode(handleCode, documentTokenInput("DELIVERY_CONFIRM_PROVIDER_EMAIL", downloadedLink, { source_module: "INVOICE_DETAIL", screen_id: "INVOICE_DETAIL", token: "delbadsource1" }));
+  const result = executeCode(handleCode, documentTokenInput("DELIVERY_CONFIRM_PROVIDER_EMAIL", downloadedLink, { source_module: "INVOICES", screen_id: "DOCUMENT_DELIVERY_CONFIRM", return_to: "INVOICE_DETAIL", token: "delbadsource1" }));
   assert.strictEqual(result.action, "DOCUMENT_DELIVERY_RESULT");
   assert.strictEqual(result.should_execute_sandbox_action, true);
   assert.strictEqual(result.requested_sandbox_action, "sandbox.documents.delivery.send");
@@ -366,7 +368,7 @@ check("delivery_permitido_solo_desde_confirmacion_documents_valida", () => {
 });
 
 check("delivery_confirm_desde_invoice_detail_ejecuta_con_token_vigente", () => {
-  const result = executeCode(handleCode, documentTokenInput("DELIVERY_CONFIRM_PROVIDER_EMAIL", downloadedLink, { source_module: "INVOICE_DETAIL", screen_id: "INVOICE_DETAIL", token: "delinvoice001" }));
+  const result = executeCode(handleCode, documentTokenInput("DELIVERY_CONFIRM_PROVIDER_EMAIL", downloadedLink, { source_module: "INVOICES", screen_id: "DOCUMENT_DELIVERY_CONFIRM", return_to: "INVOICE_DETAIL", token: "delinvoice001" }));
   assert.strictEqual(result.action, "DOCUMENT_DELIVERY_RESULT");
   assert.strictEqual(result.should_execute_sandbox_action, true);
 });

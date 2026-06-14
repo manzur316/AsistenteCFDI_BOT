@@ -202,8 +202,10 @@ function documentCallbackInput(token, action, link, options = {}) {
     provider_invoice_link_id: link.provider_invoice_link_id,
     display_id: link.provider_folio || "F66",
     source_module: "DOCUMENTS",
+    source_capability: normalizedAction.includes("DELIVERY") ? "DOCUMENT_DELIVERY" : "DOCUMENT_DOWNLOAD",
     return_to: "DOCUMENT_DETAIL",
     channel: options.channel || (String(action).includes("TELEGRAM") ? "TELEGRAM_DOCUMENT_CHANNEL" : "PROVIDER_EMAIL"),
+    requested_channel: options.channel || (String(action).includes("TELEGRAM") ? "TELEGRAM_DOCUMENT_CHANNEL" : "PROVIDER_EMAIL"),
     confirmation_required: true,
     ...(options.payload || {}),
   };

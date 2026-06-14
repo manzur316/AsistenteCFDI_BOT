@@ -367,6 +367,23 @@ check("detects delivery channel mismatch", () => {
   return codes.length;
 });
 
+check("does not detect delivery channel mismatch on post-download screen with both buttons", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-BOTH-CHANNELS", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
+    buttons: [
+      { action: "DELIVERY_PREPARE_PROVIDER_EMAIL", text: "Enviar por correo" },
+      { action: "DELIVERY_PREPARE_TELEGRAM_CHANNEL", text: "Enviar a canal" },
+      { action: "DELIVERY_STATUS", text: "Ver estado documental" },
+    ],
+    context: {
+      action: "DOCUMENT_DOWNLOAD_RESULT",
+      telegram_message: "XML/PDF descargados\n\nEnviar por correo\nEnviar a canal",
+    },
+  }).map((item) => item.code);
+  assert(!codes.includes("DELIVERY_CHANNEL_MISMATCH"));
+  return "post-download both channels accepted";
+});
+
 check("detects delivery prepare rendered as result error", () => {
   const codes = detectStateButtonFailures({
     state: { draft_id: "DRAFT-WATCH-PREP-ERROR", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
@@ -379,6 +396,59 @@ check("detects delivery prepare rendered as result error", () => {
   }).map((item) => item.code);
   assert(codes.includes("DELIVERY_PREPARE_SHOWS_RESULT_ERROR"));
   return codes.length;
+});
+
+check("detects fresh delivery confirm token blocked after prepare", () => {
+  const counters = {};
+  const draftId = "DRAFT-WATCH-FRESH-CONFIRM";
+  const token = tokenRow("FRESHCONFIRM01", "DELIVERY_CONFIRM_PROVIDER_EMAIL", draftId, {
+    created_at: "2026-06-11T12:00:01.000Z",
+  });
+  token.payload = {
+    action: "DELIVERY_CONFIRM_PROVIDER_EMAIL",
+    draft_id: draftId,
+    screen_id: "DOCUMENT_DELIVERY_CONFIRM",
+    source_capability: "DOCUMENT_DELIVERY",
+    requested_channel: "PROVIDER_EMAIL",
+  };
+  classifyWithCounters(execution({
+    id: "exec-fresh-confirm-prep",
+    startedAt: "2026-06-11T12:00:00.000Z",
+    stoppedAt: "2026-06-11T12:00:02.000Z",
+    summary: {
+      action: "PAC_SANDBOX_ACTION_RESULT",
+      sandbox_draft_id: draftId,
+      requested_sandbox_action: "sandbox.documents.delivery.prepare",
+      telegram_message: "Confirmar envio por correo",
+    },
+  }), counters, dbMock({
+    draftRow: draft(draftId, "SANDBOX_TIMBRADO", "DOWNLOADED"),
+    tokens: [token],
+  }));
+  const blocked = classifyWithCounters(execution({
+    id: "exec-fresh-confirm-blocked",
+    startedAt: "2026-06-11T12:00:03.000Z",
+    stoppedAt: "2026-06-11T12:00:04.000Z",
+    handle: {
+      action: "DOCUMENT_ACTION_BLOCKED",
+      json_debug: { callback_action: "DELIVERY_CONFIRM_PROVIDER_EMAIL" },
+      action_token: {
+        token: token.token,
+        action: "DELIVERY_CONFIRM_PROVIDER_EMAIL",
+        draft_id: draftId,
+        payload: token.payload,
+        used_at: null,
+        expires_at: "2099-01-01T00:00:00.000Z",
+      },
+      telegram_message: "No se pudo enviar documentos.\nConfirmacion documental invalida o vencida.",
+    },
+  }), counters, dbMock({
+    draftRow: draft(draftId, "SANDBOX_TIMBRADO", "DOWNLOADED"),
+    tokens: [token],
+  }));
+  const codes = failureCodes(blocked);
+  assert(codes.includes("DELIVERY_CONFIRM_TOKEN_INVALID_AFTER_PREPARE"));
+  return codes.join(",");
 });
 
 check("detects failed Telegram dispatch", () => {

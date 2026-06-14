@@ -759,6 +759,8 @@ function deriveExecutionContext(execution) {
     update_id: updateId || null,
     draft_id: extractDraftIdFromExecution(execution, signals),
     action: action || null,
+    callback_action: firstNonEmpty(handle.callback_action, handle.json_debug?.callback_action, summary.callback_action, summary.json_debug?.callback_action) || null,
+    screen_id: firstNonEmpty(handle.screen_id, handle.json_debug?.screen_id, summary.screen_id, summary.json_debug?.screen_id) || null,
     route: route || null,
     requested_action: firstNonEmpty(handle.requested_action, summary.requested_action, plan.requested_action) || null,
     requested_sandbox_action: firstNonEmpty(handle.requested_sandbox_action, summary.requested_sandbox_action, plan.requested_sandbox_action) || null,
@@ -1105,17 +1107,27 @@ function contextVisibleText(context = {}) {
 }
 
 function contextDeliveryIntent(context = {}, buttons = []) {
+  const confirmationButtons = buttons.filter((button) => {
+    const action = String(button.action || button.token_record?.action || "").toUpperCase();
+    return action.includes("DELIVERY_CONFIRM");
+  });
   const values = [
     context.action,
     context.callback_action,
     context.requested_action,
+    context.screen_id,
+    context.handle?.screen_id,
+    context.summary?.screen_id,
+    context.handle?.json_debug?.callback_action,
     context.handle?.action,
     context.summary?.action,
     context.plan?.action,
     context.channel,
+    context.requested_channel,
     context.handle?.channel,
+    context.handle?.requested_channel,
     context.summary?.channel,
-    ...buttons.flatMap((button) => [button.action, button.token_record?.action, button.text]),
+    ...confirmationButtons.flatMap((button) => [button.action, button.token_record?.action, button.text]),
   ].map((value) => String(value || "").toUpperCase()).join(" ");
   const wantsChannel = values.includes("TELEGRAM_CHANNEL") || values.includes("TELEGRAM_DOCUMENT_CHANNEL") || /\bCANAL\b/.test(values);
   const wantsEmail = values.includes("PROVIDER_EMAIL") || /\bCORREO\b|\bEMAIL\b/.test(values);
@@ -1127,11 +1139,15 @@ function isDeliveryPrepareOrConfirmContext(context = {}, buttons = []) {
     context.action,
     context.callback_action,
     context.requested_action,
+    context.screen_id,
     context.route,
     context.handle?.action,
+    context.handle?.callback_action,
+    context.handle?.screen_id,
+    context.handle?.json_debug?.callback_action,
     context.summary?.action,
+    context.summary?.screen_id,
     context.plan?.action,
-    ...buttons.map((button) => button.action || button.token_record?.action || ""),
   ].map((value) => String(value || "").toUpperCase()).join(" ");
   return actionText.includes("DELIVERY_PREPARE")
     || actionText.includes("DELIVERY_CONFIRM")
@@ -1144,6 +1160,7 @@ function detectDeliveryChannelMismatches({ buttons = [], context = {} }) {
   const text = normalizedTextBlock(contextVisibleText(context));
   if (!text) return [];
   const intent = contextDeliveryIntent(context, buttons);
+  if (intent.wantsChannel && intent.wantsEmail) return [];
   const mentionsCorreo = /\bcorreo\b|\bemail\b/.test(text);
   const mentionsCanal = /\bcanal\b|\btelegram\b/.test(text);
   const failures = [];
@@ -1249,6 +1266,50 @@ function detectTokenFailures({ context, tokens, buttons }) {
     }
   }
   return failures;
+}
+
+function isDeliveryConfirmAction(action = "") {
+  const normalized = String(action || "").toUpperCase();
+  return normalized === "DELIVERY_CONFIRM_PROVIDER_EMAIL" || normalized === "DELIVERY_CONFIRM_TELEGRAM_CHANNEL";
+}
+
+function rememberFreshDeliveryConfirmTokens(counters = {}, tokenChanges = { created: [] }, context = {}) {
+  counters.deliveryConfirmTokens = counters.deliveryConfirmTokens || new Map();
+  const nowMs = Number(context.generated_at_ms) || Date.now();
+  for (const row of tokenChanges.created || []) {
+    if (!isDeliveryConfirmAction(row?.action)) continue;
+    if (!row?.token) continue;
+    if (row.used_at || isExpiredToken(row, nowMs)) continue;
+    counters.deliveryConfirmTokens.set(String(row.token), {
+      token: row.token,
+      action: row.action,
+      draft_id: row.draft_id || row.payload?.draft_id || null,
+      created_at: row.created_at || null,
+      expires_at: row.expires_at || null,
+      used_at: row.used_at || null,
+    });
+  }
+  if (counters.deliveryConfirmTokens.size > 200) {
+    counters.deliveryConfirmTokens = new Map(Array.from(counters.deliveryConfirmTokens.entries()).slice(-200));
+  }
+}
+
+function detectDeliveryConfirmTokenInvalidAfterPrepare({ context = {}, counters = {}, handle = {} }) {
+  const action = String(context.action || handle.action || "").toUpperCase();
+  if (action !== "DOCUMENT_ACTION_BLOCKED") return [];
+  const callbackAction = String(context.callback_action || handle.callback_action || handle.json_debug?.callback_action || "").toUpperCase();
+  if (!isDeliveryConfirmAction(callbackAction)) return [];
+  const token = String(handle.action_token?.token || "").trim();
+  if (!token) return [];
+  const remembered = counters.deliveryConfirmTokens instanceof Map ? counters.deliveryConfirmTokens.get(token) : null;
+  if (!remembered) return [];
+  const nowMs = Number(context.started_at_ms || context.generated_at_ms) || Date.now();
+  if (remembered.used_at || isExpiredToken(remembered, nowMs)) return [];
+  return [failure("DELIVERY_CONFIRM_TOKEN_INVALID_AFTER_PREPARE", "Fresh delivery confirm token was blocked after prepare", {
+    action: callbackAction,
+    draft_id: remembered.draft_id || context.draft_id || null,
+    token: maskToken(token),
+  })];
 }
 
 function detectDispatchFailures({ execution, context, dispatch }) {
@@ -1390,6 +1451,7 @@ function providerEmailFailures({ context, args, ledgerRows, env = process.env, s
 function classifyExecution(execution, options = {}) {
   const counters = options.counters || {};
   const context = deriveExecutionContext(execution);
+  const handle = latestNodeJson(execution, "Handle Commands And Scoring") || {};
   const db = options.db || null;
   const priorDraft = context.draft_id ? options.previousDraftSnapshots?.get(context.draft_id) || null : null;
   const draft = context.draft_id && db ? db.getDraftFull(context.draft_id) : null;
@@ -1416,6 +1478,7 @@ function classifyExecution(execution, options = {}) {
     failures = failures.concat(detectStateButtonFailures({ state, buttons: visibleButtons, context }));
   }
   failures = failures.concat(detectTokenFailures({ context, tokens, buttons: visibleButtons }));
+  failures = failures.concat(detectDeliveryConfirmTokenInvalidAfterPrepare({ context, counters, handle }));
   failures = failures.concat(detectPresentationFailures(context));
   failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));
@@ -1447,6 +1510,7 @@ function classifyExecution(execution, options = {}) {
   if (telegramChannelSent && options.args?.allowTelegramChannelSend !== true) {
     failures.push(warning("TELEGRAM_CHANNEL_SEND_OBSERVED", "Telegram channel send observed without explicit watcher allow flag", { draft_id: context.draft_id }));
   }
+  rememberFreshDeliveryConfirmTokens(counters, tokenChanges, context);
 
   const event = {
     type: failures.some((item) => item.severity === "FAIL") ? "BREAK_DETECTED" : "EXECUTION_OK",

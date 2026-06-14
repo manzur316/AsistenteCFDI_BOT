@@ -25,7 +25,7 @@ function printCheck(item) {
 function assertConfirmRoutes(action, channel) {
   const token = action === "DELIVERY_CONFIRM_PROVIDER_EMAIL" ? "confirmprovider001" : "confirmchannel001";
   const result = executeCode(handleCode, callbackInput(token, action, { channel }));
-  assert.strictEqual(result.action, "DOCUMENT_DELIVERY_ACTION_REQUESTED");
+  assert.strictEqual(result.action, "DOCUMENT_DELIVERY_RESULT");
   assert.strictEqual(result.should_execute_sandbox_action, true);
   assert.strictEqual(result.requested_sandbox_action, "sandbox.documents.delivery.send");
   assert.strictEqual(result.callback_ack_text, "Enviando documentos...");
@@ -54,7 +54,7 @@ check("used_confirm_token_is_not_reused", () => {
   }));
   assert.strictEqual(result.action, "CALLBACK_TOKEN_USED_RECOVERY");
   assert(!String(result.sandbox_execute_command || "").includes("sandbox.documents.delivery.send"), "used token must not execute send");
-  assert(/confirmacion ya fue usada|accion ya fue procesada/i.test(result.telegram_message));
+  assert(/confirmacion ya fue usada|accion(?: de Documentos)? ya fue procesada/i.test(result.telegram_message));
   assert(result.reply_markup?.inline_keyboard?.length > 0, "used confirm token must include recovery buttons");
   return result.action;
 });

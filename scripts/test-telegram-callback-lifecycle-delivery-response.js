@@ -72,10 +72,12 @@ function documentCallbackInput(token, action, link, options = {}) {
     provider_invoice_link_id: link.provider_invoice_link_id,
     display_id: link.provider_folio,
     source_module: "DOCUMENTS",
+    source_capability: "DOCUMENT_DELIVERY",
     source_list_kind: "DOCUMENTS_RECENT",
     return_to: "DOCUMENT_DETAIL",
     page: 1,
     channel: options.channel || "PROVIDER_EMAIL",
+    requested_channel: options.channel || "PROVIDER_EMAIL",
     confirmation_required: true,
   };
   return callbackInput(token, action, {
