@@ -336,6 +336,10 @@ if (handleCode) {
     sandbox_status: "APROBADO",
     sandbox_pac_summary: {
       artifact_status: "DOWNLOAD_READY",
+      folio: "F70",
+      uuid: "12345678-1234-4000-8000-1234567890ab",
+      cfdi_uid: "UID-DL-1",
+      pac_invoice_id: "PACINV-DL-1",
       xml_downloaded: false,
       pdf_downloaded: false,
       xml_content_valid: false,
@@ -389,12 +393,13 @@ if (handleCode) {
         && callbacksSafe(result),
     },
     {
-      name: "detalle_timbrado_download_ready_muestra_documentos_y_no_timbrado",
+      name: "detalle_timbrado_download_ready_muestra_descarga_y_no_timbrado",
       run: () => executeCode(handleCode, baseInput("/detalle DRAFT-SBX-DL-1", { update_id: 93041, recent_drafts: [sandboxDownloadReady] })),
       expect: (result) => {
         const texts = buttonTexts(result);
         return result.action === "COMMAND_DETALLE"
-          && texts.includes("Ver documentos")
+          && texts.includes("Descargar XML/PDF sandbox")
+          && texts.includes("Documentos")
           && !texts.includes("Timbrar sandbox")
           && !texts.includes("Cancelar CFDI sandbox")
           && !texts.includes("Marcar pagada")
@@ -402,15 +407,16 @@ if (handleCode) {
       },
     },
     {
-      name: "detalle_timbrado_downloaded_muestra_documentos_sin_delivery_directo",
+      name: "detalle_timbrado_downloaded_muestra_entrega_con_confirmacion",
       run: () => executeCode(handleCode, baseInput("/detalle DRAFT-SBX-DL-2", { update_id: 93042, recent_drafts: [sandboxDownloaded] })),
       expect: (result) => {
         const texts = buttonTexts(result);
         return result.action === "COMMAND_DETALLE"
-          && texts.includes("Ver documentos")
+          && texts.includes("Enviar por correo")
+          && texts.includes("Enviar a canal")
+          && texts.includes("Ver estado documental")
+          && texts.includes("Documentos")
           && !texts.includes("Timbrar sandbox")
-          && !texts.includes("Enviar por correo")
-          && !texts.includes("Enviar a canal documentos")
           && !texts.includes("Marcar pagada")
           && callbacksSafe(result);
       },

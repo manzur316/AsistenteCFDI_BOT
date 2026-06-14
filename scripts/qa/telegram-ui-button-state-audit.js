@@ -442,7 +442,7 @@ function runAudit() {
     const result = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-DOWNLOAD-READY", { update_id: 88111, recent_drafts: [downloadReady] }));
     assert.strictEqual(result.action, "COMMAND_DETALLE");
     assertVisibleContract(result, {
-      allow: ["Ver documentos", "Volver", "Menu principal"],
+      allow: ["Documentos", "Volver", "Menu principal"],
       forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Enviar por correo", "Enviar a canal documentos", "Cancelar CFDI sandbox", "Marcar pagada"],
     });
   });
@@ -451,8 +451,8 @@ function runAudit() {
     const result = executeCode(handleCode, baseInput("/detalle DRAFT-AUDIT-DOWNLOADED", { update_id: 88112, recent_drafts: [downloaded] }));
     assert.strictEqual(result.action, "COMMAND_DETALLE");
     assertVisibleContract(result, {
-      allow: ["Ver documentos", "Volver", "Menu principal"],
-      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos", "Cancelar CFDI sandbox", "Marcar pagada"],
+      allow: ["Enviar por correo", "Enviar a canal", "Ver estado documental", "Documentos", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Enviar a canal documentos", "Cancelar CFDI sandbox", "Marcar pagada"],
     });
   });
 
@@ -567,7 +567,7 @@ function runAudit() {
     }));
     assert.strictEqual(result.action, "PAC_SANDBOX_ACTION_RESULT");
     assertVisibleContract(result, {
-      allow: ["Confirmar envio canal", "Ver estado documental", "Cancelar"],
+      allow: ["Confirmar envio a canal", "Ver estado documental", "Volver a documento", "Menu principal"],
       forbid: ["Enviar a canal documentos", "Enviar por correo"],
       sqlIncludes: ["DELIVERY_CONFIRM_TELEGRAM_CHANNEL"],
       sqlExcludes: ["sandbox.documents.delivery.send"],
@@ -694,8 +694,8 @@ function runAudit() {
     }));
     assert.strictEqual(result.action, "INVOICE_DETAIL");
     assertVisibleContract(result, {
-      allow: ["Ver documentos", "Volver", "Menu principal"],
-      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Ver estado documental", "Enviar por correo", "Enviar a canal documentos"],
+      allow: ["Enviar por correo", "Enviar a canal", "Ver estado documental", "Documentos", "Menu principal"],
+      forbid: ["Timbrar sandbox", "Descargar XML/PDF sandbox", "Enviar a canal documentos"],
     });
   });
 

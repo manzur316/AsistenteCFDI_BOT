@@ -283,7 +283,16 @@ check("factura_timbrada_no_muestra_pipes", () => assert(!invoiceFromViewDraft().
 check("factura_timbrada_no_muestra_botones_pago", () => assertNoForbiddenLabels(invoiceFromViewDraft(), ["Marcar pagada", "Marcar parcial", "Marcar vencida"]));
 check("factura_timbrada_no_muestra_cancelar_cfdi", () => assertNoForbiddenLabels(invoiceFromViewDraft(), ["Cancelar CFDI sandbox", "Cancelar"]));
 check("factura_timbrada_no_muestra_ledger_cliente", () => assertNoForbiddenLabels(invoiceFromViewDraft(), ["Ver ledger cliente", "Resumen cobranza"]));
-check("factura_timbrada_no_muestra_envio_directo", () => assertNoForbiddenLabels(invoiceFromViewDraft(), ["Enviar por correo", "Enviar a canal"]));
+check("factura_timbrada_descargada_muestra_envio_con_confirmacion", () => {
+  const result = invoiceFromViewDraft();
+  const labels = buttonTexts(result);
+  assert(labels.includes("Enviar por correo"), labels.join(","));
+  assert(labels.includes("Enviar a canal"), labels.join(","));
+  assert(String(result.persistence_sql || "").includes("DOCUMENT_DELIVERY_PREPARE_PROVIDER_EMAIL"));
+  assert(String(result.persistence_sql || "").includes("DOCUMENT_DELIVERY_PREPARE_TELEGRAM_CHANNEL"));
+  assert(!String(result.persistence_sql || "").includes("DELIVERY_CONFIRM_PROVIDER_EMAIL"), "invoice detail must prepare, not send directly");
+  assert(!String(result.persistence_sql || "").includes("DELIVERY_CONFIRM_TELEGRAM_CHANNEL"), "invoice detail must prepare, not send directly");
+});
 
 check("sandbox_inv_draft_no_aparece_como_display_id", () => {
   const result = executeCode(handleCode, baseInput("/facturas", { provider_invoice_links: [noIdentityLink], recent_drafts: [noIdentityDraft] }));
@@ -321,10 +330,11 @@ check("menu_siempre_abre_main_menu", () => {
   assert.strictEqual(result.action, "PRODUCT_MENU_MAIN");
 });
 
-check("delivery_bloqueado_si_source_module_no_documents", () => {
+check("delivery_permitido_desde_invoice_detail_capability_surface", () => {
   const result = executeCode(handleCode, documentTokenInput("DELIVERY_CONFIRM_PROVIDER_EMAIL", downloadedLink, { source_module: "INVOICE_DETAIL", screen_id: "INVOICE_DETAIL", token: "delbadsource1" }));
-  assert.strictEqual(result.action, "DOCUMENT_ACTION_BLOCKED");
-  assert(!result.should_execute_sandbox_action);
+  assert.strictEqual(result.action, "DOCUMENT_DELIVERY_RESULT");
+  assert.strictEqual(result.should_execute_sandbox_action, true);
+  assert.strictEqual(result.requested_sandbox_action, "sandbox.documents.delivery.send");
 });
 
 check("delivery_bloqueado_si_token_viene_de_draft_detail", () => {
@@ -355,9 +365,10 @@ check("delivery_permitido_solo_desde_confirmacion_documents_valida", () => {
   assert.strictEqual(result.requested_sandbox_action, "sandbox.documents.delivery.send");
 });
 
-check("delivery_no_se_ejecuta_desde_invoice_detail", () => {
-  const result = executeCode(handleCode, documentTokenInput("DELIVERY_CONFIRM_PROVIDER_EMAIL", downloadedLink, { source_module: "INVOICE_DETAIL", screen_id: "INVOICE_DETAIL", token: "delinvoice1" }));
-  assert(!result.should_execute_sandbox_action);
+check("delivery_confirm_desde_invoice_detail_ejecuta_con_token_vigente", () => {
+  const result = executeCode(handleCode, documentTokenInput("DELIVERY_CONFIRM_PROVIDER_EMAIL", downloadedLink, { source_module: "INVOICE_DETAIL", screen_id: "INVOICE_DETAIL", token: "delinvoice001" }));
+  assert.strictEqual(result.action, "DOCUMENT_DELIVERY_RESULT");
+  assert.strictEqual(result.should_execute_sandbox_action, true);
 });
 
 check("download_bloqueado_si_source_module_no_documents", () => {

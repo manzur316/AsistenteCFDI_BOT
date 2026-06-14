@@ -482,7 +482,7 @@ check("enviar_99_falla_seguro", () => {
 check("document_detail_muestra_descargar_si_estado_permite", () => {
   const result = executeCode(handleCode, baseInput("ver 1", { provider_invoice_links: [downloadable], update_id: 99214 }));
   assert.strictEqual(result.action, "DOCUMENT_DETAIL");
-  assert(buttonTexts(result).includes("Descargar XML/PDF"), buttonTexts(result).join(","));
+  assert(buttonTexts(result).includes("Descargar XML/PDF sandbox"), buttonTexts(result).join(","));
   assert(!buttonTexts(result).includes("Enviar por correo"), buttonTexts(result).join(","));
 });
 
@@ -544,7 +544,7 @@ check("cobranza_sigue_funcionando", () => {
 
 check("sin_botones_sin_handler", () => {
   const result = executeCode(handleCode, baseInput("ver 1", { provider_invoice_links: [downloaded], update_id: 99222 }));
-  callbackDataList(result).forEach((callbackData) => assert(callbackData === "cfdi_nav:menu" || callbackData.startsWith("cfdi:"), callbackData));
+  callbackDataList(result).forEach((callbackData) => assert(callbackData.startsWith("cfdi_nav:") || callbackData.startsWith("cfdi:"), callbackData));
   assert(handleCode.includes("DOCUMENT_DOWNLOAD_PREPARE"));
   assert(handleCode.includes("DOCUMENT_DELIVERY_PREPARE_PROVIDER_EMAIL"));
   assert(handleCode.includes("DELIVERY_CONFIRM_PROVIDER_EMAIL"));

@@ -314,6 +314,16 @@ check("allows DOWNLOADED document detail with tokenized delivery text", () => {
   return "document detail accepted";
 });
 
+check("detects DOWNLOADED invoice detail missing delivery buttons", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-INVOICE-DETAIL", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
+    buttons: [{ text: "Ver estado documental", callback_data_present: true }],
+    context: { action: "INVOICE_DETAIL" },
+  }).map((item) => item.code);
+  assert(codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
+  return codes.length;
+});
+
 check("does not require delivery buttons on downloaded document list", () => {
   const codes = detectStateButtonFailures({
     state: { draft_id: "DRAFT-WATCH-DOC-LIST", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
@@ -342,6 +352,33 @@ check("allows delivery confirmation surface without full delivery menu", () => {
   }).map((item) => item.code);
   assert(!codes.includes("DOWNLOADED_MISSING_DELIVERY_BUTTON"));
   return "delivery surface allowed";
+});
+
+check("detects delivery channel mismatch", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-MISMATCH", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
+    buttons: [{ action: "DELIVERY_CONFIRM_TELEGRAM_CHANNEL", text: "Confirmar envio a canal" }],
+    context: {
+      action: "DOCUMENT_DELIVERY_CONFIRM",
+      telegram_message: "Confirmar envio por correo\n\nDestino: correo del cliente/proveedor configurado",
+    },
+  }).map((item) => item.code);
+  assert(codes.includes("DELIVERY_CHANNEL_MISMATCH"));
+  return codes.length;
+});
+
+check("detects delivery prepare rendered as result error", () => {
+  const codes = detectStateButtonFailures({
+    state: { draft_id: "DRAFT-WATCH-PREP-ERROR", invoice_status: "SANDBOX_TIMBRADO", artifact_status: "DOWNLOADED" },
+    buttons: [{ action: "DELIVERY_CONFIRM_PROVIDER_EMAIL", text: "Confirmar envio por correo" }],
+    context: {
+      route: "sandbox.documents.delivery.prepare",
+      action: "DELIVERY_PREPARE_PROVIDER_EMAIL",
+      telegram_message: "No se pudo enviar\n\nMotivo: READY",
+    },
+  }).map((item) => item.code);
+  assert(codes.includes("DELIVERY_PREPARE_SHOWS_RESULT_ERROR"));
+  return codes.length;
 });
 
 check("detects failed Telegram dispatch", () => {

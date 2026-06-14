@@ -985,7 +985,7 @@ function isDownloadedDeliveryExpectedSurface(context = {}) {
   const action = contextActionName(context);
   const route = String(context.route || "").trim();
   if (route.startsWith("sandbox.documents.delivery.")) return false;
-  return action === "DOCUMENT_DOWNLOAD_RESULT" || action === "DOCUMENT_DETAIL";
+  return action === "DOCUMENT_DOWNLOAD_RESULT" || action === "DOCUMENT_DETAIL" || action === "INVOICE_DETAIL";
 }
 
 function isDeliveryAlreadySentState(state = {}, context = {}) {
@@ -1087,11 +1087,100 @@ function detectStateButtonFailures({ state, buttons, context = {} }) {
   if (legacyStatus !== "APROBADO" && (invoiceStatus === "BORRADOR" || legacyStatus === "PENDIENTE") && has("STAMP_DRAFT_SANDBOX")) {
     failures.push(failure("DRAFT_BEFORE_APPROVAL_SHOWS_STAMP", "Draft before approval shows stamp", { draft_id: state.draft_id }));
   }
+  failures.push(...detectDeliveryChannelMismatches({ buttons, context }));
+  failures.push(...detectDeliveryPrepareResultErrors({ context }));
   return failures;
+}
+
+function contextVisibleText(context = {}) {
+  return [
+    context.telegram_message,
+    context.message,
+    context.text,
+    context.handle?.telegram_message,
+    context.summary?.telegram_message,
+    context.dispatch_plan?.telegram_message,
+    context.plan?.telegram_message,
+  ].map((value) => String(value || "")).filter(Boolean).join("\n");
+}
+
+function contextDeliveryIntent(context = {}, buttons = []) {
+  const values = [
+    context.action,
+    context.callback_action,
+    context.requested_action,
+    context.handle?.action,
+    context.summary?.action,
+    context.plan?.action,
+    context.channel,
+    context.handle?.channel,
+    context.summary?.channel,
+    ...buttons.flatMap((button) => [button.action, button.token_record?.action, button.text]),
+  ].map((value) => String(value || "").toUpperCase()).join(" ");
+  const wantsChannel = values.includes("TELEGRAM_CHANNEL") || values.includes("TELEGRAM_DOCUMENT_CHANNEL") || /\bCANAL\b/.test(values);
+  const wantsEmail = values.includes("PROVIDER_EMAIL") || /\bCORREO\b|\bEMAIL\b/.test(values);
+  return { wantsChannel, wantsEmail };
+}
+
+function isDeliveryPrepareOrConfirmContext(context = {}, buttons = []) {
+  const actionText = [
+    context.action,
+    context.callback_action,
+    context.requested_action,
+    context.route,
+    context.handle?.action,
+    context.summary?.action,
+    context.plan?.action,
+    ...buttons.map((button) => button.action || button.token_record?.action || ""),
+  ].map((value) => String(value || "").toUpperCase()).join(" ");
+  return actionText.includes("DELIVERY_PREPARE")
+    || actionText.includes("DELIVERY_CONFIRM")
+    || actionText.includes("DOCUMENT_DELIVERY_CONFIRM")
+    || String(context.route || "").startsWith("sandbox.documents.delivery.prepare");
+}
+
+function detectDeliveryChannelMismatches({ buttons = [], context = {} }) {
+  if (!isDeliveryPrepareOrConfirmContext(context, buttons)) return [];
+  const text = normalizedTextBlock(contextVisibleText(context));
+  if (!text) return [];
+  const intent = contextDeliveryIntent(context, buttons);
+  const mentionsCorreo = /\bcorreo\b|\bemail\b/.test(text);
+  const mentionsCanal = /\bcanal\b|\btelegram\b/.test(text);
+  const failures = [];
+  if (intent.wantsChannel && mentionsCorreo && !mentionsCanal) {
+    failures.push(failure("DELIVERY_CHANNEL_MISMATCH", "Delivery channel action rendered email confirmation text", { expected: "TELEGRAM_DOCUMENT_CHANNEL" }));
+  }
+  if (intent.wantsEmail && mentionsCanal && !mentionsCorreo) {
+    failures.push(failure("DELIVERY_CHANNEL_MISMATCH", "Delivery email action rendered channel confirmation text", { expected: "PROVIDER_EMAIL" }));
+  }
+  return failures;
+}
+
+function detectDeliveryPrepareResultErrors({ context = {} }) {
+  const route = String(context.route || "").trim();
+  const action = contextActionName(context);
+  const isPrepare = route.startsWith("sandbox.documents.delivery.prepare") || action.includes("DELIVERY_PREPARE") || action === "DOCUMENT_DELIVERY_CONFIRM";
+  if (!isPrepare) return [];
+  const rawText = contextVisibleText(context);
+  const text = normalizedTextBlock(rawText);
+  const technicalReason = /motivo:\s*(ready|token_valid|guard_ok|pending)\b/i.test(rawText);
+  if (text.includes("no se pudo enviar") || technicalReason) {
+    return [failure("DELIVERY_PREPARE_SHOWS_RESULT_ERROR", "Delivery prepare screen rendered result error or technical state", { action, route: route || null })];
+  }
+  return [];
 }
 
 function normalizedButtonText(button = {}) {
   return String(button.text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizedTextBlock(value = "") {
+  return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()

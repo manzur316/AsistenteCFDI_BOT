@@ -435,10 +435,10 @@ check("lista_cliente_no_muestra_boton_ver_documentos", () => {
   return "list buttons";
 });
 
-check("detalle_muestra_boton_ver_documentos_sin_descargar", () => {
+check("detalle_muestra_boton_documentos_sin_descargar", () => {
   const rows = [providerLink()];
   const result = executeCode(handleCode, baseInput("ver 1", { update_id: 99049, chat_state: invoiceListState("INVOICES_RECENT", rows) }));
-  assert(buttonTexts(result).includes("Ver documentos"));
+  assert(buttonTexts(result).includes("Documentos"));
   assert(callbackDataList(result).includes("cfdi_nav:docs"));
   assert(!/DOWNLOAD_SANDBOX_ARTIFACTS|sendDocument/i.test(String(result.persistence_sql || "")));
   return "docs placeholder";

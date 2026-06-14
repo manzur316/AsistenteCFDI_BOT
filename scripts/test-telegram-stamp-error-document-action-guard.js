@@ -121,7 +121,7 @@ check("stamp_requested_without_final_ok_has_no_document_actions", () => {
   return result.action;
 });
 
-check("download_ready_stamped_invoice_can_route_to_documents", () => {
+check("download_ready_stamped_invoice_can_download_or_route_to_documents", () => {
   const source = executeCode(handleCode, callbackInput("stamperror004", "STAMP_DRAFT_SANDBOX", {
     draft: approvedDraft({
       invoice_status: "SANDBOX_TIMBRADO",
@@ -140,7 +140,10 @@ check("download_ready_stamped_invoice_can_route_to_documents", () => {
   assert.strictEqual(source.action, "CALLBACK_TOKEN_USED_RECOVERY");
   assert(/Factura: F68/.test(source.telegram_message), source.telegram_message);
   const labels = buttonTexts(source.reply_markup);
-  assert(labels.includes("Ver documentos"), labels.join(", "));
+  assert(labels.includes("Descargar XML/PDF sandbox"), labels.join(", "));
+  assert(labels.includes("Documentos"), labels.join(", "));
+  assert(!labels.includes("Enviar por correo"), labels.join(", "));
+  assert(!labels.includes("Enviar a canal"), labels.join(", "));
   return labels.join(", ");
 });
 
@@ -162,7 +165,10 @@ check("downloaded_invoice_does_not_show_duplicate_primary_download", () => {
   }));
   const labels = buttonTexts(source.reply_markup);
   assert(!labels.includes("Descargar XML/PDF sandbox"), labels.join(", "));
-  assert(labels.includes("Ver documentos"), labels.join(", "));
+  assert(labels.includes("Enviar por correo"), labels.join(", "));
+  assert(labels.includes("Enviar a canal"), labels.join(", "));
+  assert(labels.includes("Ver estado documental"), labels.join(", "));
+  assert(labels.includes("Documentos"), labels.join(", "));
   return labels.join(", ");
 });
 

@@ -603,6 +603,39 @@ Se completo la superficie posterior a descarga documental:
 
 Nueva QA runtime documental requerida: repetir descarga controlada y verificar que el siguiente paso natural sea preparar entrega o revisar estado documental.
 
+## 15.5 Nota Slice 9R 2.4M
+
+Se corrigio la navegacion documental rota detectada por video. La decision de arquitectura queda ajustada: las acciones documentales pertenecen a la factura timbrada, no exclusivamente al modulo `/documentos`.
+
+Superficies validas para iniciar o confirmar capacidades documentales:
+
+- `POST_STAMP_DOWNLOAD_READY`
+- `POST_DOWNLOAD_DELIVERY_READY`
+- `INVOICE_DETAIL`
+- `DOCUMENT_DETAIL`
+- `DOCUMENT_DOWNLOAD_CONFIRM`
+- `DOCUMENT_DELIVERY_CONFIRM`
+
+Reglas actualizadas:
+
+- `/documentos` es una entrada de consulta y operacion, no el unico origen autorizado.
+- `INVOICE_DETAIL` y `DOCUMENT_DETAIL` son superficies operativas: muestran descarga si hay `DOWNLOAD_READY`, envio por correo/canal si XML/PDF estan descargados y solo estado si ya fue enviado/protegido.
+- `Enviar a canal` abre confirmacion de canal y confirma con `DELIVERY_CONFIRM_TELEGRAM_CHANNEL`; no debe renderizar copy ni boton de correo.
+- `Enviar por correo` abre confirmacion de correo y confirma con `DELIVERY_CONFIRM_PROVIDER_EMAIL`; no debe renderizar copy ni boton de canal.
+- La preparacion de entrega renderiza `Confirmar envio...`; `No se pudo enviar` queda reservado para resultado de envio fallido.
+- Estados tecnicos como `READY`, `TOKEN_VALID`, `PENDING` o `GUARD_OK` no son motivos humanos visibles.
+- Botones basicos (`Documentos`, `Facturas`, `Menu principal`, `Volver a documento`, `Volver a Documentos`, `Ayuda`) usan navegacion estable y no deben nacer vencidos.
+- Se retiro el copy obsoleto `No se envian documentos por Telegram en esta fase`.
+- Cobranza, pagos, cancelacion, complemento de pago y sincronizacion de pago con PAC/proveedor quedan fuera de alcance funcional.
+
+Watcher/classifier:
+
+- `DOWNLOADED_MISSING_DELIVERY_BUTTON` aplica solo en `DOCUMENT_DOWNLOAD_RESULT`, `DOCUMENT_DETAIL` e `INVOICE_DETAIL`.
+- No aplica en listas, menus, recuperaciones, Cobranza, ayuda ni confirmaciones de pago.
+- Se agregan detectores para mismatch canal/correo y para preparacion renderizada como error de resultado.
+
+Nueva QA runtime documental requerida: repetir una navegacion corta sin smokes live, sin watcher interactivo durante el fix, sin timbrado nuevo, sin descargas reales y sin envios reales.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

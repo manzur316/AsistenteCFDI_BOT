@@ -338,7 +338,7 @@ check("document_detail_descargado_pendiente_muestra_acciones_envio", () => {
 check("document_detail_download_ready_muestra_descargar_no_enviar", () => {
   const result = executeCode(handleCode, baseInput("ver 1", { provider_invoice_links: [downloadReady], update_id: 100302 }));
   const labels = buttonTexts(result);
-  assert(labels.includes("Descargar XML/PDF"), labels.join(","));
+  assert(labels.includes("Descargar XML/PDF sandbox"), labels.join(","));
   assert(!labels.includes("Enviar por correo"), labels.join(","));
   assert(!labels.includes("Enviar a canal"), labels.join(","));
 });

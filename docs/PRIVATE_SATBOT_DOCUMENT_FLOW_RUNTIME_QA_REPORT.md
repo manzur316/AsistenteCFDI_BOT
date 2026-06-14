@@ -324,6 +324,78 @@ node scripts/test-telegram-ui-button-state-audit.js
 
 Veredicto documental post-fix: requiere nueva QA runtime observacional corta. No se ejecuto watcher en este slice correctivo.
 
+## 25. Actualizacion Slice 9R 2.4M
+
+Se aplico fix correctivo para la navegacion documental rota en preparacion y confirmacion de entrega:
+
+- El guard documental ya no depende exclusivamente de `source_module=DOCUMENTS`.
+- Las acciones documentales se autorizan por capacidad y superficie: `DOCUMENT_DOWNLOAD`, `DOCUMENT_DELIVERY`, `POST_STAMP_DOWNLOAD_READY`, `POST_DOWNLOAD_DELIVERY_READY`, `INVOICE_DETAIL`, `DOCUMENT_DETAIL`, `DOCUMENT_DOWNLOAD_CONFIRM` y `DOCUMENT_DELIVERY_CONFIRM`.
+- `INVOICE_DETAIL` y `DOCUMENT_DETAIL` ahora son superficies operativas: descarga cuando `artifact_status=DOWNLOAD_READY`, envio cuando `DOWNLOADED + xml=true + pdf=true + delivery=PENDING`, y estado sin envio duplicado cuando `SENT/PROTECTED`.
+- `POST_DOWNLOAD_DELIVERY_READY` puede preparar envio por correo o canal despues de una descarga exitosa.
+- `Enviar a canal` abre una confirmacion de canal con destino `canal de Telegram` y token `DELIVERY_CONFIRM_TELEGRAM_CHANNEL`.
+- `Enviar por correo` abre una confirmacion de correo con destino `correo del cliente/proveedor configurado` y token `DELIVERY_CONFIRM_PROVIDER_EMAIL`.
+- La pantalla de preparacion ya no muestra `No se pudo enviar`, `Motivo: READY` ni estados tecnicos como `TOKEN_VALID`, `PENDING` o `GUARD_OK`.
+- La pantalla de resultado conserva `No se pudo enviar` solo para errores reales de envio.
+- Botones basicos (`Documentos`, `Facturas`, `Menu principal`, `Volver a documento`, `Volver a Documentos`, `Ayuda`) usan callbacks estables o tokens vigentes con handler.
+- Se retiro el copy obsoleto `No se envian documentos por Telegram en esta fase`.
+- Cobranza funcional, pagos reales, cancelacion, complemento de pago y sincronizacion de pago con PAC/proveedor no fueron modificados.
+
+Watcher/classifier actualizado:
+
+- `DOWNLOADED_MISSING_DELIVERY_BUTTON` aplica en `DOCUMENT_DOWNLOAD_RESULT`, `DOCUMENT_DETAIL` e `INVOICE_DETAIL`.
+- El detector ya no exige botones de envio en `DOCUMENTS_RECENT_LIST`, recuperaciones, menus, ayuda, Cobranza ni confirmaciones de pago.
+- Se agrego `DELIVERY_CHANNEL_MISMATCH` para romper si canal/correo se cruzan entre boton, payload y texto visible.
+- Se agrego `DELIVERY_PREPARE_SHOWS_RESULT_ERROR` para romper si una preparacion se presenta como error de resultado.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-document-capability-surfaces-and-delivery-confirmation.js
+node scripts/test-telegram-downloaded-delivery-cta.js
+node scripts/test-telegram-documents-confirmed-actions.js
+node scripts/test-telegram-post-stamp-success-download-cta.js
+node scripts/test-telegram-stamp-error-document-action-guard.js
+node scripts/test-telegram-invoice-fallback-and-borradores-naming.js
+node scripts/test-telegram-contextual-recovery-and-placeholder-identity.js
+node scripts/test-telegram-entity-state-routing-and-delivery-guard.js
+node scripts/test-telegram-runtime-qa-fix-document-isolation.js
+node scripts/test-telegram-documents-provider-folio.js
+node scripts/test-telegram-invoices-provider-folio.js
+node scripts/test-telegram-callback-lifecycle-download-response.js
+node scripts/test-telegram-callback-lifecycle-delivery-response.js
+node scripts/test-telegram-product-menu-contract.js
+node scripts/test-telegram-product-menu-renderer.js
+node scripts/test-telegram-product-menu-router-adapter.js
+node scripts/test-telegram-product-flow-integration.js
+node scripts/test-telegram-client-list-navigation.js
+node scripts/test-telegram-list-navigation-context.js
+node scripts/test-telegram-ui-state-buttons.js
+node scripts/test-telegram-ui-button-state-audit.js
+node scripts/test-telegram-ui-session-watch.js
+node scripts/test-repo-safety.js
+git diff --check
+node scripts/test-n8n-workflow-contract.js
+node scripts/test-n8n-workflow-guardrails.js
+node scripts/test-local-ingest-workflow-contract.js
+```
+
+Resultado: PASS.
+
+Confirmacion de alcance:
+
+- No se ejecuto watcher interactivo.
+- No se ejecutaron smokes live.
+- No se llamo PAC/Factura.com real.
+- No se timbro CFDI sandbox ni real durante pruebas.
+- No se ejecutaron descargas reales.
+- No se ejecutaron envios reales por correo o canal.
+- No se marcaron pagos reales.
+- No se modifico `.env`.
+- No se cambio DB schema ni se limpiaron datos.
+- No se subieron runtime, XML, PDF, ZIP, backups ni secretos.
+
+Veredicto documental post-fix: requiere nueva QA runtime documental corta enfocada en post-timbrado, post-descarga, `INVOICE_DETAIL`, `DOCUMENT_DETAIL`, confirmacion por correo y confirmacion a canal.
+
 ## 23. Actualizacion Slice 9R 2.4K
 
 Se corrigio el caso watcher `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON` observado en execution 3498:
