@@ -658,6 +658,26 @@ Watcher/classifier:
 
 Siguiente QA runtime requerida: repetir QA runtime documental corta enfocada en post-descarga, confirmacion por correo y confirmacion a canal, sin watcher interactivo durante el fix.
 
+## 15.7 Nota Slice 9R 2.4O
+
+Se corrigio la frontera entre texto libre y recuperacion de callbacks:
+
+- Un evento `MESSAGE` de texto libre tiene precedencia sobre la recuperacion de boton vencido.
+- La recuperacion de boton/token vencido queda limitada a eventos `CALLBACK_QUERY`.
+- Estados normales de navegacion como `DOCUMENTS_RECENT_LIST`, `DOCUMENT_DETAIL`, `INVOICE_DETAIL`, `COLLECTION_INVOICES`, `DRAFTS_MENU`, `PRODUCT_MENU_MAIN` y `CALLBACK_TOKEN_CONTEXT_RECOVERED` no capturan texto libre.
+- Solo estados explicitamente text-input-awaiting pueden capturar `MESSAGE` antes del wizard, por ejemplo busqueda/edicion de cliente, edicion de borrador, aclaracion de lineas, tax mode o wizard activo.
+- El caso observado `Privada Bilbao, revise camaras Hikvision por 800 + IVA` debe abrir captura de borrador/factura con `Confirmar`, `Editar`, `Cancelar` y `Ver detalle`; no debe responder con copy de boton vencido ni `Pantalla anterior: Documentos`.
+- Se mantiene el manejo de comandos contextuales (`ver N`, `descargar N`, `enviar N`, `correo N`, `canal N`, `pagar N`) antes del texto libre. Se agrego alias `pagarN` hacia la misma confirmacion local existente, sin mutar cobranza en este slice.
+- Cobranza funcional, PAC, XML/PDF reales, envios reales, pagos reales, cancelacion, `.env`, schema y datos quedan fuera de alcance.
+
+Watcher/classifier:
+
+- `FREE_TEXT_HIJACKED_BY_CALLBACK_RECOVERY` rompe si un `MESSAGE` libre cae en recuperacion de callback.
+- `BUTTON_RECOVERY_COPY_ON_MESSAGE` rompe si un `MESSAGE` libre renderiza copy como `El boton de...`, `boton ya no corresponde` o `accion vigente`.
+- Estos detectores no aplican a callbacks invalidos reales.
+
+Siguiente QA runtime requerida: repetir una QA corta con texto libre desde Documentos, texto libre desde Facturas, callback viejo real y flujo documental de confirmacion.
+
 ## 16. Riesgos
 
 | Riesgo | Severidad | Mitigacion |

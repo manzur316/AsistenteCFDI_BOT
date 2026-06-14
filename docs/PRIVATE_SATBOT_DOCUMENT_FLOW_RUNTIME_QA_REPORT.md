@@ -428,6 +428,33 @@ node scripts/test-telegram-ui-session-watch.js
 
 Veredicto documental post-fix: requiere repetir QA runtime documental corta enfocada en post-descarga, confirmacion por correo, confirmacion a canal y recuperacion de error sin `\n` literal. No se ejecuto watcher interactivo en este slice correctivo.
 
+## 27. Actualizacion Slice 9R 2.4O
+
+Se corrigio el bug `BUG-FREE-TEXT-HIJACKED-BY-DOCUMENT_CONTEXT`:
+
+- Un `MESSAGE` de texto libre ya no puede ser tratado como recuperacion de boton vencido.
+- La recuperacion de callback/token vencido se ejecuta solo para `CALLBACK_QUERY`.
+- Estados de navegacion documental, facturas, cobranza, borradores, menu principal y recuperacion contextual no capturan texto libre.
+- Estados text-input-awaiting si pueden capturar texto cuando esperan una respuesta textual real: edicion de borrador, busqueda/edicion de cliente, aclaracion de lineas, decisiones del wizard o tax mode.
+- El caso observado `Privada Bilbao, revise camaras Hikvision por 800 + IVA` debe iniciar wizard/borrador y no debe mostrar `El boton de Documentos...` ni `Pantalla anterior: Documentos`.
+- Los comandos contextuales conservan precedencia sobre texto libre: `ver N`, `detalle N`, `resumen N`, `timbrar N`, `descargar N`, `enviar N`, `correo N`, `canal N`, `pagar N`; `pagarN` entra como alias de la confirmacion local existente.
+- Cobranza funcional no fue modificada; no se agregaron mutaciones de pago, PAC, XML/PDF reales, envios reales ni cancelacion.
+
+Watcher/classifier actualizado:
+
+- `FREE_TEXT_HIJACKED_BY_CALLBACK_RECOVERY` detecta cuando un `MESSAGE` libre cae en una accion de recuperacion de callback.
+- `BUTTON_RECOVERY_COPY_ON_MESSAGE` detecta copy de boton vencido renderizado para un `MESSAGE`.
+- Ambos detectores ignoran `CALLBACK_QUERY` invalidos reales, que siguen usando recuperacion segura.
+
+Validacion offline agregada:
+
+```text
+node scripts/test-telegram-free-text-precedence-and-callback-recovery-boundary.js
+node scripts/test-telegram-ui-session-watch.js
+```
+
+Veredicto documental post-fix: requiere repetir QA runtime corta con texto libre desde Documentos, texto libre desde Facturas, callback viejo real y flujo documental de confirmacion. No se ejecuto watcher interactivo en este slice correctivo.
+
 ## 23. Actualizacion Slice 9R 2.4K
 
 Se corrigio el caso watcher `DOWNLOAD_READY_WITHOUT_DOWNLOAD_BUTTON` observado en execution 3498:

@@ -451,6 +451,53 @@ check("detects fresh delivery confirm token blocked after prepare", () => {
   return codes.join(",");
 });
 
+check("detects free text hijacked by callback recovery", () => {
+  const result = classify(execution({
+    id: "exec-free-text-hijacked",
+    handle: {
+      source_kind: "MESSAGE",
+      text: "Privada Bilbao, revise camaras Hikvision por 800 + IVA",
+      action: "CALLBACK_TOKEN_CONTEXT_RECOVERED",
+      telegram_message: "El boton de Documentos ya no corresponde a una accion vigente.",
+    },
+  }), null);
+  const codes = failureCodes(result);
+  assert(codes.includes("FREE_TEXT_HIJACKED_BY_CALLBACK_RECOVERY"));
+  assert(codes.includes("BUTTON_RECOVERY_COPY_ON_MESSAGE"));
+  return codes.join(",");
+});
+
+check("detects button recovery copy on free text message", () => {
+  const result = classify(execution({
+    id: "exec-button-copy-message",
+    handle: {
+      source_kind: "MESSAGE",
+      text: "Real Bilbao mantenimiento de camaras 1500 mas iva",
+      action: "IDLE_HELP",
+      telegram_message: "El boton de Facturas ya no corresponde a una accion vigente.",
+    },
+  }), null);
+  const codes = failureCodes(result);
+  assert(codes.includes("BUTTON_RECOVERY_COPY_ON_MESSAGE"));
+  return codes.join(",");
+});
+
+check("does not flag callback recovery copy for real callback query", () => {
+  const result = classify(execution({
+    id: "exec-button-copy-callback",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      text: "cfdi:oldtoken",
+      action: "CALLBACK_TOKEN_INVALID",
+      telegram_message: "El boton de Documentos ya no corresponde a una accion vigente.",
+    },
+  }), null);
+  const codes = failureCodes(result);
+  assert(!codes.includes("FREE_TEXT_HIJACKED_BY_CALLBACK_RECOVERY"), codes.join(","));
+  assert(!codes.includes("BUTTON_RECOVERY_COPY_ON_MESSAGE"), codes.join(","));
+  return "callback ignored";
+});
+
 check("detects failed Telegram dispatch", () => {
   const sample = execution({
     id: "exec-dispatch-fail",

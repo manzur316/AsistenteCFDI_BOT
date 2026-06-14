@@ -757,6 +757,7 @@ function deriveExecutionContext(execution) {
     chat_id_redacted: chatId ? redactId(chatId) : "",
     chat_id_raw: chatId,
     update_id: updateId || null,
+    message_text: firstNonEmpty(handle.text, summary.text, plan.text, load.text) || null,
     draft_id: extractDraftIdFromExecution(execution, signals),
     action: action || null,
     callback_action: firstNonEmpty(handle.callback_action, handle.json_debug?.callback_action, summary.callback_action, summary.json_debug?.callback_action) || null,
@@ -1357,6 +1358,40 @@ function isHtmlParseMode(value) {
   return String(value || "").trim().toUpperCase() === "HTML";
 }
 
+function isContextualMessageCommand(text = "") {
+  const normalized = normalizedTextBlock(text);
+  if (!normalized) return false;
+  if (normalized.startsWith("/")) return true;
+  return /^(ver|detalle|resumen|timbrar|descargar|enviar|correo|canal|pagar)\s*\d{1,3}$/.test(normalized)
+    || /^(cliente|facturas)\s+\d{1,3}$/.test(normalized)
+    || ["facturas", "documentos", "borradores", "pendientes", "aprobadas", "clientes", "cobranza", "menu", "start"].includes(normalized);
+}
+
+function isFreeTextMessageContext(context = {}) {
+  const sourceKind = String(context.source_kind || "").trim().toUpperCase();
+  if (sourceKind !== "MESSAGE") return false;
+  const text = String(context.message_text || context.handle?.text || "").trim();
+  if (!text || text.startsWith("cfdi:")) return false;
+  return !isContextualMessageCommand(text);
+}
+
+function detectFreeTextCallbackRecoveryFailures(context = {}) {
+  if (!isFreeTextMessageContext(context)) return [];
+  const text = normalizedTextBlock(contextVisibleText(context));
+  if (!text) return [];
+  const action = String(context.action || "").trim().toUpperCase();
+  const failures = [];
+  const hasButtonRecoveryCopy = /\bel boton de\b|\bboton\b.*\bno corresponde\b|\baccion vigente\b/.test(text);
+  const hasCallbackRecoveryAction = ["CALLBACK_TOKEN_CONTEXT_RECOVERED", "CALLBACK_TOKEN_INVALID", "CALLBACK_TOKEN_USED_RECOVERY", "DOCUMENT_ACTION_BLOCKED"].includes(action);
+  if (hasCallbackRecoveryAction && (hasButtonRecoveryCopy || /\bpantalla anterior\b/.test(text))) {
+    failures.push(failure("FREE_TEXT_HIJACKED_BY_CALLBACK_RECOVERY", "Free text MESSAGE was handled as callback recovery", { action }));
+  }
+  if (hasButtonRecoveryCopy) {
+    failures.push(failure("BUTTON_RECOVERY_COPY_ON_MESSAGE", "Button recovery copy rendered for free text MESSAGE", { action }));
+  }
+  return failures;
+}
+
 function detectPresentationFailures(context = {}) {
   const failures = [];
   const sources = [
@@ -1479,6 +1514,7 @@ function classifyExecution(execution, options = {}) {
   }
   failures = failures.concat(detectTokenFailures({ context, tokens, buttons: visibleButtons }));
   failures = failures.concat(detectDeliveryConfirmTokenInvalidAfterPrepare({ context, counters, handle }));
+  failures = failures.concat(detectFreeTextCallbackRecoveryFailures(context));
   failures = failures.concat(detectPresentationFailures(context));
   failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));
