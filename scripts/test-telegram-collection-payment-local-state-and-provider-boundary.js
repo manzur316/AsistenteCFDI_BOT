@@ -76,6 +76,14 @@ const paidInvoice = invoice({
   draft_id: "DRAFT-COLLECTION-LOCAL-PAID",
   payment_status: "PAGADO",
   payment_amount_paid: 928,
+  payment_paid_at: "2026-06-14T10:00:00Z",
+  provider_status: "active",
+});
+const cancelledInvoice = invoice({
+  draft_id: "DRAFT-COLLECTION-LOCAL-CANCELLED",
+  invoice_status: "SANDBOX_CANCELADO",
+  payment_status: "NO_APLICA",
+  payment_amount_paid: 0,
 });
 
 function clients() {
@@ -207,6 +215,10 @@ function buttonTexts(result) {
   return (result.reply_markup?.inline_keyboard || []).flat().map((button) => button.text).filter(Boolean);
 }
 
+function buttonCallbacks(result) {
+  return (result.reply_markup?.inline_keyboard || []).flat().map((button) => button.callback_data).filter(Boolean);
+}
+
 function allButtonsHaveHandlers(result) {
   return (result.reply_markup?.inline_keyboard || []).flat().every((button) => Boolean(button.callback_data));
 }
@@ -266,6 +278,20 @@ const confirmAlias = executeCode(baseInput("pagar1", {
   chat_state: collectionInvoicesState([{ draft_id: folioInvoice.draft_id, client_id: folioInvoice.client_id }]),
 }));
 const applied = executeCode(callbackInput(folioInvoice, { update_id: 240006 }));
+const paidView = executeCode(baseInput("cfdi_nav:pay_paid", {
+  update_id: 240012,
+  source_kind: "CALLBACK_QUERY",
+  callback_query_id: "CB-PAY-PAID",
+  callback_message_id: "912",
+  client_invoice_ledger: [paidInvoice, folioInvoice],
+}));
+const cancelledView = executeCode(baseInput("cfdi_nav:pay_cancel", {
+  update_id: 240013,
+  source_kind: "CALLBACK_QUERY",
+  callback_query_id: "CB-PAY-CANCEL",
+  callback_message_id: "913",
+  client_invoice_ledger: [cancelledInvoice, paidInvoice],
+}));
 
 check("1_cobranza_abre_menu_lista", () => assert.strictEqual(collection.action, "COLLECTION_CLIENTS"));
 check("2_cliente_con_saldo_aparece", () => assert(collection.telegram_message.includes("Real Bilbao"), collection.telegram_message));
@@ -307,6 +333,29 @@ check("29_ya_pagada_idempotente", () => {
   assert.strictEqual(result.action, "PAYMENT_STATUS_ALREADY_PAGADO");
   assert(result.telegram_message.includes("ya estaba marcada como pagada localmente"), result.telegram_message);
 });
+check("29b_ver_pagadas_abre_lista_local", () => {
+  assert.strictEqual(paidView.action, "COLLECTION_PAID_INVOICES");
+  assert(paidView.telegram_message.includes("Facturas pagadas"), paidView.telegram_message);
+  assert(!paidView.telegram_message.includes("CLIENT_INVOICE_LEDGER_DEPRECATED"), paidView.telegram_message);
+});
+check("29c_ver_pagadas_muestra_factura_pagada", () => {
+  assert(paidView.telegram_message.includes("F-72"), paidView.telegram_message);
+  assert(paidView.telegram_message.includes("Pagada"), paidView.telegram_message);
+  assert(paidView.telegram_message.includes("Estado proveedor: active (solo lectura)"), paidView.telegram_message);
+});
+check("29d_ver_pagadas_no_ofrece_confirmar_pago", () => {
+  assert(!buttonTexts(paidView).includes("Confirmar pagada"), buttonTexts(paidView).join(","));
+  assert(!paidView.persistence_sql.includes("'MARK_PAYMENT_PAID'"), paidView.persistence_sql);
+});
+check("29e_resultado_tiene_acceso_a_pagadas", () => {
+  assert(buttonTexts(applied).includes("Ver facturas pagadas"), buttonTexts(applied).join(","));
+  assert(buttonCallbacks(applied).includes("cfdi_nav:pay_paid"), buttonCallbacks(applied).join(","));
+});
+check("29f_ver_canceladas_abre_lista_solo_lectura", () => {
+  assert.strictEqual(cancelledView.action, "COLLECTION_CANCELLED_INVOICES");
+  assert(cancelledView.telegram_message.includes("Facturas canceladas"), cancelledView.telegram_message);
+  assert(!cancelledView.persistence_sql.includes("'MARK_PAYMENT_PAID'"), cancelledView.persistence_sql);
+});
 check("30_token_expirado_no_aplica_pago", () => {
   const result = executeCode(callbackInput(folioInvoice, { update_id: 240009, token: "PAYLOCALOLD001", expires_at: "2000-01-01T00:00:00.000Z" }));
   assert(!result.persistence_sql.includes("UPDATE cfdi_drafts SET payment_status = 'PAGADO'"), result.persistence_sql);
@@ -324,7 +373,14 @@ check("34_no_uuid_completo", () => assert(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-
 check("35_no_draft_como_identidad_principal", () => assert(!/^\\d+\\.\\s+DRAFT-/m.test(invoices.telegram_message + fallbackList.telegram_message)));
 check("36_no_html_crudo", () => assert(!new RegExp("</?(?:b|i|code|pre|a)\\b", "i").test(invoices.telegram_message + confirm.telegram_message + applied.telegram_message)));
 check("37_no_newline_literal", () => assert(!/\\\\n/.test(invoices.telegram_message + confirm.telegram_message + applied.telegram_message)));
-check("38_no_botones_sin_handler", () => assert(allButtonsHaveHandlers(collection) && allButtonsHaveHandlers(invoices) && allButtonsHaveHandlers(confirm) && allButtonsHaveHandlers(applied)));
+check("37b_vistas_pagadas_canceladas_sin_datos_sensibles", () => {
+  const text = paidView.telegram_message + cancelledView.telegram_message;
+  assert(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(text), text);
+  assert(!/^\\d+\\.\\s+DRAFT-/m.test(text), text);
+  assert(!new RegExp("</?(?:b|i|code|pre|a)\\b", "i").test(text), text);
+  assert(!/\\\\n/.test(text), text);
+});
+check("38_no_botones_sin_handler", () => assert(allButtonsHaveHandlers(collection) && allButtonsHaveHandlers(invoices) && allButtonsHaveHandlers(confirm) && allButtonsHaveHandlers(applied) && allButtonsHaveHandlers(paidView) && allButtonsHaveHandlers(cancelledView)));
 check("39_watcher_payment_without_state_change", () => {
   const result = classifyExecution(execution({
     handle: {

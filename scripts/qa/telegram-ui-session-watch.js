@@ -1589,6 +1589,29 @@ function detectPaymentConfirmedButStillListedPending({ context = {}, counters = 
   return failures;
 }
 
+function detectPaymentPaidViewDeprecatedOrMissing(context = {}) {
+  const action = contextActionName(context);
+  const screen = String(context.screen_id || context.handle?.screen_id || "").toUpperCase();
+  const callback = String(context.callback_action || context.handle?.callback_action || context.handle?.text || context.text || "").trim();
+  const requestedPaidView = callback === "cfdi_nav:pay_paid" || action === "COLLECTION_PAID_INVOICES" || screen === "COLLECTION_PAID_INVOICES";
+  if (!requestedPaidView) return [];
+  if (action !== "COLLECTION_PAID_INVOICES" && screen !== "COLLECTION_PAID_INVOICES") {
+    return [failure("PAYMENT_PAID_VIEW_DEPRECATED_OR_MISSING", "Paid invoices callback did not open the collection paid invoices view", {
+      action,
+      screen_id: screen || null,
+      callback_action: callback || null,
+    })];
+  }
+  const text = normalizedTextBlock(contextVisibleText(context));
+  if (!/facturas pagadas/.test(text)) {
+    return [failure("PAYMENT_PAID_VIEW_DEPRECATED_OR_MISSING", "Paid invoices view missing visible paid invoices title", {
+      action,
+      screen_id: screen || null,
+    })];
+  }
+  return [];
+}
+
 function normalizedButtonText(button = {}) {
   return String(button.text || "")
     .normalize("NFD")
@@ -1940,6 +1963,7 @@ function classifyExecution(execution, options = {}) {
   failures = failures.concat(detectPaymentConfirmProviderBoundaryMissing(context));
   failures = failures.concat(detectCollectionUsesLocalDraftIdWhenProviderAvailable(context, state));
   failures = failures.concat(detectPaymentConfirmedButStillListedPending({ context, counters }));
+  failures = failures.concat(detectPaymentPaidViewDeprecatedOrMissing(context));
   failures = failures.concat(detectPresentationFailures(context));
   failures = failures.concat(detectDispatchFailures({ execution, context, dispatch }));
   failures = failures.concat(detectActionFailures({ execution, context, draftBefore: priorDraft, draftAfter: draft, ledgerRows, artifactPaths }));

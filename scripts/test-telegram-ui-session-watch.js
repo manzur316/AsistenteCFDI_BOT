@@ -575,6 +575,37 @@ check("detects paid invoice still listed as pending", () => {
   return codes.join(",");
 });
 
+check("detects paid invoices callback routed to deprecated ledger", () => {
+  const result = classify(execution({
+    id: "exec-paid-view-deprecated",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      action: "CLIENT_INVOICE_LEDGER_DEPRECATED",
+      callback_action: "cfdi_nav:pay_paid",
+      telegram_message: "Facturas por cliente cambio de vista.\nPara pagos usa Cobranza.",
+    },
+  }), null);
+  const codes = failureCodes(result);
+  assert(codes.includes("PAYMENT_PAID_VIEW_DEPRECATED_OR_MISSING"));
+  return codes.join(",");
+});
+
+check("does not flag valid paid invoices view", () => {
+  const result = classify(execution({
+    id: "exec-paid-view-valid",
+    handle: {
+      source_kind: "CALLBACK_QUERY",
+      action: "COLLECTION_PAID_INVOICES",
+      callback_action: "cfdi_nav:pay_paid",
+      screen_id: "COLLECTION_PAID_INVOICES",
+      telegram_message: "Facturas pagadas\n\n1. F-72 | Real Bilbao | $928.00 | Pagada",
+    },
+  }), null);
+  const codes = failureCodes(result);
+  assert(!codes.includes("PAYMENT_PAID_VIEW_DEPRECATED_OR_MISSING"), codes.join(","));
+  return codes.join(",");
+});
+
 check("detects failed Telegram dispatch", () => {
   const sample = execution({
     id: "exec-dispatch-fail",

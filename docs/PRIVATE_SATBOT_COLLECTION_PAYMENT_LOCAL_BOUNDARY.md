@@ -33,6 +33,8 @@ Confirming `MARK_PAYMENT_PAID` must not update:
 
 It also must not emit a complemento de pago.
 
+The payment record is still linked to the provider/PAC invoice identity by `provider_invoice_link_id`, provider folio/serie, and short safe display ids. That link is for lookup and audit only; it is not a provider payment synchronization.
+
 ## Visible Identity
 
 Cobranza uses the same invoice identity contract as Facturas:
@@ -65,6 +67,16 @@ The token action is `MARK_PAYMENT_PAID` and includes:
 - `pac_update=false`
 
 The confirmation copy must say this is local, does not update SAT/PAC/provider, and does not emit a complemento de pago.
+
+## Paid And Cancelled Views
+
+`Cobranza` exposes read-only follow-up views:
+
+- `cfdi_nav:pay_pending` -> clients with open balance.
+- `cfdi_nav:pay_paid` -> `COLLECTION_PAID_INVOICES`.
+- `cfdi_nav:pay_cancel` -> `COLLECTION_CANCELLED_INVOICES`.
+
+`COLLECTION_PAID_INVOICES` shows invoices with local `PAGADO` status using provider identity when available. It must not expose `Confirmar pagada`, create `MARK_PAYMENT_PAID` tokens, or mutate PAC/provider state.
 
 ## Future Work
 
